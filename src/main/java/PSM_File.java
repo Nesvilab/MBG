@@ -23,13 +23,9 @@ public class PSM_File {
         columnNames.put(PSMattr.glycan, "Total Glycan Composition");
     }
 
-    public PSM_File(String filename) throws Exception {
-        this(new File(filename));
-    }
-
-    public PSM_File(File f) throws Exception {
-        BufferedReader in = new BufferedReader(new FileReader(f), 1 << 22);
-        this.file = f;
+    public PSM_File(String filename, Params params) throws Exception {
+        BufferedReader in = new BufferedReader(new FileReader(filename), 1 << 22);
+        this.file = new File(filename);
         this.headers = in.readLine().split("\t");
         this.PSMcolumns = initPSMcolumns();
 
@@ -38,7 +34,7 @@ public class PSM_File {
         while((line = in.readLine()) != null) {
             //if(cline.trim().length() > 0)
             if (line.length() > 0) {
-                PSM psm = new PSM(line, PSMcolumns);
+                PSM psm = new PSM(line, PSMcolumns, params);
                 // ignore non-glyco PSMs
                 if (psm.glycanComp != null) {
                     this.psms.add(psm);

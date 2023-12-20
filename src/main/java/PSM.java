@@ -18,7 +18,7 @@ public class PSM {
      * Initialize a PSM object from a line of the psm.tsv table
      * @param psmLine
      */
-    public PSM(String psmLine, HashMap<PSM_File.PSMattr, Integer> psmCols) {
+    public PSM(String psmLine, HashMap<PSM_File.PSMattr, Integer> psmCols, Params params) {
         String[] splits = psmLine.split("\t");
         String glycan = splits[psmCols.get(PSM_File.PSMattr.glycan)];
         if (glycan.length() == 0) {
@@ -26,7 +26,7 @@ public class PSM {
             glycanComp = null;
             return;
         }
-        glycanComp = new Glycan(glycan);
+        glycanComp = new Glycan(glycan, params);
         peptide = splits[psmCols.get(PSM_File.PSMattr.peptide)];
         protein = splits[psmCols.get(PSM_File.PSMattr.protein)];
         rt = Double.parseDouble(splits[psmCols.get(PSM_File.PSMattr.RT)]);
