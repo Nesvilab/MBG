@@ -1,3 +1,5 @@
+import java.util.ArrayList;
+import java.util.HashMap;
 
 public class Main {
 
@@ -8,7 +10,13 @@ public class Main {
              * - psm file path (string)
              * - glycan database path (string)
              */
-            Params analyzer = new Params(args[0].trim(), args[1].trim(), args[2].trim());
+            Params params = new Params(args[1].trim(), args[2].trim());
+            GlycanMatching matcher = new GlycanMatching(args[0].trim(), params);
+
+            matcher.groupGlycosites();
+            ArrayList<PSM> filledInPSMs = matcher.fillInGlycoSites();
+            matcher.psmFile.printNewPSMs(filledInPSMs);
+
         } catch (Exception e) {
             e.printStackTrace();
             System.exit(1);

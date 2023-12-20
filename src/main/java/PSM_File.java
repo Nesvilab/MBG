@@ -1,6 +1,4 @@
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileReader;
+import java.io.*;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
@@ -12,6 +10,7 @@ public class PSM_File {
     public File file;
     public HashMap<PSMattr, Integer> PSMcolumns;
     private static final HashMap<PSMattr, String> columnNames;
+    public int maxScanNum;
 
     static {
         columnNames = new HashMap<>();
@@ -21,6 +20,8 @@ public class PSM_File {
         columnNames.put(PSMattr.protein_start, "Protein Start");
         columnNames.put(PSMattr.assigned_mods, "Assigned Modifications");
         columnNames.put(PSMattr.glycan, "Total Glycan Composition");
+        columnNames.put(PSMattr.spectrum, "Spectrum");
+
     }
 
     public PSM_File(String filename, Params params) throws Exception {
@@ -38,6 +39,9 @@ public class PSM_File {
                 // ignore non-glyco PSMs
                 if (psm.glycanComp != null) {
                     this.psms.add(psm);
+                }
+                if (psm.getScanNum(PSMcolumns) > maxScanNum) {
+                    maxScanNum = psm.getScanNum(PSMcolumns);
                 }
             }
         }
@@ -64,13 +68,35 @@ public class PSM_File {
         return -1;
     }
 
+    public void printNewPSMs(ArrayList<PSM> newPSMs) throws IOException {
+        String tempName = this.file.getName() + ".iq.tmp";
+        PrintWriter out = new PrintWriter(new FileWriter(tempName));
+
+        // write header
+        out.println(String.join("\t", this.headers));
+
+        // write original and new PSMs
+        for (PSM psm: psms) {
+            out.println(String.join("\t", psm.splits));
+        }
+        for (PSM newPSM: newPSMs) {
+            out.println(String.join("\t", newPSM.splits));
+        }
+        out.close();
+
+        boolean success = this.file.delete();
+        File newFileName = new File(tempName);
+        success = newFileName.renameTo(this.file);
+    }
+
     public enum PSMattr {
         RT,
         peptide,
         glycan,
         assigned_mods,
         protein,
-        protein_start
+        protein_start,
+        spectrum
     }
 
 

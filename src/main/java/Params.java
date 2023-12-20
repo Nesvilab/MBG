@@ -7,16 +7,14 @@ import java.util.HashMap;
 
 public class Params {
 
-    private ArrayList<Glycan> glycanDatabase;
-    private PSM_File psmFile;
+    public ArrayList<Glycan> glycanDatabase;
     private ArrayList<GlycanResidue> glycanResidues;
     private static final String defaultResiduePath = "glycan_residues.txt";
     private static final String defaultGlycanPath = "glycan_database.txt";
 
-    public Params(String psmPath, String glycanDBpath, String glycanResiduePath) throws Exception {
+    public Params(String glycanDBpath, String glycanResiduePath) throws Exception {
         glycanDatabase = parseGlycanDB(glycanDBpath);
         glycanResidues = parseGlycoResiduesDB(glycanResiduePath);
-        psmFile = new PSM_File(psmPath, this);
     }
 
     private ArrayList<Glycan> parseGlycanDB(String glycanDBpath) {
