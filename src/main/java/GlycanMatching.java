@@ -43,7 +43,7 @@ public class GlycanMatching {
                     continue;
                 }
                 // glycan not observed. Make a PSM for it
-                newPSMs.add(new PSM(site.basePSM, dbGlycan, psmFile.PSMcolumns, params));
+                newPSMs.add(PSM.makeDummyPSM(site.basePSM, dbGlycan, psmFile.PSMcolumns, params));
             }
         }
 

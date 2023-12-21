@@ -74,4 +74,12 @@ public class Glycan {
         return stringBuilder.toString();
     }
 
+    /**
+     * Generates Byonic format composition for writing to psm.tsv
+     * @return
+     */
+    public String toOutputString() {
+        return String.format("%s %% %.4f", toCompString(), mass);
+    }
+
 }

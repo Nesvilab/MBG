@@ -21,7 +21,10 @@ public class PSM_File {
         columnNames.put(PSMattr.assigned_mods, "Assigned Modifications");
         columnNames.put(PSMattr.glycan, "Total Glycan Composition");
         columnNames.put(PSMattr.spectrum, "Spectrum");
-
+        columnNames.put(PSMattr.delta_mass, "Delta Mass");
+        columnNames.put(PSMattr.mod_peptide, "Modified Peptide");
+        columnNames.put(PSMattr.calc_pep_mass, "Calculated Peptide Mass");
+        columnNames.put(PSMattr.calc_pep_mz, "Calculated M/Z");
     }
 
     public PSM_File(String filename, Params params) throws Exception {
@@ -96,7 +99,11 @@ public class PSM_File {
         assigned_mods,
         protein,
         protein_start,
-        spectrum
+        spectrum,
+        mod_peptide,
+        delta_mass,
+        calc_pep_mass,
+        calc_pep_mz
     }
 
 
