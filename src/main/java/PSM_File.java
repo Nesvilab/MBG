@@ -25,6 +25,8 @@ public class PSM_File {
         columnNames.put(PSMattr.mod_peptide, "Modified Peptide");
         columnNames.put(PSMattr.calc_pep_mass, "Calculated Peptide Mass");
         columnNames.put(PSMattr.calc_pep_mz, "Calculated M/Z");
+        columnNames.put(PSMattr.charge, "Charge");
+        columnNames.put(PSMattr.glyco_q_val, "Glycan q-value");
     }
 
     public PSM_File(String filename, Params params) throws Exception {
@@ -40,7 +42,7 @@ public class PSM_File {
             if (line.length() > 0) {
                 PSM psm = new PSM(line, PSMcolumns, params);
                 // ignore non-glyco PSMs
-                if (psm.glycanComp != null) {
+                if (psm.glycan != null) {
                     this.psms.add(psm);
                 }
                 if (psm.getScanNum(PSMcolumns) > maxScanNum) {
@@ -72,7 +74,7 @@ public class PSM_File {
     }
 
     public void printNewPSMs(ArrayList<PSM> newPSMs) throws IOException {
-        String tempName = this.file.getName() + ".iq.tmp";
+        String tempName = this.file.getAbsolutePath() + ".mbg.tsv";
         PrintWriter out = new PrintWriter(new FileWriter(tempName));
 
         // write header
@@ -87,9 +89,9 @@ public class PSM_File {
         }
         out.close();
 
-        boolean success = this.file.delete();
-        File newFileName = new File(tempName);
-        success = newFileName.renameTo(this.file);
+//        boolean success = this.file.delete();
+//        File newFileName = new File(tempName);
+//        success = newFileName.renameTo(this.file);
     }
 
     public enum PSMattr {
@@ -103,7 +105,9 @@ public class PSM_File {
         mod_peptide,
         delta_mass,
         calc_pep_mass,
-        calc_pep_mz
+        calc_pep_mz,
+        charge,
+        glyco_q_val,
     }
 
 

@@ -19,12 +19,12 @@ public class GlycoSite {
         observedGlycans = new HashMap<>();
         ArrayList<PSM> glycoPSMs = new ArrayList<>();
         glycoPSMs.add(firstPSM);
-        observedGlycans.put(firstPSM.glycanComp.toCompString(), glycoPSMs);
+        observedGlycans.put(firstPSM.glycan.toCompString(), glycoPSMs);
     }
 
     public void addPSM(PSM psm) {
         psms.add(psm);
-        String glycanComp = psm.glycanComp.toCompString();
+        String glycanComp = psm.glycan.toCompString();
         ArrayList<PSM> glycoPSMs;
         if (observedGlycans.containsKey(glycanComp)) {
             glycoPSMs = observedGlycans.get(glycanComp);

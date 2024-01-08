@@ -9,12 +9,14 @@ public class Params {
 
     public ArrayList<Glycan> glycanDatabase;
     private ArrayList<GlycanResidue> glycanResidues;
+    public double maxGlycanQval;
     private static final String defaultResiduePath = "glycan_residues.txt";
     private static final String defaultGlycanPath = "glycan_database.txt";
 
-    public Params(String glycanDBpath, String glycanResiduePath) throws Exception {
-        glycanDatabase = parseGlycanDB(glycanDBpath);
+    public Params(String glycanDBpath, String glycanResiduePath, double maxGlycanQval) throws Exception {
         glycanResidues = parseGlycoResiduesDB(glycanResiduePath);
+        glycanDatabase = parseGlycanDB(glycanDBpath);
+        this.maxGlycanQval = maxGlycanQval;
     }
 
     private ArrayList<Glycan> parseGlycanDB(String glycanDBpath) {
