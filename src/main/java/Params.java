@@ -10,12 +10,16 @@ public class Params {
     public ArrayList<Glycan> glycanDatabase;
     private ArrayList<GlycanResidue> glycanResidues;
     public double maxGlycanQval;
+    public int minPSMs;
+    public int minGlycans;
     private static final String defaultResiduePath = "glycan_residues.txt";
     private static final String defaultGlycanPath = "glycan_database.txt";
 
-    public Params(String glycanDBpath, String glycanResiduePath, double maxGlycanQval) throws Exception {
+    public Params(String glycanDBpath, String glycanResiduePath, double maxGlycanQval, int minPSMs, int minGlycans) throws Exception {
         glycanResidues = parseGlycoResiduesDB(glycanResiduePath);
         glycanDatabase = parseGlycanDB(glycanDBpath);
+        this.minPSMs = minPSMs;
+        this.minGlycans = minGlycans;
         this.maxGlycanQval = maxGlycanQval;
     }
 

@@ -36,14 +36,16 @@ public class GlycanMatching {
 
         for (Map.Entry<String, GlycoSite> siteEntry: observedGlycoSites.entrySet()) {
             GlycoSite site = siteEntry.getValue();
-            for (Glycan dbGlycan: params.glycanDatabase) {
-                String dbGlycanStr = dbGlycan.toCompString();
-                if (site.observedGlycans.containsKey(dbGlycanStr)) {
-                    // this glycan was observed for this site, no action required
-                    continue;
+            if (site.psms.size() >= params.minPSMs && site.observedGlycans.size() >= params.minGlycans) {
+                for (Glycan dbGlycan : params.glycanDatabase) {
+                    String dbGlycanStr = dbGlycan.toCompString();
+                    if (site.observedGlycans.containsKey(dbGlycanStr)) {
+                        // this glycan was observed for this site, no action required
+                        continue;
+                    }
+                    // glycan not observed. Make a PSM for it
+                    newPSMs.add(PSM.makeDummyPSM(site.basePSM, dbGlycan, psmFile.PSMcolumns, params));
                 }
-                // glycan not observed. Make a PSM for it
-                newPSMs.add(PSM.makeDummyPSM(site.basePSM, dbGlycan, psmFile.PSMcolumns, params));
             }
         }
 

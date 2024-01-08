@@ -14,7 +14,7 @@ public class Main {
             String glycanResPath = args.length >= 3 ? args[2].trim() : "";
             String glycanDBpath = args.length >= 2 ? args[1].trim() : "";
 
-            Params params = new Params(glycanDBpath, glycanResPath, 0.01);
+            Params params = new Params(glycanDBpath, glycanResPath, 0.01, 5, 2);
             GlycanMatching matcher = new GlycanMatching(args[0].trim(), params);
 
             matcher.groupGlycosites();
