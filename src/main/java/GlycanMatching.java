@@ -16,6 +16,9 @@ public class GlycanMatching {
         observedGlycoSites = new HashMap<>();
 
         for (PSM psm: psmFile.psms) {
+            if (psm.glycan == null) {
+                continue;
+            }
             String siteID = psm.getGlycoSiteID();
             if (observedGlycoSites.containsKey(siteID)) {
                 observedGlycoSites.get(siteID).addPSM(psm);

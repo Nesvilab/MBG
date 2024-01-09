@@ -41,10 +41,7 @@ public class PSM_File {
             //if(cline.trim().length() > 0)
             if (line.length() > 0) {
                 PSM psm = new PSM(line, PSMcolumns, params);
-                // ignore non-glyco PSMs
-                if (psm.glycan != null) {
-                    this.psms.add(psm);
-                }
+                this.psms.add(psm);
                 if (psm.getScanNum(PSMcolumns) > maxScanNum) {
                     maxScanNum = psm.getScanNum(PSMcolumns);
                 }
