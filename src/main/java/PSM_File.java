@@ -1,5 +1,6 @@
 import java.io.*;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -11,6 +12,7 @@ public class PSM_File {
     public HashMap<PSMattr, Integer> PSMcolumns;
     private static final HashMap<PSMattr, String> columnNames;
     public int maxScanNum;
+    public int addCols;
 
     static {
         columnNames = new HashMap<>();
@@ -27,6 +29,7 @@ public class PSM_File {
         columnNames.put(PSMattr.calc_pep_mz, "Calculated M/Z");
         columnNames.put(PSMattr.charge, "Charge");
         columnNames.put(PSMattr.glyco_q_val, "Glycan q-value");
+        columnNames.put(PSMattr.inferred_glycoform, "Inferred Glycoform?");
     }
 
     public PSM_File(String filename, Params params) throws Exception {
@@ -35,12 +38,23 @@ public class PSM_File {
         this.headers = in.readLine().split("\t");
         this.PSMcolumns = initPSMcolumns();
 
+        // handle inserting new header(s) if needed
+        if (PSMcolumns.getOrDefault(PSMattr.inferred_glycoform, -1) == -1) {
+            addCols = 1;
+            ArrayList<String> newHeaders = new ArrayList<>(Arrays.asList(this.headers));
+            newHeaders.add(PSMcolumns.get(PSMattr.glyco_q_val) + 1, columnNames.get(PSMattr.inferred_glycoform));
+            headers = newHeaders.toArray(new String[0]);
+            this.PSMcolumns = initPSMcolumns();
+        } else {
+            addCols = 0;
+        }
+
         this.psms = new ArrayList<>();
         String line;
         while((line = in.readLine()) != null) {
             //if(cline.trim().length() > 0)
             if (line.length() > 0) {
-                PSM psm = new PSM(line, PSMcolumns, params);
+                PSM psm = new PSM(line, PSMcolumns, params, false, addCols);
                 this.psms.add(psm);
                 if (psm.getScanNum(PSMcolumns) > maxScanNum) {
                     maxScanNum = psm.getScanNum(PSMcolumns);
@@ -105,6 +119,7 @@ public class PSM_File {
         calc_pep_mz,
         charge,
         glyco_q_val,
+        inferred_glycoform,
     }
 
 

@@ -1,4 +1,5 @@
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -18,6 +19,7 @@ public class PSM {
     int charge;
     double glycoQval;
     double deltaMass;
+    boolean inferredGlycoform;
 
     private static final Pattern modMassPattern = Pattern.compile("[\\d]+[A-Z]\\(([\\d.]+)\\)");
     private static final Pattern modSitePattern = Pattern.compile("([\\d]+)[A-Z]\\([\\d.]+\\)");
@@ -27,8 +29,23 @@ public class PSM {
      * Initialize a PSM object from a line of the psm.tsv table
      * @param psmLine
      */
-    public PSM(String psmLine, HashMap<PSM_File.PSMattr, Integer> psmCols, Params params) {
+    public PSM(String psmLine, HashMap<PSM_File.PSMattr, Integer> psmCols, Params params, boolean isInferred, int addCols) {
         splits = psmLine.split("\t");
+
+        // expand to hold new columns if needed
+        if (addCols > 0) {
+            int add = addCols;
+            ArrayList<String> newSplits = new ArrayList<>(Arrays.asList(splits));
+            while (add > 0) {
+                newSplits.add(psmCols.get(PSM_File.PSMattr.glyco_q_val) + 1, "");
+                add--;
+            }
+            splits = newSplits.toArray(new String[0]);
+        }
+        // update new fields
+        inferredGlycoform = isInferred;
+        splits[psmCols.get(PSM_File.PSMattr.inferred_glycoform)] = String.valueOf(inferredGlycoform);
+
         String glycan = splits[psmCols.get(PSM_File.PSMattr.glycan)];
         if (glycan.length() == 0) {
             // non-glyco PSM
@@ -101,7 +118,7 @@ public class PSM {
         // todo: compute some RT adjustment...
 
         // construct the new PSM
-        return new PSM(String.join("\t", newSplits), psmCols, params);
+        return new PSM(String.join("\t", newSplits), psmCols, params, true, 0);
     }
 
     /**
