@@ -38,7 +38,7 @@ public class GlycanMatching {
             GlycoSite site = siteEntry.getValue();
             if (site.psms.size() >= params.minPSMs && site.observedGlycans.size() >= params.minGlycans) {
                 for (Glycan dbGlycan : params.glycanDatabase) {
-                    String dbGlycanStr = dbGlycan.toCompString();
+                    String dbGlycanStr = dbGlycan.toString();
                     if (site.observedGlycans.containsKey(dbGlycanStr)) {
                         // this glycan was observed for this site, no action required
                         continue;

@@ -1,4 +1,3 @@
-import java.util.ArrayList;
 import java.util.Map;
 import java.util.TreeMap;
 import java.util.regex.Matcher;
@@ -7,12 +6,14 @@ import java.util.regex.Pattern;
 public class Glycan {
     public TreeMap<GlycanResidue, Integer> composition;
     public double mass;
+    public String name;
 
-    private static final Pattern numberPattern = Pattern.compile("[0-9]");
+    private static final Pattern numberPattern = Pattern.compile("[0-9]+");
     private static final Pattern letterPattern = Pattern.compile("[a-zA-Z]+");
     private static final Pattern byonicPattern = Pattern.compile("[A-Za-z]+\\([0-9]+\\)");      // e.g., HexNAc(1)Hex(1)
 
     public Glycan(String compString, Params analysis) {
+        name = compString;
         composition = parseGlycan(compString, analysis);
         mass = computeMonoisotopicMass();
     }
@@ -64,14 +65,9 @@ public class Glycan {
         return mass;
     }
 
-    public String toCompString() {
-        StringBuilder stringBuilder = new StringBuilder();
-        for (GlycanResidue residueKey : composition.keySet()) {
-            if (composition.getOrDefault(residueKey, 0) > 0) {
-                stringBuilder.append(String.format("%s(%d)", residueKey.name, composition.get(residueKey)));
-            }
-        }
-        return stringBuilder.toString();
+    @Override
+    public String toString() {
+        return name;
     }
 
     /**
@@ -79,7 +75,7 @@ public class Glycan {
      * @return
      */
     public String toOutputString() {
-        return String.format("%s %% %.4f", toCompString(), mass);
+        return String.format("%s %% %.4f", this, mass);
     }
 
 }

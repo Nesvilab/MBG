@@ -51,7 +51,7 @@ public class Params {
                 if (glycan.composition.size() == 0) {
                     continue;
                 }
-                String compStr = glycan.toCompString();
+                String compStr = glycan.toString();
                 // prevent duplicated glycans
                 if (!glycansInDB.containsKey(compStr)) {
                     glycansInDB.put(compStr, true);
