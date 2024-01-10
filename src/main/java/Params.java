@@ -5,43 +5,88 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
 
+import static java.lang.System.out;
+
 public class Params {
 
     public ArrayList<Glycan> glycanDatabase;
     private ArrayList<GlycanResidue> glycanResidues;
-    public double maxGlycanQval;
-    public int minPSMs;
-    public int minGlycans;
+    public double maxGlycanQval = 0.01;
+    public int minPSMs = 5;
+    public int minGlycans = 2;
     private static final String defaultResiduePath = "glycan_residues.txt";
     private static final String defaultGlycanPath = "glycan_database.txt";
+    public Path psmPath;
+    public Path glycanDBpath;
+    public Path residueDBpath;
 
-    public Params(String glycanDBpath, String glycanResiduePath, double maxGlycanQval, int minPSMs, int minGlycans) throws Exception {
-        glycanResidues = parseGlycoResiduesDB(glycanResiduePath);
+    /**
+     * Parse command line args to parameters for matching (inference) mode
+     * @param args command line args
+     */
+    public Params(String[] args) {
+        for (int i=1; i < args.length; i+=2) {
+            switch (args[i]) {
+                case "--psm":
+                    psmPath = checkFilePath(args[i + 1].trim(), "psm");
+                    break;
+                case "--glycandb":
+                    glycanDBpath = checkFilePath(args[i + 1].trim(), "glycan database");
+                    break;
+                case "--residuedb":
+                    residueDBpath = checkFilePath(args[i + 1].trim(), "residue database");
+                    break;
+                case "--maxq":
+                    try {
+                        maxGlycanQval = Double.parseDouble(args[i + 1].trim());
+                    } catch (NumberFormatException ex) {
+                        out.printf("Error parsing max glycan q-value argument %s: not a number", args[i + 1]);
+                        System.exit(1);
+                    }
+                    break;
+                case "--minpsms":
+                    try {
+                        minPSMs = Integer.parseInt(args[i + 1].trim());
+                    } catch (NumberFormatException ex) {
+                        out.printf("Error parsing min PSMs argument %s: not a number", args[i + 1]);
+                        System.exit(1);
+                    }
+                    break;
+            }
+        }
+        if (psmPath == null) {
+            out.println("Error: PSM file path not specified!");
+            System.exit(1);
+        }
+        glycanResidues = parseGlycoResiduesDB(residueDBpath);
         glycanDatabase = parseGlycanDB(glycanDBpath);
-        this.minPSMs = minPSMs;
-        this.minGlycans = minGlycans;
-        this.maxGlycanQval = maxGlycanQval;
     }
 
-    private ArrayList<Glycan> parseGlycanDB(String glycanDBpath) {
+    private Path checkFilePath(String inputPath, String pathName) {
+        Path path = null;
+        try {
+            path = Paths.get(inputPath.replaceAll("['\"]", ""));
+        } catch (Exception e) {
+            e.printStackTrace();
+            out.printf("Error parsing %s file path: [%s]", pathName, inputPath);
+            System.exit(1);
+        }
+        if (!Files.exists(path)) {
+            out.printf("%s file path does not exist: [%s]", pathName, inputPath);
+            System.exit(1);
+        }
+        return path;
+    }
+
+    private ArrayList<Glycan> parseGlycanDB(Path glycanDBpath) {
         ArrayList<Glycan> glycanDB = new ArrayList<>();
         try {
             BufferedReader in;
-            if (glycanDBpath.equals("")) {
+            if (glycanDBpath == null) {
                 // no glycan database provided - fall back to default glycan list
                 in = new BufferedReader(new InputStreamReader(Params.class.getResourceAsStream(defaultGlycanPath)));
             } else {
-                Path path = null;
-                try {
-                    path = Paths.get(glycanDBpath.replaceAll("['\"]", ""));
-                } catch (Exception e) {
-                    e.printStackTrace();
-                    System.out.printf("Malformed glycan path string: [%s]%n", glycanDBpath);
-                }
-                if (path == null || !Files.exists(path)) {
-                    System.out.printf("Glycan database file does not exist: [%s]%n", glycanDBpath);
-                }
-                in = new BufferedReader(new FileReader(path.toFile()));
+                in = new BufferedReader(new FileReader(glycanDBpath.toFile()));
             }
 
             HashMap<String, Boolean> glycansInDB = new HashMap<>();
@@ -67,15 +112,15 @@ public class Params {
         return glycanDB;
     }
 
-    private ArrayList<GlycanResidue> parseGlycoResiduesDB(String glycanResiduesPath) {
+    private ArrayList<GlycanResidue> parseGlycoResiduesDB(Path glycanResiduesPath) {
         ArrayList<GlycanResidue> residues = new ArrayList<>();
         BufferedReader in;
         try {
             // no glycan database provided - fall back to default glycan list in PeakAnnotator
-            if (glycanResiduesPath.matches("")) {
+            if (glycanResiduesPath == null) {
                 in = new BufferedReader(new InputStreamReader(Params.class.getResourceAsStream(defaultResiduePath)));
             } else {
-                in = new BufferedReader(new FileReader(glycanResiduesPath));
+                in = new BufferedReader(new FileReader(glycanResiduesPath.toFile()));
             }
             String line;
             while ((line = in.readLine()) != null) {

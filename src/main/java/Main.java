@@ -1,31 +1,66 @@
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Objects;
+
+import static java.lang.System.out;
 
 public class Main {
+
+    private static final String name = "Glycoform Inference";
+    private static final String version = "0.1";
 
     public static void main(String[] args) {
         long time = System.nanoTime();
         try {
             /* Args:
-             * - psm file path (string)
-             * - glycan database path (string, optional)
-             * - glycan residue definitions path (string, optional)
+             * --clean: alternate mode that removes inferred glycans from the PSM table if no intensity is found
+             *      --psm: psm table to clean
+             * --match: main mode to perform glycoform inference
+             *      --psm: psm file path (string)
+             *      --glycandb: glycan database path (string, optional)
+             *      --residuedb: residue definitions path (string, optional)
+             *      --maxq: maximum glycan q-value to accept as an input glycoPSM (float, optional)
+             *      --minpsms: minimum number of glycoPSMs for a given glycan to be used for inference
              */
-            String glycanResPath = args.length >= 3 ? args[2].trim() : "";
-            String glycanDBpath = args.length >= 2 ? args[1].trim() : "";
+            if (Objects.equals(args[0], "--clean")) {
+                // todo: implement
 
-            Params params = new Params(glycanDBpath, glycanResPath, 0.01, 5, 2);
-            GlycanMatching matcher = new GlycanMatching(args[0].trim(), params);
+            } else if (Objects.equals(args[0], "--match")) {
+                Params params = new Params(args);
+                GlycanMatching matcher = new GlycanMatching(params);
 
-            matcher.groupGlycosites();
-            ArrayList<PSM> filledInPSMs = matcher.fillInGlycoSites();
-            matcher.psmFile.printNewPSMs(filledInPSMs);
+                matcher.groupGlycosites();
+                ArrayList<PSM> filledInPSMs = matcher.fillInGlycoSites();
+                matcher.psmFile.printNewPSMs(filledInPSMs);
 
+            } else {
+                out.printf("%s %s\n", name, version);
+                out.print("Usage:\n");
+                out.printf("\tTo perform glycoform inference:\n" +
+                        "\t\tjava -jar mbg-%s.jar --match [args]\n", version);
+                out.printf("\tTo clean the PSM table after inference and quantification:\n" +
+                        "\t\tjava -jar mbg-%s.jar --clean [args]\n", version);
+                out.println();
+                printHelp();
+                System.exit(0);
+            }
         } catch (Exception e) {
             e.printStackTrace();
             System.exit(1);
         }
         System.out.printf("Done in %.1f s.%n", (System.nanoTime() - time) * 1e-9f);
+    }
+
+    private static void printHelp() {
+        out.print("Args:\n" +
+                " --match: main mode to perform glycoform inference\n" +
+                "      --psm: psm file path (string)\n" +
+                "      --glycandb: glycan database path (string, optional)\n" +
+                "      --residuedb: residue definitions path (string, optional)\n" +
+                "      --maxq: maximum glycan q-value to accept as an input glycoPSM (float, optional)\n" +
+                "      --minpsms: minimum number of glycoPSMs for a given glycan to be used for inference\n" +
+                " --clean: alternate mode that removes inferred glycans from the PSM table if no intensity is found\n" +
+                "      --psm: psm table to clean (string)\n");
     }
 
 }

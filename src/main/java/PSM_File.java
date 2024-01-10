@@ -32,9 +32,9 @@ public class PSM_File {
         columnNames.put(PSMattr.inferred_glycoform, "Inferred Glycoform?");
     }
 
-    public PSM_File(String filename, Params params) throws Exception {
-        BufferedReader in = new BufferedReader(new FileReader(filename), 1 << 22);
-        this.file = new File(filename);
+    public PSM_File(Params params) throws Exception {
+        BufferedReader in = new BufferedReader(new FileReader(params.psmPath.toFile()), 1 << 22);
+        this.file = new File(String.valueOf(params.psmPath));
         this.headers = in.readLine().split("\t");
         this.PSMcolumns = initPSMcolumns();
 

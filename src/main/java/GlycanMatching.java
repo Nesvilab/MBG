@@ -7,8 +7,8 @@ public class GlycanMatching {
     private Params params;
     private HashMap<String, GlycoSite> observedGlycoSites;
 
-    public GlycanMatching(String psmPath, Params params) throws Exception {
-        psmFile = new PSM_File(psmPath, params);
+    public GlycanMatching(Params params) throws Exception {
+        psmFile = new PSM_File(params);
         this.params = params;
     }
 
