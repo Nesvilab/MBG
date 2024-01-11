@@ -1,3 +1,5 @@
+package com.mbg;
+
 import java.util.HashMap;
 
 public class AA_masses {

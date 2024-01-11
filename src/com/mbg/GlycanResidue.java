@@ -1,3 +1,4 @@
+package com.mbg;
 
 public class GlycanResidue implements Comparable<GlycanResidue> {
     public String name;

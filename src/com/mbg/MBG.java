@@ -1,16 +1,21 @@
+package com.mbg;
+
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.Objects;
 
 import static java.lang.System.out;
 
-public class Main {
+public class MBG {
 
     private static final String name = "Glycoform Inference";
     private static final String version = "0.1";
 
     public static void main(String[] args) {
         long time = System.nanoTime();
+        if (args.length == 0) {
+            out.println("No parameters passed. Usage:");
+            printHelp();
+        }
         try {
             /* Args:
              * --clean: alternate mode that removes inferred glycans from the PSM table if no intensity is found

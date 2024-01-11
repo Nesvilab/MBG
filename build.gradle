@@ -5,11 +5,21 @@ plugins {
     id 'application'
 }
 
-group 'org.example'
 version '0.1'
 
 repositories {
     mavenCentral()
+    flatDir {
+        dirs 'lib'
+    }
+}
+
+jar {
+    manifest {
+        attributes(
+                'Main-Class': 'com.mbg.MBG'
+        )
+    }
 }
 
 dependencies {
@@ -24,9 +34,50 @@ java {
 
 application {
     // Define the main class for the application
-    mainClassName = 'edu.umich.andykong.ptmshepherd.PTMShepherd'
+    mainClassName = 'com.mbg.MBG'
 }
 
 test {
     useJUnitPlatform()
+}
+
+sourceSets {
+    main {
+        java {
+            srcDirs = ['src']
+        }
+        resources {
+            srcDirs = ['resources', 'src', 'test-resources']
+            include "**/*.txt"
+        }
+    }
+}
+
+task packageNoDeps(group: 'mbg') {
+    dependsOn 'clean'
+    dependsOn 'jar'
+    dependsOn 'test'
+    tasks.findByName('jar').mustRunAfter 'clean'
+    tasks.findByName('jar').mustRunAfter 'test'
+}
+
+task updateFragpipeJar(group: 'mbg') {
+    dependsOn 'clean'
+    dependsOn 'test'
+    dependsOn 'jar'
+    tasks.findByName('jar').mustRunAfter 'clean'
+    tasks.findByName('jar').mustRunAfter 'test'
+    doLast {
+        String dest = "C:/Users/dpolasky/GitRepositories/FragPipe/FragPipe/MSFragger-GUI/tools"
+//        String dest = "C:/Users/dpolasky/GitRepositories/FragPipe/FragPipe/MSFragger-GUI/build/install/fragpipe/tools"
+        if (!file(dest).exists()) {
+            println "ERROR: Destination directory does not exist: " + dest
+        } else {
+            copy {
+                from "$buildDir/libs/"
+                include "MBG*.jar"
+                into file(dest)
+            }
+        }
+    }
 }
