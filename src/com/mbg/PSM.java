@@ -22,9 +22,11 @@ public class PSM {
     double glycoQval;
     double deltaMass;
     boolean inferredGlycoform;
+    int rank;
 
     private static final Pattern modMassPattern = Pattern.compile("[\\d]+[A-Z]\\(([\\d.]+)\\)");
     private static final Pattern modSitePattern = Pattern.compile("([\\d]+)[A-Z]\\([\\d.]+\\)");
+    private static final Pattern rankPattern = Pattern.compile("_rank([\\d]+)\\.pep\\.xml");
 
 
     /**
@@ -48,6 +50,15 @@ public class PSM {
         inferredGlycoform = isInferred;
         splits[psmCols.get(PSM_File.PSMattr.inferred_glycoform)] = String.valueOf(inferredGlycoform);
 
+        Matcher rankMatch = rankPattern.matcher(splits[psmCols.get(PSM_File.PSMattr.spectrum_file)]);
+        if (rankMatch.find()) {
+            rank = Integer.parseInt(rankMatch.group(1));
+        } else {
+            // no ranks provided, so need to make the base PSM rank 1 so added PSMs can be other ranks
+            updateRank(1, psmCols);
+        }
+
+        // parse glycan and scores
         String glycan = splits[psmCols.get(PSM_File.PSMattr.glycan)];
         if (glycan.length() == 0) {
             // non-glyco PSM
@@ -60,6 +71,7 @@ public class PSM {
             return;
         }
         this.glycan = new Glycan(glycan, params);
+        // parse other needed PSM info
         peptide = splits[psmCols.get(PSM_File.PSMattr.peptide)];
         protein = splits[psmCols.get(PSM_File.PSMattr.protein)];
         rt = Double.parseDouble(splits[psmCols.get(PSM_File.PSMattr.RT)]);
@@ -75,6 +87,15 @@ public class PSM {
     }
 
     /**
+     * Update the PSM's (internal) rank and spectrum file column (psm table)
+     */
+    private void updateRank(int newRank, HashMap<PSM_File.PSMattr, Integer> psmCols) {
+        rank = newRank;
+        String oldSpecFile = splits[psmCols.get(PSM_File.PSMattr.spectrum_file)].replaceAll("_rank[\\d]+\\.pep\\.xml", ".pep.xml").split("\\.pep\\.xml")[0];
+        splits[psmCols.get(PSM_File.PSMattr.spectrum_file)] = String.format("%s_rank%d.pep.xml", oldSpecFile, rank);
+    }
+
+    /**
      * Generate a 'dummy' PSM for a newly matched glycan from an existing base PSM. Edit the base PSM to
      * convert to the new glycan
      * @param existingPSM
@@ -82,7 +103,7 @@ public class PSM {
      * @param psmCols
      * @param params
      */
-    public static PSM makeDummyPSM(PSM existingPSM, Glycan newGlycan, HashMap<PSM_File.PSMattr, Integer> psmCols, Params params) {
+    public static PSM makeDummyPSM(PSM existingPSM, Glycan newGlycan, HashMap<PSM_File.PSMattr, Integer> psmCols, Params params, int rankCounter) {
         String[] newSplits = new String[existingPSM.splits.length];
         System.arraycopy(existingPSM.splits, 0, newSplits, 0, newSplits.length);
 
@@ -120,7 +141,10 @@ public class PSM {
         // todo: compute some RT adjustment...
 
         // construct the new PSM
-        return new PSM(String.join("\t", newSplits), psmCols, params, true, 0);
+        PSM addedPSM = new PSM(String.join("\t", newSplits), psmCols, params, true, 0);
+        // update rank
+        addedPSM.updateRank(existingPSM.rank + rankCounter, psmCols);
+        return addedPSM;
     }
 
     /**

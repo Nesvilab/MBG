@@ -32,6 +32,7 @@ public class PSM_File {
         columnNames.put(PSMattr.charge, "Charge");
         columnNames.put(PSMattr.glyco_q_val, "Glycan q-value");
         columnNames.put(PSMattr.inferred_glycoform, "Inferred Glycoform?");
+        columnNames.put(PSMattr.spectrum_file, "Spectrum File");
     }
 
     public PSM_File(Params params) throws Exception {
@@ -122,6 +123,7 @@ public class PSM_File {
         charge,
         glyco_q_val,
         inferred_glycoform,
+        spectrum_file
     }
 
 

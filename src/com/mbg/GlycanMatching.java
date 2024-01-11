@@ -18,7 +18,7 @@ public class GlycanMatching {
         observedGlycoSites = new HashMap<>();
 
         for (PSM psm: psmFile.psms) {
-            if (psm.glycan == null) {
+            if (psm.glycan == null || psm.inferredGlycoform) {
                 continue;
             }
             String siteID = psm.getGlycoSiteID();
@@ -41,6 +41,7 @@ public class GlycanMatching {
 
         for (Map.Entry<String, GlycoSite> siteEntry: observedGlycoSites.entrySet()) {
             GlycoSite site = siteEntry.getValue();
+            int rankCounter = 1;
             if (site.psms.size() >= params.minPSMs && site.observedGlycans.size() >= params.minGlycans) {
                 for (Glycan dbGlycan : params.glycanDatabase) {
                     String dbGlycanStr = dbGlycan.toString();
@@ -49,7 +50,8 @@ public class GlycanMatching {
                         continue;
                     }
                     // glycan not observed. Make a PSM for it
-                    newPSMs.add(PSM.makeDummyPSM(site.basePSM, dbGlycan, psmFile.PSMcolumns, params));
+                    newPSMs.add(PSM.makeDummyPSM(site.basePSM, dbGlycan, psmFile.PSMcolumns, params, rankCounter));
+                    rankCounter++;
                 }
             }
         }
