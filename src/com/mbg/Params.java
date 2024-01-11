@@ -70,11 +70,11 @@ public class Params {
             path = Paths.get(inputPath.replaceAll("['\"]", ""));
         } catch (Exception e) {
             e.printStackTrace();
-            out.printf("Error parsing %s file path: [%s]", pathName, inputPath);
+            out.printf("Error parsing %s file path: [%s]\n", pathName, inputPath);
             System.exit(1);
         }
         if (!Files.exists(path)) {
-            out.printf("%s file path does not exist: [%s]", pathName, inputPath);
+            out.printf("%s file path does not exist: [%s]\n", pathName, inputPath);
             System.exit(1);
         }
         return path;
@@ -106,7 +106,7 @@ public class Params {
                 }
             }
         } catch (FileNotFoundException e) {
-            System.out.printf("Glycan database file not found: [%s]%n", glycanDBpath);
+            System.out.printf("Glycan database file not found: [%s]\n", glycanDBpath);
         } catch (IOException e) {
             e.printStackTrace();
             System.out.println("IO Exception while reading database file");
@@ -134,7 +134,7 @@ public class Params {
             }
         } catch (IOException ex) {
             ex.printStackTrace();
-            System.out.printf("Error parsing input monosaccharide table %s%n", glycanResiduesPath);
+            System.out.printf("Error parsing input monosaccharide table %s\n", glycanResiduesPath);
         }
         return residues;
     }
