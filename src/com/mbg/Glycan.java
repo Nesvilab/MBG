@@ -15,6 +15,7 @@ public class Glycan {
     private static final Pattern byonicPattern = Pattern.compile("[A-Za-z]+\\([0-9]+\\)");      // e.g., HexNAc(1)Hex(1)
 
     public Glycan(String compString, Params analysis) {
+        compString = compString.replaceAll(" % [\\d.]+", "");
         name = compString;
         composition = parseGlycan(compString, analysis);
         mass = computeMonoisotopicMass();
