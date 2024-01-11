@@ -102,9 +102,9 @@ public class PSM_File {
         }
         out.close();
 
-//        boolean success = this.file.delete();
-//        File newFileName = new File(tempName);
-//        success = newFileName.renameTo(this.file);
+        boolean success = this.file.delete();
+        File newFileName = new File(tempName);
+        success = newFileName.renameTo(this.file);
     }
 
     public enum PSMattr {
