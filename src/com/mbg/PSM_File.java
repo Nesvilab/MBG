@@ -1,10 +1,7 @@
 package com.mbg;
 
 import java.io.*;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
 public class PSM_File {
 
@@ -59,8 +56,8 @@ public class PSM_File {
             if (line.length() > 0) {
                 PSM psm = new PSM(line, PSMcolumns, params, false, addCols);
                 this.psms.add(psm);
-                if (psm.getScanNum(PSMcolumns) > maxScanNum) {
-                    maxScanNum = psm.getScanNum(PSMcolumns);
+                if (psm.scanNum > maxScanNum) {
+                    maxScanNum = psm.scanNum;
                 }
             }
         }
@@ -95,9 +92,8 @@ public class PSM_File {
         out.println(String.join("\t", this.headers));
 
         // write original and new PSMs
-        for (PSM psm: psms) {
-            out.println(String.join("\t", psm.splits));
-        }
+        newPSMs.addAll(psms);
+        Collections.sort(newPSMs);
         for (PSM newPSM: newPSMs) {
             out.println(String.join("\t", newPSM.splits));
         }

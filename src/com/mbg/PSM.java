@@ -6,9 +6,10 @@ import java.util.HashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-public class PSM {
+public class PSM implements Comparable<PSM>{
 
     double rt;
+    int scanNum;
     String peptide;
     Glycan glycan;
     String protein;
@@ -46,10 +47,9 @@ public class PSM {
             }
             splits = newSplits.toArray(new String[0]);
         }
-        // update new fields
+        // update new fields and information that is needed for all PSMs (including non-glyco)
         inferredGlycoform = isInferred;
         splits[psmCols.get(PSM_File.PSMattr.inferred_glycoform)] = String.valueOf(inferredGlycoform);
-
         Matcher rankMatch = rankPattern.matcher(splits[psmCols.get(PSM_File.PSMattr.spectrum_file)]);
         if (rankMatch.find()) {
             rank = Integer.parseInt(rankMatch.group(1));
@@ -57,6 +57,7 @@ public class PSM {
             // no ranks provided, so need to make the base PSM rank 1 so added PSMs can be other ranks
             updateRank(1, psmCols);
         }
+        scanNum = getScanNum(psmCols);
 
         // parse glycan and scores
         String glycan = splits[psmCols.get(PSM_File.PSMattr.glycan)];
@@ -180,4 +181,8 @@ public class PSM {
         return Integer.parseInt(specSplits[1]);
     }
 
+    @Override
+    public int compareTo(PSM o) {
+        return Integer.compare(scanNum, o.scanNum);
+    }
 }
