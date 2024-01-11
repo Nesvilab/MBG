@@ -46,9 +46,17 @@ public class PSM implements Comparable<PSM>{
                 add--;
             }
             splits = newSplits.toArray(new String[0]);
+            inferredGlycoform = isInferred;
+        } else {
+            if (!isInferred) {
+                // if this is a re-analysis (i.e., not adding new columns) and this is not an inferred PSM from this analysis, read its inferred status from the previous result
+                inferredGlycoform = Boolean.parseBoolean(splits[psmCols.get(PSM_File.PSMattr.inferred_glycoform)]);
+            } else {
+                inferredGlycoform = isInferred;
+            }
         }
+
         // update new fields and information that is needed for all PSMs (including non-glyco)
-        inferredGlycoform = isInferred;
         splits[psmCols.get(PSM_File.PSMattr.inferred_glycoform)] = String.valueOf(inferredGlycoform);
         Matcher rankMatch = rankPattern.matcher(splits[psmCols.get(PSM_File.PSMattr.spectrum_file)]);
         if (rankMatch.find()) {
