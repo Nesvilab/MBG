@@ -24,6 +24,7 @@ public class PSM implements Comparable<PSM>{
     double deltaMass;
     boolean inferredGlycoform;
     int rank;
+    double intensity;
     public String rawfile;
 
     private static final Pattern modMassPattern = Pattern.compile("[\\d]+[A-Z]\\(([\\d.]+)\\)");
@@ -95,6 +96,7 @@ public class PSM implements Comparable<PSM>{
         calcMz = Double.parseDouble(splits[psmCols.get(PSM_File.PSMattr.calc_pep_mz)]);
         charge = Integer.parseInt(splits[psmCols.get(PSM_File.PSMattr.charge)]);
         deltaMass = Double.parseDouble(splits[psmCols.get(PSM_File.PSMattr.delta_mass)]);
+        intensity = Double.parseDouble(splits[psmCols.get(PSM_File.PSMattr.intensity)]);
     }
 
     /**

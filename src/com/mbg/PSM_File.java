@@ -7,7 +7,7 @@ public class PSM_File {
 
     public String[] headers;
     public HashMap<String, ArrayList<PSM>> rawfilePSMmap;
-    private final ArrayList<PSM> allPSMs;
+    public final ArrayList<PSM> allPSMs;
     public File file;
     public HashMap<PSMattr, Integer> PSMcolumns;
     private static final HashMap<PSMattr, String> columnNames;
@@ -30,6 +30,7 @@ public class PSM_File {
         columnNames.put(PSMattr.glyco_q_val, "Glycan q-value");
         columnNames.put(PSMattr.inferred_glycoform, "Inferred Glycoform?");
         columnNames.put(PSMattr.spectrum_file, "Spectrum File");
+        columnNames.put(PSMattr.intensity, "Intensity");
     }
 
     public PSM_File(Params params) throws Exception {
@@ -109,6 +110,23 @@ public class PSM_File {
         success = newFileName.renameTo(this.file);
     }
 
+    public void printCleanedPSMs(ArrayList<PSM> psms) throws IOException {
+        String tempName = this.file.getAbsolutePath() + ".mbg.tsv";
+        PrintWriter out = new PrintWriter(new FileWriter(tempName));
+
+        // write header
+        out.println(String.join("\t", this.headers));
+
+        for (PSM psm: psms) {
+            out.println(String.join("\t", psm.splits));
+        }
+        out.close();
+
+        boolean success = this.file.delete();
+        File newFileName = new File(tempName);
+        success = newFileName.renameTo(this.file);
+    }
+
     public enum PSMattr {
         RT,
         peptide,
@@ -124,7 +142,8 @@ public class PSM_File {
         charge,
         glyco_q_val,
         inferred_glycoform,
-        spectrum_file
+        spectrum_file,
+        intensity
     }
 
 

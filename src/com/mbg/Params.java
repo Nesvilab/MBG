@@ -64,7 +64,7 @@ public class Params {
         glycanDatabase = parseGlycanDB(glycanDBpath);
     }
 
-    private Path checkFilePath(String inputPath, String pathName) {
+    public static Path checkFilePath(String inputPath, String pathName) {
         Path path = null;
         try {
             path = Paths.get(inputPath.replaceAll("['\"]", ""));

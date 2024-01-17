@@ -29,9 +29,14 @@ public class MBG {
              *      --minpsms: minimum number of glycoPSMs for a given glycan to be used for inference
              */
             if (Objects.equals(args[0], "--clean")) {
-                // todo: implement
+                out.printf("Glycoform inference v%s: cleaning PSM table after quant\n", version);
+                Params params = new Params(args);
+                PSM_File psmFile = new PSM_File(params);
+                TableCleaner cleaner = new TableCleaner(params, psmFile);
+                cleaner.cleanPSMtable();
 
             } else if (Objects.equals(args[0], "--match")) {
+                out.printf("Running glycoform inference v%s\n", version);
                 Params params = new Params(args);
 
                 PSM_File psmFile = new PSM_File(params);
@@ -59,7 +64,7 @@ public class MBG {
             e.printStackTrace();
             System.exit(1);
         }
-        System.out.printf("Done in %.1f s.%n", (System.nanoTime() - time) * 1e-9f);
+        out.printf("Done in %.1f s.%n", (System.nanoTime() - time) * 1e-9f);
     }
 
     private static void printHelp() {
