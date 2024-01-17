@@ -6,11 +6,11 @@ import java.util.*;
 public class PSM_File {
 
     public String[] headers;
-    public ArrayList<PSM> psms;
+    public HashMap<String, ArrayList<PSM>> rawfilePSMmap;
+    private final ArrayList<PSM> allPSMs;
     public File file;
     public HashMap<PSMattr, Integer> PSMcolumns;
     private static final HashMap<PSMattr, String> columnNames;
-    public int maxScanNum;
     public int addCols;
 
     static {
@@ -37,6 +37,7 @@ public class PSM_File {
         this.file = new File(String.valueOf(params.psmPath));
         this.headers = in.readLine().split("\t");
         this.PSMcolumns = initPSMcolumns();
+        allPSMs = new ArrayList<>();
 
         // handle inserting new header(s) if needed
         if (PSMcolumns.getOrDefault(PSMattr.inferred_glycoform, -1) == -1) {
@@ -49,15 +50,19 @@ public class PSM_File {
             addCols = 0;
         }
 
-        this.psms = new ArrayList<>();
+        // read PSMs into Map by rawfile
+        rawfilePSMmap = new HashMap<>();
         String line;
         while((line = in.readLine()) != null) {
-            //if(cline.trim().length() > 0)
             if (line.length() > 0) {
                 PSM psm = new PSM(line, PSMcolumns, params, false, addCols);
-                this.psms.add(psm);
-                if (psm.scanNum > maxScanNum) {
-                    maxScanNum = psm.scanNum;
+                allPSMs.add(psm);
+                if (rawfilePSMmap.containsKey(psm.rawfile)) {
+                    rawfilePSMmap.get(psm.rawfile).add(psm);
+                } else {
+                    ArrayList<PSM> psms = new ArrayList<>();
+                    psms.add(psm);
+                    rawfilePSMmap.put(psm.rawfile, psms);
                 }
             }
         }
@@ -92,7 +97,7 @@ public class PSM_File {
         out.println(String.join("\t", this.headers));
 
         // write original and new PSMs
-        newPSMs.addAll(psms);
+        newPSMs.addAll(allPSMs);
         Collections.sort(newPSMs);
         for (PSM newPSM: newPSMs) {
             out.println(String.join("\t", newPSM.splits));

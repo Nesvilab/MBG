@@ -6,18 +6,20 @@ import java.util.Map;
 
 public class GlycanMatching {
     public PSM_File psmFile;
-    private Params params;
+    public ArrayList<PSM> psms;
+    private final Params params;
     private HashMap<String, GlycoSite> observedGlycoSites;
 
-    public GlycanMatching(Params params) throws Exception {
-        psmFile = new PSM_File(params);
+    public GlycanMatching(Params params, PSM_File psmFile, ArrayList<PSM> psms) throws Exception {
+        this.psmFile = psmFile;
+        this.psms = psms;
         this.params = params;
     }
 
     public void groupGlycosites() {
         observedGlycoSites = new HashMap<>();
 
-        for (PSM psm: psmFile.psms) {
+        for (PSM psm: psms) {
             if (psm.glycan == null) {
                 continue;
             }

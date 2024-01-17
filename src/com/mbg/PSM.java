@@ -24,6 +24,7 @@ public class PSM implements Comparable<PSM>{
     double deltaMass;
     boolean inferredGlycoform;
     int rank;
+    public String rawfile;
 
     private static final Pattern modMassPattern = Pattern.compile("[\\d]+[A-Z]\\(([\\d.]+)\\)");
     private static final Pattern modSitePattern = Pattern.compile("([\\d]+)[A-Z]\\([\\d.]+\\)");
@@ -66,6 +67,7 @@ public class PSM implements Comparable<PSM>{
             updateRank(1, psmCols);
         }
         scanNum = getScanNum(psmCols);
+        rawfile = getRawfile(psmCols);
 
         // parse glycan and scores
         String glycan = splits[psmCols.get(PSM_File.PSMattr.glycan)];
@@ -189,8 +191,18 @@ public class PSM implements Comparable<PSM>{
         return Integer.parseInt(specSplits[1]);
     }
 
+    public String getRawfile(HashMap<PSM_File.PSMattr, Integer> psmColumns) {
+        String specStr = splits[psmColumns.get(PSM_File.PSMattr.spectrum)];
+        String[] specSplits = specStr.split("\\.");
+        return specSplits[0];
+    }
+
     @Override
     public int compareTo(PSM o) {
-        return Integer.compare(scanNum, o.scanNum);
+        if (rawfile.equals(o.rawfile)) {
+            return Integer.compare(scanNum, o.scanNum);
+        } else {
+            return rawfile.compareTo(o.rawfile);
+        }
     }
 }

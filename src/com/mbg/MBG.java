@@ -1,6 +1,7 @@
 package com.mbg;
 
 import java.util.ArrayList;
+import java.util.Map;
 import java.util.Objects;
 
 import static java.lang.System.out;
@@ -32,11 +33,16 @@ public class MBG {
 
             } else if (Objects.equals(args[0], "--match")) {
                 Params params = new Params(args);
-                GlycanMatching matcher = new GlycanMatching(params);
 
-                matcher.groupGlycosites();
-                ArrayList<PSM> filledInPSMs = matcher.fillInGlycoSites();
-                matcher.psmFile.printNewPSMs(filledInPSMs);
+                PSM_File psmFile = new PSM_File(params);
+                ArrayList<PSM> newPSMs = new ArrayList<>();
+                for (Map.Entry<String, ArrayList<PSM>> rawfileEntry: psmFile.rawfilePSMmap.entrySet()) {
+                    // infer glycoforms within each raw file
+                    GlycanMatching matcher = new GlycanMatching(params, psmFile, rawfileEntry.getValue());
+                    matcher.groupGlycosites();
+                    newPSMs.addAll(matcher.fillInGlycoSites());
+                }
+                psmFile.printNewPSMs(newPSMs);
 
             } else {
                 out.printf("%s %s\n", name, version);
