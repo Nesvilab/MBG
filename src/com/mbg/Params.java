@@ -12,7 +12,8 @@ import static java.lang.System.out;
 public class Params {
 
     public ArrayList<Glycan> glycanDatabase;
-    private ArrayList<GlycanResidue> glycanResidues;
+    private final ArrayList<GlycanResidue> glycanResidues;
+    public int numGlycanResidues;
     public double maxGlycanQval = 0.01;
     public int minPSMs = 5;
     public int minGlycans = 2;
@@ -98,7 +99,7 @@ public class Params {
                 if (glycan.composition.size() == 0) {
                     continue;
                 }
-                String compStr = glycan.toString();
+                String compStr = glycan.name;
                 // prevent duplicated glycans
                 if (!glycansInDB.containsKey(compStr)) {
                     glycansInDB.put(compStr, true);
@@ -129,7 +130,8 @@ public class Params {
                 if (line.startsWith("#")) {
                     continue;
                 }
-                GlycanResidue residue = GlycanResidue.parseResidue(line);
+                GlycanResidue residue = GlycanResidue.parseResidue(line, numGlycanResidues);
+                numGlycanResidues++;
                 residues.add(residue);
             }
         } catch (IOException ex) {

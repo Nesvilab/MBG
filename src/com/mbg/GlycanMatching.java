@@ -46,7 +46,7 @@ public class GlycanMatching {
             int rankCounter = 1;
             if (site.psms.size() >= params.minPSMs && site.observedGlycans.size() >= params.minGlycans) {
                 for (Glycan dbGlycan : params.glycanDatabase) {
-                    String dbGlycanStr = dbGlycan.toString();
+                    String dbGlycanStr = dbGlycan.name;
                     if (site.observedGlycans.containsKey(dbGlycanStr)) {
                         // this glycan was observed for this site, no action required
                         continue;

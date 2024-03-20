@@ -1,12 +1,14 @@
 package com.mbg;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.Map;
-import java.util.TreeMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class Glycan {
-    public TreeMap<GlycanResidue, Integer> composition;
+    public HashMap<GlycanResidue, Integer> composition;
     public double mass;
     public String name;
 
@@ -14,11 +16,11 @@ public class Glycan {
     private static final Pattern letterPattern = Pattern.compile("[a-zA-Z]+");
     private static final Pattern byonicPattern = Pattern.compile("[A-Za-z]+\\([0-9]+\\)");      // e.g., HexNAc(1)Hex(1)
 
-    public Glycan(String compString, Params analysis) {
+    public Glycan(String compString, Params params) {
         compString = compString.replaceAll(" % [\\d.]+", "");
-        name = compString;
-        composition = parseGlycan(compString, analysis);
+        composition = parseGlycan(compString, params);
         mass = computeMonoisotopicMass();
+        name = this.toString();
     }
 
 
@@ -26,8 +28,8 @@ public class Glycan {
      * Parse glycans of varying formats given an input Regex Pattern.Matcher
      * @return
      */
-    private TreeMap<GlycanResidue, Integer> parseGlycan(String line, Params mbgAnalysis) {
-        TreeMap<GlycanResidue, Integer> glycanComp = new TreeMap<>();
+    private HashMap<GlycanResidue, Integer> parseGlycan(String line, Params params) {
+        HashMap<GlycanResidue, Integer> glycanComp = new HashMap<>();
         Matcher glycanMatch = byonicPattern.matcher(line);
         while(glycanMatch.find()) {
             String glycanToken = glycanMatch.group();
@@ -35,21 +37,21 @@ public class Glycan {
             GlycanResidue residue;
             if (glycanName.find()) {
                 String glycan = glycanName.group();
-                residue = mbgAnalysis.findResidueName(glycan);
+                residue = params.findResidueName(glycan);
                 if (residue == null) {
-                    System.out.printf("Warning: glycan type %s in glycan %s not recognized. This glycan will not be included in search! Please add %s to the glycan_residues.tsv table.%n", glycanName, line, glycanName);
-                    return new TreeMap<>();
+                    System.out.printf("Warning: glycan type %s in glycan %s not recognized. This glycan will not be included in search! Please add %s to the glycan_residues.tsv table.\n", glycanName, line, glycanName);
+                    return new HashMap<>();
                 }
             } else {
-                System.out.printf("Warning: glycan type %s in glycan %s not recognized. This glycan will not be included in search! Please add %s to the glycan_residues.tsv table.%n", glycanName, line, glycanName);
-                return new TreeMap<>();
+                System.out.printf("Warning: glycan type %s in glycan %s not recognized. This glycan will not be included in search! Please add %s to the glycan_residues.tsv table.\n", glycanName, line, glycanName);
+                return new HashMap<>();
             }
             Matcher glycanCount = numberPattern.matcher(glycanToken);
             if (glycanCount.find()) {
                 int count = Integer.parseInt(glycanCount.group());
                 glycanComp.put(residue, count);
             } else {
-                System.out.printf("Warning: glycan count not found in glycan %s and was ignored%n", line);
+                System.out.printf("Warning: glycan count not found in glycan %s and was ignored\n", line);
             }
         }
         return glycanComp;
@@ -70,7 +72,16 @@ public class Glycan {
 
     @Override
     public String toString() {
-        return name;
+        StringBuilder output = new StringBuilder();
+        ArrayList<GlycanResidue> sortedKeys = new ArrayList<>(composition.keySet());
+        Collections.sort(sortedKeys);
+        for (GlycanResidue residue: sortedKeys) {
+            output.append(residue.toString());
+            output.append("(");
+            output.append(composition.get(residue));
+            output.append(")");
+        }
+        return output.toString();
     }
 
     /**
