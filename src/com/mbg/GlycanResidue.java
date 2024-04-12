@@ -4,7 +4,7 @@ public class GlycanResidue implements Comparable<GlycanResidue> {
     public String name;
     public double mass;
     String[] alternateNames;
-    private int printIndex;
+    private final int printIndex;
 
     public GlycanResidue(String name, double mass, String[] altNames, int printIndex) {
         this.name = name;

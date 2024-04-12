@@ -77,7 +77,11 @@ public class PSM implements Comparable<PSM>{
             this.glycan = null;
             return;
         }
-        glycoQval = Double.parseDouble(splits[psmCols.get(PSM_File.PSMattr.glyco_q_val)]);
+        try {
+            glycoQval = Double.parseDouble(splits[psmCols.get(PSM_File.PSMattr.glyco_q_val)]);
+        } catch (NumberFormatException ex) {
+            glycoQval = 1;
+        }
         if (glycoQval > params.maxGlycanQval) {
             this.glycan = null;
             return;
