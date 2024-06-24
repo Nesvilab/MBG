@@ -1,5 +1,7 @@
 package com.mbg;
 
+import umich.ms.glyco.Glycan;
+import umich.ms.glyco.GlycanParser;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -86,7 +88,7 @@ public class PSM implements Comparable<PSM>{
             this.glycan = null;
             return;
         }
-        this.glycan = new Glycan(glycan, params);
+        this.glycan = GlycanParser.parseGlycanString(glycan, params.glycanResidues);
         // parse other needed PSM info
         peptide = splits[psmCols.get(PSM_File.PSMattr.peptide)];
         protein = splits[psmCols.get(PSM_File.PSMattr.protein)];
@@ -125,7 +127,7 @@ public class PSM implements Comparable<PSM>{
         System.arraycopy(existingPSM.splits, 0, newSplits, 0, newSplits.length);
 
         // replace values with new glycan
-        newSplits[psmCols.get(PSM_File.PSMattr.glycan)] = newGlycan.toOutputString();
+        newSplits[psmCols.get(PSM_File.PSMattr.glycan)] = newGlycan.toPSMString();
         // assigned mods
         String oldAssignedMods = existingPSM.splits[psmCols.get(PSM_File.PSMattr.assigned_mods)];
         ArrayList<String> newAssignedMods = new ArrayList<>();

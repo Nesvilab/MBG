@@ -3,6 +3,7 @@ package com.mbg;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
+import umich.ms.glyco.Glycan;
 
 public class GlycanMatching {
     public PSM_File psmFile;

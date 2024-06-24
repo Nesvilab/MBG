@@ -23,6 +23,8 @@ jar {
 }
 
 dependencies {
+    implementation files("lib/batmass-io-1.33.4.jar")
+
     testImplementation 'org.junit.jupiter:junit-jupiter-api:5.7.0'
     testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.7.0'
 }
@@ -68,7 +70,7 @@ task updateFragpipeJar(group: 'mbg') {
     tasks.findByName('jar').mustRunAfter 'clean'
     tasks.findByName('jar').mustRunAfter 'test'
     doLast {
-        String dest = "C:/Users/dpolasky/GitRepositories/FragPipe/FragPipe/MSFragger-GUI/tools"
+        String dest = "C:/Users/dpolasky/Repositories/FragPipe/MSFragger-GUI/tools"
 //        String dest = "C:/Users/dpolasky/GitRepositories/FragPipe/FragPipe/MSFragger-GUI/build/install/fragpipe/tools"
         if (!file(dest).exists()) {
             println "ERROR: Destination directory does not exist: " + dest

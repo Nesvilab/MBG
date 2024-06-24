@@ -1,6 +1,9 @@
 package com.mbg;
 
-import java.io.*;
+import umich.ms.glyco.DatabaseType;
+import umich.ms.glyco.Glycan;
+import umich.ms.glyco.GlycanParser;
+import umich.ms.glyco.GlycanResidue;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -12,16 +15,15 @@ import static java.lang.System.out;
 public class Params {
 
     public ArrayList<Glycan> glycanDatabase;
-    private final ArrayList<GlycanResidue> glycanResidues;
     public int numGlycanResidues;
     public double maxGlycanQval = 0.01;
     public int minPSMs = 5;
     public int minGlycans = 2;
     private static final String defaultResiduePath = "glycan_residues.txt";
-    private static final String defaultGlycanPath = "glycan_database.txt";
     public Path psmPath;
     public Path glycanDBpath;
     public Path residueDBpath;
+    public HashMap<String, GlycanResidue> glycanResidues;
 
     /**
      * Parse command line args to parameters for matching (inference) mode
@@ -61,8 +63,17 @@ public class Params {
             out.println("Error: PSM file path not specified!");
             System.exit(1);
         }
-        glycanResidues = parseGlycoResiduesDB(residueDBpath);
-        glycanDatabase = parseGlycanDB(glycanDBpath);
+        if (glycanDBpath == null) {
+            out.println("Error: glycan database not specified!");
+            System.exit(1);
+        }
+        // use default residues if none provided
+        if (residueDBpath == null) {
+            glycanResidues = GlycanParser.parseGlycoResiduesDBStream(Params.class.getResourceAsStream(defaultResiduePath));
+        } else {
+            glycanResidues = GlycanParser.parseGlycoResiduesDB(residueDBpath.toString());
+        }
+        glycanDatabase = GlycanParser.loadGlycansFromText(glycanDBpath.toString(), DatabaseType.byonic, glycanResidues);
     }
 
     public static Path checkFilePath(String inputPath, String pathName) {
@@ -80,89 +91,4 @@ public class Params {
         }
         return path;
     }
-
-    private ArrayList<Glycan> parseGlycanDB(Path glycanDBpath) {
-        ArrayList<Glycan> glycanDB = new ArrayList<>();
-        try {
-            BufferedReader in;
-            if (glycanDBpath == null) {
-                // no glycan database provided - fall back to default glycan list
-                in = new BufferedReader(new InputStreamReader(Params.class.getResourceAsStream(defaultGlycanPath)));
-            } else {
-                in = new BufferedReader(new FileReader(glycanDBpath.toFile()));
-            }
-
-            HashMap<String, Boolean> glycansInDB = new HashMap<>();
-            String readline;
-            while ((readline = in.readLine()) != null) {
-                Glycan glycan = new Glycan(readline, this);
-                if (glycan.composition.size() == 0) {
-                    continue;
-                }
-                String compStr = glycan.name;
-                // prevent duplicated glycans
-                if (!glycansInDB.containsKey(compStr)) {
-                    glycansInDB.put(compStr, true);
-                    glycanDB.add(glycan);
-                }
-            }
-        } catch (FileNotFoundException e) {
-            System.out.printf("Glycan database file not found: [%s]\n", glycanDBpath);
-        } catch (IOException e) {
-            e.printStackTrace();
-            System.out.println("IO Exception while reading database file");
-        }
-        return glycanDB;
-    }
-
-    private ArrayList<GlycanResidue> parseGlycoResiduesDB(Path glycanResiduesPath) {
-        ArrayList<GlycanResidue> residues = new ArrayList<>();
-        BufferedReader in;
-        try {
-            // no glycan database provided - fall back to default glycan list in PeakAnnotator
-            if (glycanResiduesPath == null) {
-                in = new BufferedReader(new InputStreamReader(Params.class.getResourceAsStream(defaultResiduePath)));
-            } else {
-                in = new BufferedReader(new FileReader(glycanResiduesPath.toFile()));
-            }
-            String line;
-            while ((line = in.readLine()) != null) {
-                if (line.startsWith("#")) {
-                    continue;
-                }
-                GlycanResidue residue = GlycanResidue.parseResidue(line, numGlycanResidues);
-                numGlycanResidues++;
-                residues.add(residue);
-            }
-        } catch (IOException ex) {
-            ex.printStackTrace();
-            System.out.printf("Error parsing input monosaccharide table %s\n", glycanResiduesPath);
-        }
-        return residues;
-    }
-
-    /**
-     * Search all GlycanResidue names and alternate names to try to match this input to one of them.
-     * @param inputName string
-     * @return
-     */
-    public GlycanResidue findResidueName(String inputName) {
-        for (GlycanResidue residue: glycanResidues) {
-            if (residue.name.equalsIgnoreCase(inputName)) {
-                return residue;
-            }
-        }
-        // no exact match: check alternate names
-        for (GlycanResidue residue: glycanResidues) {
-            for (String altName : residue.alternateNames) {
-                if (altName.equalsIgnoreCase(inputName)) {
-                    return residue;
-                }
-            }
-        }
-        // no match - return null and warn user
-        return null;
-    }
-
-
 }
