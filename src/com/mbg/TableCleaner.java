@@ -19,7 +19,7 @@ public class TableCleaner {
     public void cleanPSMtable() throws IOException {
         ArrayList<PSM> printPSMs = new ArrayList<>();
         for (PSM psm: psmFile.allPSMs) {
-            if (!psm.inferredGlycoform || psm.intensity > 0) {
+            if (!psm.inferredGlycoform) {
                 printPSMs.add(psm);
             }
         }

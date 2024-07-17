@@ -45,7 +45,7 @@ public class MBG {
                     // infer glycoforms within each raw file
                     GlycanMatching matcher = new GlycanMatching(params, psmFile, rawfileEntry.getValue());
                     matcher.groupGlycosites();
-                    newPSMs.addAll(matcher.fillInGlycoSites());
+                    newPSMs.addAll(matcher.fillInGlycoSites(rawfileEntry.getKey()));
                 }
                 psmFile.printNewPSMs(newPSMs);
 

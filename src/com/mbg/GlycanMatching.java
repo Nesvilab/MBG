@@ -1,15 +1,17 @@
 package com.mbg;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
+import java.util.stream.Collectors;
+
 import umich.ms.glyco.Glycan;
+import umich.ms.glyco.GlycanMod;
 
 public class GlycanMatching {
     public PSM_File psmFile;
     public ArrayList<PSM> psms;
     private final Params params;
     private HashMap<String, GlycoSite> observedGlycoSites;
+    private Glycan[] qualifiedGlycans;  // glycans in psm.tsv with a specific minimum count
 
     public GlycanMatching(Params params, PSM_File psmFile, ArrayList<PSM> psms) throws Exception {
         this.psmFile = psmFile;
@@ -19,6 +21,7 @@ public class GlycanMatching {
 
     public void groupGlycosites() {
         observedGlycoSites = new HashMap<>();
+        HashMap<Glycan, Integer> allObservedGlycans = new HashMap<>();
 
         for (PSM psm: psms) {
             if (psm.glycan == null) {
@@ -31,7 +34,18 @@ public class GlycanMatching {
                 // new site
                 observedGlycoSites.put(siteID, new GlycoSite(psm, siteID));
             }
+            // counts observed glycans
+            if (allObservedGlycans.containsKey(psm.glycan)) {
+                allObservedGlycans.put(psm.glycan, allObservedGlycans.get(psm.glycan) + 1);
+            } else {
+                allObservedGlycans.put(psm.glycan, 1);
+            }
         }
+        // filter to keep entries where the glycan psm counts >5
+        qualifiedGlycans = allObservedGlycans.entrySet()
+                .stream()
+                .filter(entry -> entry.getValue() > 5)
+                .map(Map.Entry::getKey).toArray(Glycan[]::new);
     }
 
     /**
@@ -39,28 +53,45 @@ public class GlycanMatching {
      * and generate dummy PSMs for them.
      * @return
      */
-    public ArrayList<PSM> fillInGlycoSites() {
+    public ArrayList<PSM> fillInGlycoSites(String rawFileName) throws Exception {
         ArrayList<PSM> newPSMs = new ArrayList<>();
+        GlycanMod mod_nh3 = new GlycanMod(params.glycanResidues.get("NH4"));
 
+        // read msFile
+        MSMS ms2 =
         for (Map.Entry<String, GlycoSite> siteEntry: observedGlycoSites.entrySet()) {
             GlycoSite site = siteEntry.getValue();
-            int rankCounter = 1;
             if (site.psms.size() >= params.minPSMs && site.observedGlycans.size() >= params.minGlycans) {
-                for (Glycan dbGlycan : params.glycanDatabase) {
-                    String dbGlycanStr = dbGlycan.name;
-                    if (site.observedGlycans.containsKey(dbGlycanStr)) {
-                        // this glycan was observed for this site, no action required
-                        continue;
+                for (PSM base_PSM : site.psms) {
+                    int rankCounter = 1;
+                    ArrayList<Glycan> dummy_glycans = PSM.getDummyGlycans(base_PSM, params.toAddResidues);
+                    for (Glycan new_glycan: dummy_glycans) {
+                        if (site.observedGlycans.containsKey(new_glycan.toString()) || site.basePSM == null) {
+                            // this glycan was observed for this site, no action required
+                            continue;
+                        }
+                        if (!Arrays.asList(qualifiedGlycans).contains(new_glycan)) {
+                            // this glycan not detected in psm.tsv
+                            continue;
+                        }
+
+                        // glycan not observed. Make a PSM for it
+                        newPSMs.add(PSM.makeDummyPSM(base_PSM, new_glycan, psmFile.PSMcolumns, params, rankCounter));
+                        // update observed glycans
+                        site.observedGlycans.put(new_glycan.toString(), new ArrayList<>());
+                        rankCounter++;
                     }
-                    // glycan not observed. Make a PSM for it
-                    newPSMs.add(PSM.makeDummyPSM(site.basePSM, dbGlycan, psmFile.PSMcolumns, params, rankCounter));
-                    rankCounter++;
                 }
+//                rankCounter = 1;
+//                for (PSM base_psm : site.psms) {
+//                    Glycan new_glycan = PSM.getNH3PSM(base_psm.glycan, mod_nh3);
+//                    newPSMs.add(PSM.makeDummyPSM(base_psm, new_glycan, psmFile.PSMcolumns, params, rankCounter));
+//            }
             }
         }
+        // second run, look over MS2 spectra
+
 
         return newPSMs;
     }
-
-
 }

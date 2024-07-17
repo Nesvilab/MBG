@@ -1,14 +1,19 @@
 package com.mbg;
 
-import umich.ms.glyco.DatabaseType;
-import umich.ms.glyco.Glycan;
-import umich.ms.glyco.GlycanParser;
-import umich.ms.glyco.GlycanResidue;
+import edu.umich.andykong.ptmshepherd.PTMShepherd;
+import umich.ms.glyco.*;
+
+import java.io.BufferedReader;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Map;
+import java.util.StringTokenizer;
 
 import static java.lang.System.out;
 
@@ -20,26 +25,38 @@ public class Params {
     public int minPSMs = 5;
     public int minGlycans = 2;
     private static final String defaultResiduePath = "glycan_residues.txt";
+    private static Path defaultPTMSconfPath;
+    public Integer threads;
     public Path psmPath;
     public Path glycanDBpath;
     public Path residueDBpath;
+    public Path glycanModPath;
+    public String msFilePath;
     public HashMap<String, GlycanResidue> glycanResidues;
+    public HashMap<String, GlycanMod> glycanMods;
+    public HashMap<String, GlycanResidue> toAddResidues;
+    private String[] residualStrings;
 
     /**
      * Parse command line args to parameters for matching (inference) mode
+     *
      * @param args command line args
      */
-    public Params(String[] args) {
-        for (int i=1; i < args.length; i+=2) {
+    public Params(String[] args) throws Exception {
+        for (int i = 1; i < args.length; i += 2) {
             switch (args[i]) {
                 case "--psm":
                     psmPath = checkFilePath(args[i + 1].trim(), "psm");
+                    defaultPTMSconfPath = psmPath.getParent().resolve("shepherd.config");
                     break;
                 case "--glycandb":
                     glycanDBpath = checkFilePath(args[i + 1].trim(), "glycan database");
                     break;
                 case "--residuedb":
                     residueDBpath = checkFilePath(args[i + 1].trim(), "residue database");
+                    break;
+                case "--glycanmoddb":
+                    glycanModPath = checkFilePath(args[i + 1].trim(), "glycan mods database");
                     break;
                 case "--maxq":
                     try {
@@ -54,6 +71,22 @@ public class Params {
                         minPSMs = Integer.parseInt(args[i + 1].trim());
                     } catch (NumberFormatException ex) {
                         out.printf("Error parsing min PSMs argument %s: not a number", args[i + 1]);
+                        System.exit(1);
+                    }
+                    break;
+                case "--minglycans":
+                    try {
+                        minGlycans = Integer.parseInt(args[i + 1].trim());
+                    } catch (NumberFormatException ex) {
+                        out.printf("Error parsing min Glycans argument %s: not a number", args[i + 1]);
+                        System.exit(1);
+                    }
+                    break;
+                case "--toaddresiduals":
+                    try {
+                        residualStrings = args[i + 1].trim().split(",");
+                    } catch (Exception e) {
+                        out.printf("Error parsing toaddresiduals argument %s", args[i + 1]);
                         System.exit(1);
                     }
                     break;
@@ -73,7 +106,18 @@ public class Params {
         } else {
             glycanResidues = GlycanParser.parseGlycoResiduesDB(residueDBpath.toString());
         }
+        if (glycanModPath == null) {
+            glycanMods = GlycanParser.parseGlycoModsDBStream(Params.class.getResourceAsStream(defaultResiduePath), glycanResidues.size(), glycanResidues);
+        } else {
+            glycanMods = GlycanParser.parseGlycoModsDB(glycanModPath.toString(), glycanResidues.size(), glycanResidues);
+        }
+        for (Map.Entry<String, GlycanMod> stringGlycanModEntry : glycanMods.entrySet()) {
+            glycanResidues.put(stringGlycanModEntry.getKey(), stringGlycanModEntry.getValue());
+        }
+        toAddResidues = getToAddResidues(residualStrings, glycanResidues);
         glycanDatabase = GlycanParser.loadGlycansFromText(glycanDBpath.toString(), DatabaseType.byonic, glycanResidues);
+        // parse ptmsherped config file to get the path of spectra
+        msFilePath = getMSFilePath(defaultPTMSconfPath);
     }
 
     public static Path checkFilePath(String inputPath, String pathName) {
@@ -90,5 +134,41 @@ public class Params {
             System.exit(1);
         }
         return path;
+    }
+
+    private HashMap<String, GlycanResidue> getToAddResidues(String[] residualStrings, HashMap<String, GlycanResidue> residues) {
+        HashMap<String, GlycanResidue> toAddResidues = new HashMap<>();
+        for (String residue : residualStrings) {
+            toAddResidues.put(residue, residues.get(residue));
+        }
+        return toAddResidues;
+    }
+
+    private String getMSFilePath(Path shepConfigPath) throws IOException {
+        HashMap<String, String> pathMap = new HashMap<>();
+        BufferedReader in = new BufferedReader(new FileReader(shepConfigPath.toFile()));
+        String cline;
+        while ((cline = in.readLine()) != null) {
+            int comments = cline.indexOf("//");
+            if (comments >= 0)
+                cline = cline.substring(0, comments);
+            cline = cline.trim();
+            if (!cline.contains("="))
+                continue;
+            String key = cline.substring(0, cline.indexOf("=")).trim();
+            String value = cline.substring(cline.indexOf("=") + 1).trim();
+            if (key.equals("dataset")) {
+                StringTokenizer st = new StringTokenizer(value);
+                String dsName = st.nextToken();
+                String tsvTxt = st.nextToken();
+                String mzPath = st.nextToken();
+                pathMap.put(tsvTxt, mzPath);
+            } else if (key.equals("threads")) {
+                threads = Integer.parseInt(value.trim());
+            }
+        }
+        in.close();
+        // get current ms file path
+        return pathMap.get(psmPath.toString());
     }
 }

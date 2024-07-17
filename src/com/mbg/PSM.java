@@ -1,10 +1,15 @@
 package com.mbg;
 
+import umich.ms.fileio.filetypes.agilent.cef.jaxb.P;
 import umich.ms.glyco.Glycan;
+import umich.ms.glyco.GlycanMod;
 import umich.ms.glyco.GlycanParser;
+import umich.ms.glyco.GlycanResidue;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -158,6 +163,7 @@ public class PSM implements Comparable<PSM>{
 
         // RT
         // todo: compute some RT adjustment...
+        newSplits[psmCols.get(PSM_File.PSMattr.RT)] = String.format("%.3f", getShiftedRT(existingPSM.glycan, newGlycan, existingPSM.rt));
 
         // construct the new PSM
         PSM addedPSM = new PSM(String.join("\t", newSplits), psmCols, params, true, 0);
@@ -165,6 +171,94 @@ public class PSM implements Comparable<PSM>{
         addedPSM.updateRank(existingPSM.rank + rankCounter, psmCols);
         return addedPSM;
     }
+
+    static HashMap<String, Float> glycanMassShift = new HashMap<String, Float>() {{
+        put("HexNAc(2)Hex(5)", 109.9F);
+        put("HexNAc(2)Hex(6)", 68.1F);
+        put("HexNAc(2)Hex(7)", 42.4F);
+        put("HexNAc(2)Hex(8)", 19.9F);
+        put("HexNAc(2)Hex(9)", 11.3F);
+        put("HexNAc(2)Hex(10)", 0F);
+    }};
+
+    private static double getShiftedRT(Glycan oldGlycan, Glycan newGlycan, double oldRT) {
+        double newRT = oldRT + glycanMassShift.getOrDefault(newGlycan.name, 0f) - glycanMassShift.getOrDefault(oldGlycan.name, 0f);
+        return newRT;
+    }
+
+    public static void getBasePSM(GlycoSite site, Glycan newGlycan) {
+        // get base glycan
+        boolean monoMassDiff = false;
+        PSM base_psm = null;
+        for (PSM c_psm: site.psms) {
+            Integer glycanDiff = glycanComparator(c_psm.glycan.composition, newGlycan.composition);
+            if (glycanDiff == 1) {
+                monoMassDiff = true;
+                base_psm = c_psm;
+            }
+        site.basePSM = base_psm;
+        return;
+
+        }
+
+        // determine RT shift
+    }
+
+    private static int glycanComparator(HashMap <GlycanResidue, Integer> glycan1, HashMap <GlycanResidue, Integer> glycan2) {
+        int difference = 0;
+        for (GlycanResidue key : glycan1.keySet()) {
+            difference += Math.abs(glycan1.getOrDefault(key, 0) - glycan2.getOrDefault(key, 0));
+        }
+        return difference;
+    }
+
+    /**
+     * Given a glycan, adding NH3 to generate a new glycan
+     *
+     * @return
+     */
+    public static Glycan getNH3PSM(Glycan baseGlycan, GlycanMod mod) {
+        return baseGlycan.addMod(mod, 1);
+    }
+
+    /**
+    * Generate all glycans that have a given residual difference from the current psm
+    * */
+    public static ArrayList<Glycan> getDummyGlycans(PSM psm, HashMap<String, GlycanResidue> residues) {
+        ArrayList<Glycan> dummy_glycans = new ArrayList<>();
+        for (Map.Entry<String, GlycanResidue> residualEntry: residues.entrySet()) {
+            GlycanResidue residual = residualEntry.getValue();
+            if (psm.glycan.composition.containsKey(residual)) {
+                int count = psm.glycan.composition.get(residual);
+                // add
+                HashMap<GlycanResidue, Integer> newCompositionAdd = new HashMap(psm.glycan.composition);
+                newCompositionAdd.put(residual, count + 1);
+                dummy_glycans.add(new Glycan(newCompositionAdd));
+                // loss
+                HashMap<GlycanResidue, Integer> newCompositionLoss = new HashMap(psm.glycan.composition);
+                if (count > 1) {
+                    newCompositionLoss.put(residual, count - 1);
+                    dummy_glycans.add(new Glycan(newCompositionLoss));
+                }
+                else {
+                    newCompositionLoss.remove(residual);
+                    Glycan new_glycan = new Glycan(newCompositionLoss);
+                    // in case of glycan with none glycan residue
+                    if (new_glycan.toString().length() < 2) {
+                        continue;
+                    }
+                    dummy_glycans.add(new_glycan);
+                }
+            }
+            else {
+                HashMap<GlycanResidue, Integer> newCompositionAdd = new HashMap(psm.glycan.composition);
+                newCompositionAdd.put(residual, 1);
+                dummy_glycans.add(new Glycan(newCompositionAdd));
+            }
+        }
+        return dummy_glycans;
+    }
+
 
     /**
      * Match the glycan composition to one of the assigned mods and use that to get the site within the peptide.
