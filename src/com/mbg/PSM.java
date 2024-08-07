@@ -1,15 +1,12 @@
 package com.mbg;
 
-import umich.ms.fileio.filetypes.agilent.cef.jaxb.P;
+import edu.umich.andykong.ptmshepherd.core.Spectrum;
 import umich.ms.glyco.Glycan;
 import umich.ms.glyco.GlycanMod;
 import umich.ms.glyco.GlycanParser;
 import umich.ms.glyco.GlycanResidue;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -30,6 +27,8 @@ public class PSM implements Comparable<PSM>{
     double glycoQval;
     double deltaMass;
     boolean inferredGlycoform;
+    boolean hasMS2Spectrum;
+    boolean hasY1Ion;
     int rank;
     double intensity;
     public String rawfile;
@@ -43,7 +42,7 @@ public class PSM implements Comparable<PSM>{
      * Initialize a PSM object from a line of the psm.tsv table
      * @param psmLine
      */
-    public PSM(String psmLine, HashMap<PSM_File.PSMattr, Integer> psmCols, Params params, boolean isInferred, int addCols) {
+    public PSM(String psmLine, HashMap<PSM_File.PSMattr, Integer> psmCols, Params params, boolean isInferred, boolean hasMS2, boolean hasY1, int addCols) {
         splits = psmLine.split("\t");
 
         // expand to hold new columns if needed
@@ -56,17 +55,25 @@ public class PSM implements Comparable<PSM>{
             }
             splits = newSplits.toArray(new String[0]);
             inferredGlycoform = isInferred;
+            hasMS2Spectrum = hasMS2;
+            hasY1Ion = hasY1;
         } else {
             if (!isInferred) {
                 // if this is a re-analysis (i.e., not adding new columns) and this is not an inferred PSM from this analysis, read its inferred status from the previous result
                 inferredGlycoform = Boolean.parseBoolean(splits[psmCols.get(PSM_File.PSMattr.inferred_glycoform)]);
+                hasMS2Spectrum = Boolean.parseBoolean(splits[psmCols.get(PSM_File.PSMattr.has_ms2_spec)]);
+                hasY1Ion = Boolean.parseBoolean(splits[psmCols.get(PSM_File.PSMattr.has_Y1)]);
             } else {
                 inferredGlycoform = isInferred;
+                hasMS2Spectrum = hasMS2;
+                hasY1Ion = hasY1;
             }
         }
 
         // update new fields and information that is needed for all PSMs (including non-glyco)
         splits[psmCols.get(PSM_File.PSMattr.inferred_glycoform)] = String.valueOf(inferredGlycoform);
+        splits[psmCols.get(PSM_File.PSMattr.has_ms2_spec)] = String.valueOf(hasMS2Spectrum);
+        splits[psmCols.get(PSM_File.PSMattr.has_Y1)] = String.valueOf(hasY1Ion);
         Matcher rankMatch = rankPattern.matcher(splits[psmCols.get(PSM_File.PSMattr.spectrum_file)]);
         if (rankMatch.find()) {
             rank = Integer.parseInt(rankMatch.group(1));
@@ -122,12 +129,13 @@ public class PSM implements Comparable<PSM>{
     /**
      * Generate a 'dummy' PSM for a newly matched glycan from an existing base PSM. Edit the base PSM to
      * convert to the new glycan
+     *
      * @param existingPSM
      * @param newGlycan
      * @param psmCols
      * @param params
      */
-    public static PSM makeDummyPSM(PSM existingPSM, Glycan newGlycan, HashMap<PSM_File.PSMattr, Integer> psmCols, Params params, int rankCounter) {
+    public static List<PSM> makeDummyPSM(PSM existingPSM, Glycan newGlycan, HashMap<PSM_File.PSMattr, Integer> psmCols, Params params, int rankCounter) {
         String[] newSplits = new String[existingPSM.splits.length];
         System.arraycopy(existingPSM.splits, 0, newSplits, 0, newSplits.length);
 
@@ -136,7 +144,7 @@ public class PSM implements Comparable<PSM>{
         // assigned mods
         String oldAssignedMods = existingPSM.splits[psmCols.get(PSM_File.PSMattr.assigned_mods)];
         ArrayList<String> newAssignedMods = new ArrayList<>();
-        for (String mod: oldAssignedMods.split(",")) {
+        for (String mod : oldAssignedMods.split(",")) {
             Matcher siteMatch = modSitePattern.matcher(mod);
             if (siteMatch.find()) {
                 int site = Integer.parseInt(siteMatch.group(1));
@@ -164,25 +172,65 @@ public class PSM implements Comparable<PSM>{
         // RT
         // todo: compute some RT adjustment...
         newSplits[psmCols.get(PSM_File.PSMattr.RT)] = String.format("%.3f", getShiftedRT(existingPSM.glycan, newGlycan, existingPSM.rt));
+        double c_rt = Double.parseDouble(newSplits[psmCols.get(PSM_File.PSMattr.RT)]);
+        double c_pep_mz = Double.parseDouble(newSplits[psmCols.get(PSM_File.PSMattr.calc_pep_mz)]);
+        // to find MS2
+        List<Spectrum> ms2Candidates = MSMS.spectraSearcher(c_rt-40, c_rt+40, (float) (c_pep_mz-1), (float) (c_pep_mz+1));
+        List<PSM> addedPSMs = new ArrayList<>();
+        // todo update spectra information if ms2 candidates found
 
+        if (!ms2Candidates.isEmpty()) {
+            // match Y1
+            List<Boolean> y1booleans;
+            y1booleans = MSMS.y1Matcher(ms2Candidates, existingPSM, params);
+            for (int i = 0; i < ms2Candidates.size(); i++) {
+                newSplits[psmCols.get(PSM_File.PSMattr.spectrum)] = String.join(".", new String[]{existingPSM.rawfile, String.valueOf(ms2Candidates.get(i).scanNum),
+                        String.valueOf(ms2Candidates.get(i).scanNum), String.valueOf(ms2Candidates.get(i).charge)});
+                PSM addedPSM = new PSM(String.join("\t", newSplits), psmCols, params, true, true, y1booleans.get(i), 0);
+                addedPSM.updateRank(existingPSM.rank + rankCounter, psmCols);
+                addedPSMs.add(addedPSM);
+            }
+
+        } else {
+            PSM addedPSM = new PSM(String.join("\t", existingPSM.splits), psmCols, params, true, false, false, 0);
+            addedPSM.updateRank(existingPSM.rank + rankCounter, psmCols);
+            addedPSMs.add(addedPSM);
+        }
+
+
+        // Y1 matcher test
+
+//        List<Spectrum> testCandidate = MSMS.spectraSearcher(existingPSM.rt-40, existingPSM.rt+40, (float) (existingPSM.calcMz-1), (float) (existingPSM.calcMz+1));
+//        List<Spectrum> testY1 = new ArrayList<>();
+//        if (!testCandidate.isEmpty()) {
+//            testY1 = MSMS.y1Matcher(testCandidate, existingPSM, params);
+//        }
         // construct the new PSM
-        PSM addedPSM = new PSM(String.join("\t", newSplits), psmCols, params, true, 0);
+
+//        PSM addedPSM = new PSM(String.join("\t", newSplits), psmCols, params, true, !ms2Candidates.isEmpty(), !y1booleans.isEmpty(), 0);
+//        PSM addedPSM = new PSM(String.join("\t", existingPSM.splits), psmCols, params, true, !testCandidate.isEmpty(), !testY1.isEmpty(), 0);
         // update rank
-        addedPSM.updateRank(existingPSM.rank + rankCounter, psmCols);
-        return addedPSM;
+//        addedPSM.updateRank(existingPSM.rank + rankCounter, psmCols);
+        return addedPSMs;
     }
 
-    static HashMap<String, Float> glycanMassShift = new HashMap<String, Float>() {{
-        put("HexNAc(2)Hex(5)", 109.9F);
-        put("HexNAc(2)Hex(6)", 68.1F);
-        put("HexNAc(2)Hex(7)", 42.4F);
-        put("HexNAc(2)Hex(8)", 19.9F);
-        put("HexNAc(2)Hex(9)", 11.3F);
-        put("HexNAc(2)Hex(10)", 0F);
-    }};
+    static Map<String, Map<String, Float>> glycanMassShift = new HashMap<>();
+//    {{
+//        put("HexNAc(2)Hex(5)", 109.9F);
+//        put("HexNAc(2)Hex(6)", 68.1F);
+//        put("HexNAc(2)Hex(7)", 42.4F);
+//        put("HexNAc(2)Hex(8)", 19.9F);
+//        put("HexNAc(2)Hex(9)", 11.3F);
+//        put("HexNAc(2)Hex(10)", 0F);
+//    }};
 
     private static double getShiftedRT(Glycan oldGlycan, Glycan newGlycan, double oldRT) {
-        double newRT = oldRT + glycanMassShift.getOrDefault(newGlycan.name, 0f) - glycanMassShift.getOrDefault(oldGlycan.name, 0f);
+        double newRT;
+        if (glycanMassShift.containsKey(newGlycan.name)) {
+            newRT = oldRT + glycanMassShift.get(newGlycan.name).getOrDefault(oldGlycan.name, 0f);
+        } else
+            newRT = oldRT;
+//        double newRT = (oldRT + glycanMassShift.getOrDefault(newGlycan.name, 0f)) - glycanMassShift.getOrDefault(oldGlycan.name, 0f);
         return newRT;
     }
 

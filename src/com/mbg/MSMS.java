@@ -12,34 +12,36 @@ import java.util.stream.Collectors;
 public class MSMS {
     public Path msPath;
     public HashMap<String, File> mappings = new HashMap<>();  // cwq_mix2-1_726 -> {File@993} "Z:\jishen\MBG\data\cwq_mix2-1_726_calibrated.mzML"
-    public MXMLReader mReader;
+    public static MXMLReader mReader;
+    public String rawFileName;
 
     /**
-     * @param psmFile
+     * @param runName
      * @param msFilePath string path like "Z:\jishen\MBG\data" that storage ms data
      * @throws Exception
      */
-    public MSMS(PSM_File psmFile, String msFilePath) throws Exception {
+    public MSMS(String runName, String msFilePath) throws Exception {
         // init arguments
-        HashSet<String> runNames;
+        rawFileName = runName;
+        HashSet<String> runNames = new HashSet<>();
+        runNames.add(runName);
+        mappings.put(runName, null);
         File path = new File(msFilePath);
         // put all ms file names into runName and mappings
-        HashSet<String> runNames = new HashSet<>();
-        runNames = (HashSet<String>) psmFile.rawfilePSMmap.keySet();
-        for (String fs: psmFile.rawfilePSMmap.keySet()) {
-            mappings.put(fs, null);
-        }
+//        runNames = (HashSet<String>) psmFile.rawfilePSMmap.keySet();
+//        for (String fs: psmFile.rawfilePSMmap.keySet()) {
+//            mappings.put(fs, null);
+//        }
         // fill in mappings
         PSMFile.getMappings(path, mappings, runNames);
     }
 
     /** read ms file using PTMShepherd
-     * @param runName
      * @throws Exception
      */
-    public void msFileReader(String runName) throws Exception {
+    public void msFileReader() throws Exception {
         //
-        File cp = mappings.get(runName);
+        File cp = mappings.get(rawFileName);
         mReader = new MXMLReader(cp, 7);
         mReader.readFully();
     }
@@ -51,33 +53,27 @@ public class MSMS {
      * @param maxMZ
      * @return
      */
-    public List<Spectrum> spectraSearcher(PSM basepsm, Params params, double minRT, double maxRT, float minMZ, float maxMZ) {
+    public static List<Spectrum> spectraSearcher(double minRT, double maxRT, float minMZ, float maxMZ) {
         List<Spectrum> candidates;
         candidates = Arrays.stream(mReader.specs)
-                .filter(c -> c.charge >= minRT && c.charge <= maxRT)
-                .filter(c -> c.getPrecursorMass() >= minMZ && c.getPrecursorMass() <= maxMZ)
+                .filter(c -> c.rt >= minRT/60 && c.rt <= maxRT/60)
+                .filter(c -> c.precursorMass >= minMZ && c.precursorMass <= maxMZ)
                 .collect(Collectors.toList());
         return candidates;
     }
-    public void y1Matcher(List<Spectrum> candidates, PSM basepsm, Params params) {
-        if (candidates.isEmpty()) {
-            return;
-        } else {
-            // match Y1 ion
-            List<Spectrum> qualifiedSpectra = new ArrayList<>();
-            double pepMass = basepsm.calcMass - basepsm.glycan.mass;
-            double y1Mass = pepMass + params.glycanResidues.get("HexNAc").mass;
-            for (Spectrum spec :mReader.specs) {
-                if (spec.findIonNeutral(y1Mass, 20, spec.charge) > 0) {
-                    qualifiedSpectra.add(spec);
-                }
-            // if none qualified spectrum
-
-            //
+    public static List<Boolean> y1Matcher(List<Spectrum> qualifiedSpectra, PSM basepsm, Params params) {
+        List<Boolean> hasY1 = new ArrayList<>();
+        // match Y1 ion
+        double pepMass = basepsm.calcMass - basepsm.glycan.mass;
+        double y1Mass = pepMass + params.glycanResidues.get("HexNAc").mass;
+        for (Spectrum spec :qualifiedSpectra) {
+            if (spec.findIonNeutral(y1Mass, 20, spec.charge) > 0) {
+                hasY1.add(true);
+            } else {
+                hasY1.add(false);
             }
         }
-
-
+        return hasY1;
     }
 
 
