@@ -2,7 +2,6 @@ package com.mbg;
 
 import edu.umich.andykong.ptmshepherd.core.Spectrum;
 import umich.ms.glyco.Glycan;
-import umich.ms.glyco.GlycanMod;
 import umich.ms.glyco.GlycanParser;
 import umich.ms.glyco.GlycanResidue;
 
@@ -13,6 +12,7 @@ import java.util.regex.Pattern;
 public class PSM implements Comparable<PSM>{
 
     double rt;
+    double apexRT;
     int scanNum;
     String peptide;
     Glycan glycan;
@@ -172,14 +172,23 @@ public class PSM implements Comparable<PSM>{
         // RT
         // todo: compute some RT adjustment...
         newSplits[psmCols.get(PSM_File.PSMattr.RT)] = String.format("%.3f", getShiftedRT(existingPSM.glycan, newGlycan, existingPSM.rt));
-        double c_rt = Double.parseDouble(newSplits[psmCols.get(PSM_File.PSMattr.RT)]);
-        double c_pep_mz = Double.parseDouble(newSplits[psmCols.get(PSM_File.PSMattr.calc_pep_mz)]);
-        // match against MS1, get intensity, rt duration and average mass
+        double newRT = Double.parseDouble(newSplits[psmCols.get(PSM_File.PSMattr.RT)]);
+        double newMZ = Double.parseDouble(newSplits[psmCols.get(PSM_File.PSMattr.calc_pep_mz)]);
 
-
-        // to find MS2
-        List<Spectrum> ms2Candidates = MSMS.spectraSearcher(c_rt-40, c_rt+40, (float) (c_pep_mz-1), (float) (c_pep_mz+1));
         List<PSM> addedPSMs = new ArrayList<>();
+
+        // match against MS1, get intensity, rt duration and average mass
+        Peak peakMatcher = new Peak();
+        peakMatcher.matchMS1((float) newMZ, (float) newRT / 60, 0, existingPSM.charge, 0);
+        if (peakMatcher.quantifiedEntry123 == null) {
+            addedPSMs.add(new PSM(String.join("\t", newSplits), psmCols, params, true, false, false, 0));
+            return addedPSMs;
+        }
+        // to find MS2
+        List<Spectrum> ms2Candidates = MSMS.spectraSearcher(peakMatcher.quantifiedEntry123.rtStart, peakMatcher.quantifiedEntry123.rtEnd, (float) (newMZ-1), (float) (newMZ+1));
+        // update intensity
+        newSplits[psmCols.get(PSM_File.PSMattr.intensity)] = String.valueOf(peakMatcher.quantifiedEntry123.intensity);
+
         // todo update spectra information if ms2 candidates found
 
         if (!ms2Candidates.isEmpty()) {
@@ -195,7 +204,7 @@ public class PSM implements Comparable<PSM>{
             }
 
         } else {
-            PSM addedPSM = new PSM(String.join("\t", existingPSM.splits), psmCols, params, true, false, false, 0);
+            PSM addedPSM = new PSM(String.join("\t", newSplits), psmCols, params, true, false, false, 0);
             addedPSM.updateRank(existingPSM.rank + rankCounter, psmCols);
             addedPSMs.add(addedPSM);
         }
@@ -268,8 +277,10 @@ public class PSM implements Comparable<PSM>{
      *
      * @return
      */
-    public static Glycan getNH3PSM(Glycan baseGlycan, GlycanMod mod) {
-        return baseGlycan.addMod(mod, 1);
+    public static Glycan addResidual(Glycan baseGlycan, GlycanResidue mod) {
+        HashMap<GlycanResidue, Integer> newComposition = new HashMap(baseGlycan.composition);
+        newComposition.put(mod, baseGlycan.composition.getOrDefault(mod, 0) + 1);
+        return new Glycan(newComposition);
     }
 
     /**

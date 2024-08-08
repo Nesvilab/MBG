@@ -57,7 +57,7 @@ public class MSMS {
     public static List<Spectrum> spectraSearcher(double minRT, double maxRT, float minMZ, float maxMZ) {
         List<Spectrum> candidates;
         candidates = Arrays.stream(mReader.specs)
-                .filter(c -> c.rt >= minRT/60 && c.rt <= maxRT/60)
+                .filter(c -> c.rt >= minRT && c.rt <= maxRT)
                 .filter(c -> c.precursorMass >= minMZ && c.precursorMass <= maxMZ)
                 .collect(Collectors.toList());
         return candidates;

@@ -3,9 +3,9 @@ package com.mbg;
 import java.util.*;
 
 import umich.ms.glyco.Glycan;
-import umich.ms.glyco.GlycanMod;
+import umich.ms.glyco.GlycanResidue;
 
-import static java.lang.System.out;
+import static com.mbg.Peak.findFirstPriorityFile;
 
 public class GlycanMatching {
     public PSM_File psmFile;
@@ -14,7 +14,7 @@ public class GlycanMatching {
     private HashMap<String, GlycoSite> observedGlycoSites;
     private String[] qualifiedGlycans;  // glycans in psm.tsv with a specific minimum count
 
-    public GlycanMatching(Params params, PSM_File psmFile, ArrayList<PSM> psms) throws Exception {
+    public GlycanMatching(Params params, PSM_File psmFile, ArrayList<PSM> psms) {
         this.psmFile = psmFile;
         this.psms = psms;
         this.params = params;
@@ -52,17 +52,29 @@ public class GlycanMatching {
     /**
      * Given a glycan database and rules from Params, fill in the unobserved glycans for each glycosite
      * and generate dummy PSMs for them.
-     * @return
      */
     public ArrayList<PSM> fillInGlycoSites(String rawFileName, String msFilePath) throws Exception {
         ArrayList<PSM> newPSMs = new ArrayList<>();
-        GlycanMod mod_nh3 = new GlycanMod(params.glycanResidues.get("NH4"));
+        GlycanResidue mod_nh3 = params.glycanResidues.get("NH4");
+        GlycanResidue neuAc = params.glycanResidues.get("NeuAc");  // for generating decoys
 
         // read msFile
         MSMS ms2 = new MSMS(rawFileName, msFilePath);
         ms2.msFileReader();
-        // build index for IonQuant
-//        Peak.indexBuilder(ms2.msDir.toString());
+        // find file for IonQuant
+        String foundFile = findFirstPriorityFile(msFilePath, rawFileName);
+        if (foundFile != null) {
+            // build index for IonQuant
+            Peak.indexBuilder(foundFile);
+        } else {
+            System.out.println("No file found with extension .mzML, .raw or .d.");
+            System.exit(-1);
+        }
+        // get apex rt for each psm
+
+
+        // generate internal median RT shift database
+
 
         for (Map.Entry<String, GlycoSite> siteEntry: observedGlycoSites.entrySet()) {
             GlycoSite site = siteEntry.getValue();
@@ -92,10 +104,13 @@ public class GlycanMatching {
                 // make NH3 glycan
                 int rankCounter = 1;
                 for (PSM base_psm : site.psms) {
-                    if (base_psm.scanNum == 10876 || base_psm.scanNum == 10907) {
-                        out.print("sadsad");
-                    }
-                    Glycan new_glycan = PSM.getNH3PSM(base_psm.glycan, mod_nh3);
+                    Glycan new_glycan = PSM.addResidual(base_psm.glycan, mod_nh3);
+                    List<PSM> addedPSMs = PSM.makeDummyPSM(base_psm, new_glycan, psmFile.PSMcolumns, params, rankCounter);
+                    newPSMs.addAll(addedPSMs);
+                }
+                // generate decoy for every psm
+                for (PSM base_psm : site.psms) {
+                    Glycan new_glycan = PSM.addResidual(base_psm.glycan, neuAc);
                     List<PSM> addedPSMs = PSM.makeDummyPSM(base_psm, new_glycan, psmFile.PSMcolumns, params, rankCounter);
                     newPSMs.addAll(addedPSMs);
                 }
