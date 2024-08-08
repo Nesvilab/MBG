@@ -174,6 +174,9 @@ public class PSM implements Comparable<PSM>{
         newSplits[psmCols.get(PSM_File.PSMattr.RT)] = String.format("%.3f", getShiftedRT(existingPSM.glycan, newGlycan, existingPSM.rt));
         double c_rt = Double.parseDouble(newSplits[psmCols.get(PSM_File.PSMattr.RT)]);
         double c_pep_mz = Double.parseDouble(newSplits[psmCols.get(PSM_File.PSMattr.calc_pep_mz)]);
+        // match against MS1, get intensity, rt duration and average mass
+
+
         // to find MS2
         List<Spectrum> ms2Candidates = MSMS.spectraSearcher(c_rt-40, c_rt+40, (float) (c_pep_mz-1), (float) (c_pep_mz+1));
         List<PSM> addedPSMs = new ArrayList<>();

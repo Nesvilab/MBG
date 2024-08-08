@@ -14,6 +14,7 @@ public class MSMS {
     public HashMap<String, File> mappings = new HashMap<>();  // cwq_mix2-1_726 -> {File@993} "Z:\jishen\MBG\data\cwq_mix2-1_726_calibrated.mzML"
     public static MXMLReader mReader;
     public String rawFileName;
+    public File msDir;
 
     /**
      * @param runName
@@ -41,8 +42,8 @@ public class MSMS {
      */
     public void msFileReader() throws Exception {
         //
-        File cp = mappings.get(rawFileName);
-        mReader = new MXMLReader(cp, 7);
+        msDir = mappings.get(rawFileName);
+        mReader = new MXMLReader(msDir, 7);
         mReader.readFully();
     }
 

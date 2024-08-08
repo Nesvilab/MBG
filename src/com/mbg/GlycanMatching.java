@@ -61,6 +61,9 @@ public class GlycanMatching {
         // read msFile
         MSMS ms2 = new MSMS(rawFileName, msFilePath);
         ms2.msFileReader();
+        // build index for IonQuant
+//        Peak.indexBuilder(ms2.msDir.toString());
+
         for (Map.Entry<String, GlycoSite> siteEntry: observedGlycoSites.entrySet()) {
             GlycoSite site = siteEntry.getValue();
             if (site.psms.size() >= params.minPSMs && site.observedGlycans.size() >= params.minGlycans) {
@@ -78,9 +81,6 @@ public class GlycanMatching {
                         }
 
                         // glycan not observed. Make a PSM for it
-                        if (base_PSM.scanNum == 10876 || base_PSM.scanNum == 10907) {
-                            out.print("sadsad");
-                        }
                         List<PSM> addedPSMs = PSM.makeDummyPSM(base_PSM, new_glycan, psmFile.PSMcolumns, params, rankCounter);
                         newPSMs.addAll(addedPSMs);
                         // update observed glycans
@@ -92,6 +92,9 @@ public class GlycanMatching {
                 // make NH3 glycan
                 int rankCounter = 1;
                 for (PSM base_psm : site.psms) {
+                    if (base_psm.scanNum == 10876 || base_psm.scanNum == 10907) {
+                        out.print("sadsad");
+                    }
                     Glycan new_glycan = PSM.getNH3PSM(base_psm.glycan, mod_nh3);
                     List<PSM> addedPSMs = PSM.makeDummyPSM(base_psm, new_glycan, psmFile.PSMcolumns, params, rankCounter);
                     newPSMs.addAll(addedPSMs);
