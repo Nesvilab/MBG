@@ -24,6 +24,7 @@ jar {
 
 dependencies {
     implementation files("lib/batmass-io-1.33.4.jar")
+    implementation files("lib/IonQuant-1.10.31.jar")
 
     testImplementation 'org.junit.jupiter:junit-jupiter-api:5.7.0'
     testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.7.0'
