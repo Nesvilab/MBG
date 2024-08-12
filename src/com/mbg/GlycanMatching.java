@@ -6,6 +6,7 @@ import umich.ms.glyco.Glycan;
 import umich.ms.glyco.GlycanResidue;
 
 import static com.mbg.Peak.findFirstPriorityFile;
+import static java.lang.System.out;
 
 public class GlycanMatching {
     public PSM_File psmFile;
@@ -70,17 +71,17 @@ public class GlycanMatching {
             System.out.println("No file found with extension .mzML, .raw or .d.");
             System.exit(-1);
         }
-        // get apex rt for each psm
-
-
-        // generate internal median RT shift database
-
+        // get apex rt for each psm and generate internal median RT shift database; get base PSMs
+        RT_adjuster cRT_adjuster = new RT_adjuster(this.observedGlycoSites);
 
         for (Map.Entry<String, GlycoSite> siteEntry: observedGlycoSites.entrySet()) {
             GlycoSite site = siteEntry.getValue();
             if (site.psms.size() >= params.minPSMs && site.observedGlycans.size() >= params.minGlycans) {
-                for (PSM base_PSM : site.psms) {
+                for (PSM base_PSM : site.basePSMs) {
                     int rankCounter = 1;
+                    if (base_PSM.scanNum == 8992 || base_PSM.scanNum==9063) {
+                        out.print("Usage:\n");
+                    }
                     ArrayList<Glycan> dummy_glycans = PSM.getDummyGlycans(base_PSM, params.toAddResidues);
                     for (Glycan new_glycan: dummy_glycans) {
                         if (site.observedGlycans.containsKey(new_glycan.toString()) || site.basePSM == null) {
@@ -93,7 +94,7 @@ public class GlycanMatching {
                         }
 
                         // glycan not observed. Make a PSM for it
-                        List<PSM> addedPSMs = PSM.makeDummyPSM(base_PSM, new_glycan, psmFile.PSMcolumns, params, rankCounter);
+                        List<PSM> addedPSMs = PSM.makeDummyPSM(base_PSM, new_glycan, psmFile.PSMcolumns, params, rankCounter, cRT_adjuster);
                         newPSMs.addAll(addedPSMs);
                         // update observed glycans
                         site.observedGlycans.put(new_glycan.toString(), new ArrayList<>());
@@ -103,15 +104,15 @@ public class GlycanMatching {
                 }
                 // make NH3 glycan
                 int rankCounter = 1;
-                for (PSM base_psm : site.psms) {
+                for (PSM base_psm : site.basePSMs) {
                     Glycan new_glycan = PSM.addResidual(base_psm.glycan, mod_nh3);
-                    List<PSM> addedPSMs = PSM.makeDummyPSM(base_psm, new_glycan, psmFile.PSMcolumns, params, rankCounter);
+                    List<PSM> addedPSMs = PSM.makeDummyPSM(base_psm, new_glycan, psmFile.PSMcolumns, params, rankCounter, cRT_adjuster);
                     newPSMs.addAll(addedPSMs);
                 }
                 // generate decoy for every psm
-                for (PSM base_psm : site.psms) {
+                for (PSM base_psm : site.basePSMs) {
                     Glycan new_glycan = PSM.addResidual(base_psm.glycan, neuAc);
-                    List<PSM> addedPSMs = PSM.makeDummyPSM(base_psm, new_glycan, psmFile.PSMcolumns, params, rankCounter);
+                    List<PSM> addedPSMs = PSM.makeDummyPSM(base_psm, new_glycan, psmFile.PSMcolumns, params, rankCounter, cRT_adjuster);
                     newPSMs.addAll(addedPSMs);
                 }
             }

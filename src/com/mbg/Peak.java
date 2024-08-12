@@ -2,6 +2,7 @@ package com.mbg;
 
 import ionquant.api.Entry;
 import ionquant.api.IonQuantAPI;
+import umich.ms.glyco.Glycan;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -18,44 +19,13 @@ public final class Peak {
     }
 
     public static void indexBuilder(String path) {
-        api = new IonQuantAPI(path, 11, 10, 0.4f, 0.05f, 2, 3, true);
+        api = new IonQuantAPI(path, 11, 5, 0.4f, 0.05f, 2, 3, true);
         api.buildIndex();
     }
 
     public void matchMS1(float mz, float rt, float im, int charge, int cv) {
         quantifiedEntry = api.quantXIC(mz, rt, im, charge, cv);
         quantifiedEntry123 = api.quantXIC123(mz, rt, im, charge, cv);
-    }
-
-    public void matchMS1forPSMs(HashMap<String, GlycoSite> observedGlycoSites) {
-        for (Map.Entry<String, GlycoSite> siteEntry : observedGlycoSites.entrySet()) {
-            GlycoSite site = siteEntry.getValue();
-            for (Map.Entry<String, ArrayList<PSM>> glycanEntry: site.observedGlycans.entrySet()) {
-                ArrayList<PSM> glycan_psm = glycanEntry.getValue();
-                String glycanName = glycanEntry.getKey();
-
-                Map<String, Float> glycanRTs = new HashMap<>();
-                float topApexRT = 0;  // get top intensity apex RT (in minute) of this glycopeptide
-                float topIntensity = 0;
-                for (PSM psm : glycan_psm) {
-                    matchMS1((float) psm.calcMz, (float) psm.rt / 60, 0, psm.charge, 0);
-                    if (quantifiedEntry123 != null) {
-                        psm.apexRT = quantifiedEntry123.apexRt;
-                        psm.intensity = quantifiedEntry123.intensity;
-                        if (psm.intensity > topIntensity) {
-                            topApexRT = (float) psm.apexRT;
-                            topIntensity = (float) psm.intensity;
-
-                        }
-                    }
-                }
-                if (topApexRT > 0) {
-                    glycanRTs.put(glycanName, topApexRT);
-                }
-            // storage into RT adjuster for calculating RT median shift
-
-            }
-        }
     }
 
 
