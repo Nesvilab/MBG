@@ -31,6 +31,7 @@ public class PSM_File {
         columnNames.put(PSMattr.inferred_glycoform, "Inferred Glycoform?");
         columnNames.put(PSMattr.has_ms2_spec, "Has MS2 Spectrum?");
         columnNames.put(PSMattr.has_Y1, "Has Y1 ion?");
+        columnNames.put(PSMattr.averageMassDiff, "averageMassDifference");
         columnNames.put(PSMattr.spectrum_file, "Spectrum File");
         columnNames.put(PSMattr.intensity, "Intensity");
     }
@@ -49,6 +50,7 @@ public class PSM_File {
             newHeaders.add(PSMcolumns.get(PSMattr.glyco_q_val) + 1, columnNames.get(PSMattr.inferred_glycoform));
             newHeaders.add(PSMcolumns.get(PSMattr.glyco_q_val) + 1, columnNames.get(PSMattr.has_ms2_spec));
             newHeaders.add(PSMcolumns.get(PSMattr.glyco_q_val) + 1, columnNames.get(PSMattr.has_Y1));
+            newHeaders.add(PSMcolumns.get(PSMattr.glyco_q_val) + 1, columnNames.get(PSMattr.averageMassDiff));
             headers = newHeaders.toArray(new String[0]);
             this.PSMcolumns = initPSMcolumns();
         } else {
@@ -60,7 +62,7 @@ public class PSM_File {
         String line;
         while((line = in.readLine()) != null) {
             if (line.length() > 0) {
-                PSM psm = new PSM(line, PSMcolumns, params, false, false, false, addCols);
+                PSM psm = new PSM(line, PSMcolumns, params, false, false, false, 0, addCols);
                 allPSMs.add(psm);
                 if (rawfilePSMmap.containsKey(psm.rawfile)) {
                     rawfilePSMmap.get(psm.rawfile).add(psm);
@@ -147,7 +149,10 @@ public class PSM_File {
         glyco_q_val,
         inferred_glycoform,
         spectrum_file,
-        has_ms2_spec, has_Y1, intensity
+        has_ms2_spec,
+        has_Y1,
+        averageMassDiff,
+        intensity
     }
 
 

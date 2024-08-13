@@ -2,17 +2,13 @@ package com.mbg;
 
 import ionquant.api.Entry;
 import ionquant.api.IonQuantAPI;
-import umich.ms.glyco.Glycan;
 
 import java.io.File;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Objects;
 
 public final class Peak {
     public static IonQuantAPI api;
-    public Entry quantifiedEntry;
+    public float averageMass;
     public Entry quantifiedEntry123;
 
     public Peak() {
@@ -24,11 +20,21 @@ public final class Peak {
     }
 
     public void matchMS1(float mz, float rt, float im, int charge, int cv) {
-        quantifiedEntry = api.quantXIC(mz, rt, im, charge, cv);
+        Entry quantifiedEntry1 = api.quantXIC(mz, rt, im, charge, cv);
+        Entry quantifiedEntry2 = api.quantXIC((float) (mz+1.002), rt, im, charge, cv);
+        Entry quantifiedEntry3 = api.quantXIC((float) (mz+2.004), rt, im, charge, cv);
         quantifiedEntry123 = api.quantXIC123(mz, rt, im, charge, cv);
+        if (quantifiedEntry1 == null || quantifiedEntry2 == null || quantifiedEntry3 == null) {
+            averageMass = 0;
+        } else {
+            getAverageMass(quantifiedEntry1, quantifiedEntry2, quantifiedEntry3, mz);
+        }
     }
 
-
+    private void getAverageMass(Entry entry1, Entry entry2, Entry entry3, float mz) {
+        float intensitySum = entry1.intensity + entry2.intensity + entry3.intensity;
+        averageMass = (float) (((entry1.intensity*mz)+(entry2.intensity*(mz+1.002))+(entry3.intensity*(mz+2.004))) / intensitySum);
+    }
 
     public static String findFirstPriorityFile(String directoryPath, String filePrefix) {
         File directory = new File(directoryPath);

@@ -32,6 +32,7 @@ public class RT_adjuster {
                     peakMatcher.matchMS1((float) psm.calcMz, (float) psm.rt / 60, 0, psm.charge, 0);
                     if (peakMatcher.quantifiedEntry123 != null) {
                         psm.apexRT = peakMatcher.quantifiedEntry123.apexRt;
+                        psm.averageMass = peakMatcher.averageMass;
                         psm.intensity = peakMatcher.quantifiedEntry123.intensity;
                         if (psm.intensity > topIntensity) {
                             topApexRT = (float) psm.apexRT;
@@ -143,6 +144,10 @@ public class RT_adjuster {
             }
         }
         return (Float) (float) (oldRT + shiftedRT);
+    }
+
+    Float getAverageMassDiff(Glycan oldGlycan, Glycan newGlycan, float oldAveMass, float newAveMass, int charge) {
+        return (float) (((newGlycan.mass - oldGlycan.mass) - (newAveMass - oldAveMass) * charge)) ;
     }
 
 }

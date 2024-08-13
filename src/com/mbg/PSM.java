@@ -13,6 +13,7 @@ public class PSM implements Comparable<PSM>{
 
     double rt;
     double apexRT;
+    float averageMass;
     int scanNum;
     String peptide;
     Glycan glycan;
@@ -29,6 +30,7 @@ public class PSM implements Comparable<PSM>{
     boolean inferredGlycoform;
     boolean hasMS2Spectrum;
     boolean hasY1Ion;
+    float aveMassDiff;
     int rank;
     double intensity;
     public String rawfile;
@@ -42,7 +44,7 @@ public class PSM implements Comparable<PSM>{
      * Initialize a PSM object from a line of the psm.tsv table
      * @param psmLine
      */
-    public PSM(String psmLine, HashMap<PSM_File.PSMattr, Integer> psmCols, Params params, boolean isInferred, boolean hasMS2, boolean hasY1, int addCols) {
+    public PSM(String psmLine, HashMap<PSM_File.PSMattr, Integer> psmCols, Params params, boolean isInferred, boolean hasMS2, boolean hasY1, float massDifference, int addCols) {
         splits = psmLine.split("\t");
 
         // expand to hold new columns if needed
@@ -57,16 +59,19 @@ public class PSM implements Comparable<PSM>{
             inferredGlycoform = isInferred;
             hasMS2Spectrum = hasMS2;
             hasY1Ion = hasY1;
+            aveMassDiff = massDifference;
         } else {
             if (!isInferred) {
                 // if this is a re-analysis (i.e., not adding new columns) and this is not an inferred PSM from this analysis, read its inferred status from the previous result
                 inferredGlycoform = Boolean.parseBoolean(splits[psmCols.get(PSM_File.PSMattr.inferred_glycoform)]);
                 hasMS2Spectrum = Boolean.parseBoolean(splits[psmCols.get(PSM_File.PSMattr.has_ms2_spec)]);
                 hasY1Ion = Boolean.parseBoolean(splits[psmCols.get(PSM_File.PSMattr.has_Y1)]);
+                aveMassDiff = massDifference;
             } else {
                 inferredGlycoform = isInferred;
                 hasMS2Spectrum = hasMS2;
                 hasY1Ion = hasY1;
+                aveMassDiff = massDifference;
             }
         }
 
@@ -74,6 +79,7 @@ public class PSM implements Comparable<PSM>{
         splits[psmCols.get(PSM_File.PSMattr.inferred_glycoform)] = String.valueOf(inferredGlycoform);
         splits[psmCols.get(PSM_File.PSMattr.has_ms2_spec)] = String.valueOf(hasMS2Spectrum);
         splits[psmCols.get(PSM_File.PSMattr.has_Y1)] = String.valueOf(hasY1Ion);
+        splits[psmCols.get(PSM_File.PSMattr.averageMassDiff)] = String.valueOf(aveMassDiff);
         Matcher rankMatch = rankPattern.matcher(splits[psmCols.get(PSM_File.PSMattr.spectrum_file)]);
         if (rankMatch.find()) {
             rank = Integer.parseInt(rankMatch.group(1));
@@ -177,20 +183,23 @@ public class PSM implements Comparable<PSM>{
         double newMZ = Double.parseDouble(newSplits[psmCols.get(PSM_File.PSMattr.calc_pep_mz)]);
 
         List<PSM> addedPSMs = new ArrayList<>();
+        float aveMassDiff = 0;
 
         // match against MS1, get intensity, rt duration and average mass
         Peak peakMatcher = new Peak();
         peakMatcher.matchMS1((float) newMZ, (float) newRT, 0, existingPSM.charge, 0);
         if (peakMatcher.quantifiedEntry123 == null) {
             newSplits[psmCols.get(PSM_File.PSMattr.intensity)] = String.valueOf(0);
-            addedPSMs.add(new PSM(String.join("\t", newSplits), psmCols, params, true, false, false, 0));
+            addedPSMs.add(new PSM(String.join("\t", newSplits), psmCols, params, true, false, false, aveMassDiff, 0));
             return addedPSMs;
         }
         // to find MS2
         List<Spectrum> ms2Candidates = MSMS.spectraSearcher(peakMatcher.quantifiedEntry123.rtStart, peakMatcher.quantifiedEntry123.rtEnd, (float) (newMZ-1), (float) (newMZ+1));
         // update intensity
         newSplits[psmCols.get(PSM_File.PSMattr.intensity)] = String.valueOf(peakMatcher.quantifiedEntry123.intensity);
-
+        // fill in averageMassDifference
+        aveMassDiff = rtAdjuster.getAverageMassDiff(existingPSM.glycan, newGlycan, existingPSM.averageMass, peakMatcher.averageMass, existingPSM.charge);
+        newSplits[psmCols.get(PSM_File.PSMattr.averageMassDiff)] = String.format("%.3f", aveMassDiff);
         // todo update spectra information if ms2 candidates found
 
         if (!ms2Candidates.isEmpty()) {
@@ -203,7 +212,7 @@ public class PSM implements Comparable<PSM>{
                 // update rt to real MS2 rt
                 newSplits[psmCols.get(PSM_File.PSMattr.RT)] = String.format("%.3f", ms2Candidates.get(i).rt*60);
                 // generate new PSM
-                PSM addedPSM = new PSM(String.join("\t", newSplits), psmCols, params, true, true, y1booleans.get(i), 0);
+                PSM addedPSM = new PSM(String.join("\t", newSplits), psmCols, params, true, true, y1booleans.get(i), aveMassDiff, 0);
                 addedPSM.updateRank(existingPSM.rank + rankCounter, psmCols);
                 addedPSMs.add(addedPSM);
             }
@@ -212,25 +221,10 @@ public class PSM implements Comparable<PSM>{
             // update rt to found apex rt
             newSplits[psmCols.get(PSM_File.PSMattr.RT)] = String.format("%.3f", newRT*60);
             // generate new PSM
-            PSM addedPSM = new PSM(String.join("\t", newSplits), psmCols, params, true, false, false, 0);
+            PSM addedPSM = new PSM(String.join("\t", newSplits), psmCols, params, true, false, false, aveMassDiff, 0);
             addedPSM.updateRank(existingPSM.rank + rankCounter, psmCols);
             addedPSMs.add(addedPSM);
         }
-
-
-        // Y1 matcher test
-
-//        List<Spectrum> testCandidate = MSMS.spectraSearcher(existingPSM.rt-40, existingPSM.rt+40, (float) (existingPSM.calcMz-1), (float) (existingPSM.calcMz+1));
-//        List<Spectrum> testY1 = new ArrayList<>();
-//        if (!testCandidate.isEmpty()) {
-//            testY1 = MSMS.y1Matcher(testCandidate, existingPSM, params);
-//        }
-        // construct the new PSM
-
-//        PSM addedPSM = new PSM(String.join("\t", newSplits), psmCols, params, true, !ms2Candidates.isEmpty(), !y1booleans.isEmpty(), 0);
-//        PSM addedPSM = new PSM(String.join("\t", existingPSM.splits), psmCols, params, true, !testCandidate.isEmpty(), !testY1.isEmpty(), 0);
-        // update rank
-//        addedPSM.updateRank(existingPSM.rank + rankCounter, psmCols);
         return addedPSMs;
     }
 
