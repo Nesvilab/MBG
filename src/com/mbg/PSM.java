@@ -42,7 +42,6 @@ public class PSM implements Comparable<PSM>{
 
     /**
      * Initialize a PSM object from a line of the psm.tsv table
-     * @param psmLine
      */
     public PSM(String psmLine, HashMap<PSM_File.PSMattr, Integer> psmCols, Params params, boolean isInferred, boolean hasMS2, boolean hasY1, float massDifference, int addCols) {
         splits = psmLine.split("\t");
@@ -92,7 +91,7 @@ public class PSM implements Comparable<PSM>{
 
         // parse glycan and scores
         String glycan = splits[psmCols.get(PSM_File.PSMattr.glycan)];
-        if (glycan.length() == 0) {
+        if (glycan.isEmpty()) {
             // non-glyco PSM
             this.glycan = null;
             return;

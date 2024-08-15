@@ -8,7 +8,6 @@ public class GlycoSite {
     ArrayList<PSM> psms;
     HashMap<String, ArrayList<PSM>> observedGlycans;
     String protein;
-    int siteIndex;
     String id;
     PSM basePSM;
     ArrayList<PSM> basePSMs;  // the most intense PSMs among multiple PSMs of this glycopeptide

@@ -52,7 +52,6 @@ public class MSMS {
      * @param maxRT
      * @param minMZ
      * @param maxMZ
-     * @return
      */
     public static List<Spectrum> spectraSearcher(double minRT, double maxRT, float minMZ, float maxMZ) {
         List<Spectrum> candidates;

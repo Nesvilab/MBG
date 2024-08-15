@@ -20,10 +20,15 @@ public final class Peak {
     }
 
     public void matchMS1(float mz, float rt, float im, int charge, int cv) {
+        quantifiedEntry123 = null;
+        Entry quantifiedEntry0 = api.quantXIC((float) (mz-1.002), rt, im, charge, cv);
         Entry quantifiedEntry1 = api.quantXIC(mz, rt, im, charge, cv);
         Entry quantifiedEntry2 = api.quantXIC((float) (mz+1.002), rt, im, charge, cv);
         Entry quantifiedEntry3 = api.quantXIC((float) (mz+2.004), rt, im, charge, cv);
-        quantifiedEntry123 = api.quantXIC123(mz, rt, im, charge, cv);
+        if (quantifiedEntry0 == null) {
+            // remove peaks if detect M-1 peak
+            quantifiedEntry123 = api.quantXIC123(mz, rt, im, charge, cv);
+        }
         if (quantifiedEntry1 == null || quantifiedEntry2 == null || quantifiedEntry3 == null) {
             averageMass = 0;
         } else {
