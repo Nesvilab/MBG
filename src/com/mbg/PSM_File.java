@@ -18,6 +18,7 @@ public class PSM_File {
         columnNames.put(PSMattr.RT, "Retention");
         columnNames.put(PSMattr.peptide, "Peptide");
         columnNames.put(PSMattr.protein, "Protein");
+        columnNames.put(PSMattr.IM, "Ion Mobility");
         columnNames.put(PSMattr.protein_start, "Protein Start");
         columnNames.put(PSMattr.assigned_mods, "Assigned Modifications");
         columnNames.put(PSMattr.glycan, "Total Glycan Composition");
@@ -32,6 +33,7 @@ public class PSM_File {
         columnNames.put(PSMattr.has_ms2_spec, "Has MS2 Spectrum?");
         columnNames.put(PSMattr.has_Y1, "Has Y1 ion?");
         columnNames.put(PSMattr.averageMassDiff, "averageMassDifference");
+        columnNames.put(PSMattr.ionMobilityDiff, "ionMobilityDifference");
         columnNames.put(PSMattr.spectrum_file, "Spectrum File");
         columnNames.put(PSMattr.intensity, "Intensity");
     }
@@ -45,12 +47,13 @@ public class PSM_File {
 
         // handle inserting new header(s) if needed
         if (PSMcolumns.getOrDefault(PSMattr.inferred_glycoform, -1) == -1) {
-            addCols = 3;
+            addCols = 5;
             ArrayList<String> newHeaders = new ArrayList<>(Arrays.asList(this.headers));
             newHeaders.add(PSMcolumns.get(PSMattr.glyco_q_val) + 1, columnNames.get(PSMattr.inferred_glycoform));
             newHeaders.add(PSMcolumns.get(PSMattr.glyco_q_val) + 1, columnNames.get(PSMattr.has_ms2_spec));
             newHeaders.add(PSMcolumns.get(PSMattr.glyco_q_val) + 1, columnNames.get(PSMattr.has_Y1));
             newHeaders.add(PSMcolumns.get(PSMattr.glyco_q_val) + 1, columnNames.get(PSMattr.averageMassDiff));
+            newHeaders.add(PSMcolumns.get(PSMattr.glyco_q_val) + 1, columnNames.get(PSMattr.ionMobilityDiff));
             headers = newHeaders.toArray(new String[0]);
             this.PSMcolumns = initPSMcolumns();
         } else {
@@ -139,6 +142,7 @@ public class PSM_File {
         glycan,
         assigned_mods,
         protein,
+        IM,
         protein_start,
         spectrum,
         mod_peptide,
@@ -152,6 +156,7 @@ public class PSM_File {
         has_ms2_spec,
         has_Y1,
         averageMassDiff,
+        ionMobilityDiff,
         intensity
     }
 

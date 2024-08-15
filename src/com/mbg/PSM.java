@@ -12,7 +12,9 @@ import java.util.regex.Pattern;
 public class PSM implements Comparable<PSM>{
 
     double rt;
+    double im;
     double apexRT;
+    double apexIM;
     float averageMass;
     int scanNum;
     String peptide;
@@ -31,6 +33,7 @@ public class PSM implements Comparable<PSM>{
     boolean hasMS2Spectrum;
     boolean hasY1Ion;
     float aveMassDiff;
+    float imDiff;
     int rank;
     double intensity;
     public String rawfile;
@@ -109,6 +112,91 @@ public class PSM implements Comparable<PSM>{
         // parse other needed PSM info
         peptide = splits[psmCols.get(PSM_File.PSMattr.peptide)];
         protein = splits[psmCols.get(PSM_File.PSMattr.protein)];
+        im = Double.parseDouble(splits[psmCols.get(PSM_File.PSMattr.IM)]);
+        rt = Double.parseDouble(splits[psmCols.get(PSM_File.PSMattr.RT)]);
+        int proteinStart = Integer.parseInt(splits[psmCols.get(PSM_File.PSMattr.protein_start)]);
+        String assignedMods = splits[psmCols.get(PSM_File.PSMattr.assigned_mods)];
+        peptideGlycositeIndex = getGlycoSiteIndex(assignedMods);
+        glycoSiteAA = peptide.charAt(peptideGlycositeIndex - 1);
+        proteinGlycositeIndex = proteinStart + peptideGlycositeIndex;
+        calcMass = Double.parseDouble(splits[psmCols.get(PSM_File.PSMattr.calc_pep_mass)]);
+        calcMz = Double.parseDouble(splits[psmCols.get(PSM_File.PSMattr.calc_pep_mz)]);
+        charge = Integer.parseInt(splits[psmCols.get(PSM_File.PSMattr.charge)]);
+        deltaMass = Double.parseDouble(splits[psmCols.get(PSM_File.PSMattr.delta_mass)]);
+        intensity = Double.parseDouble(splits[psmCols.get(PSM_File.PSMattr.intensity)]);
+    }
+
+    public PSM(String psmLine, HashMap<PSM_File.PSMattr, Integer> psmCols, Params params, boolean isInferred, boolean hasMS2, boolean hasY1, float massDifference, float imDifference, int addCols) {
+        splits = psmLine.split("\t");
+
+        // expand to hold new columns if needed
+        if (addCols > 0) {
+            int add = addCols;
+            ArrayList<String> newSplits = new ArrayList<>(Arrays.asList(splits));
+            while (add > 0) {
+                newSplits.add(psmCols.get(PSM_File.PSMattr.glyco_q_val) + 1, "");
+                add--;
+            }
+            splits = newSplits.toArray(new String[0]);
+            inferredGlycoform = isInferred;
+            hasMS2Spectrum = hasMS2;
+            hasY1Ion = hasY1;
+            aveMassDiff = massDifference;
+            imDiff = imDifference;
+        } else {
+            if (!isInferred) {
+                // if this is a re-analysis (i.e., not adding new columns) and this is not an inferred PSM from this analysis, read its inferred status from the previous result
+                inferredGlycoform = Boolean.parseBoolean(splits[psmCols.get(PSM_File.PSMattr.inferred_glycoform)]);
+                hasMS2Spectrum = Boolean.parseBoolean(splits[psmCols.get(PSM_File.PSMattr.has_ms2_spec)]);
+                hasY1Ion = Boolean.parseBoolean(splits[psmCols.get(PSM_File.PSMattr.has_Y1)]);
+                aveMassDiff = massDifference;
+                imDiff = imDifference;
+            } else {
+                inferredGlycoform = isInferred;
+                hasMS2Spectrum = hasMS2;
+                hasY1Ion = hasY1;
+                aveMassDiff = massDifference;
+                imDiff = imDifference;
+            }
+        }
+
+        // update new fields and information that is needed for all PSMs (including non-glyco)
+        splits[psmCols.get(PSM_File.PSMattr.inferred_glycoform)] = String.valueOf(inferredGlycoform);
+        splits[psmCols.get(PSM_File.PSMattr.has_ms2_spec)] = String.valueOf(hasMS2Spectrum);
+        splits[psmCols.get(PSM_File.PSMattr.has_Y1)] = String.valueOf(hasY1Ion);
+        splits[psmCols.get(PSM_File.PSMattr.averageMassDiff)] = String.valueOf(aveMassDiff);
+        splits[psmCols.get(PSM_File.PSMattr.ionMobilityDiff)] = String.valueOf(imDiff);
+        Matcher rankMatch = rankPattern.matcher(splits[psmCols.get(PSM_File.PSMattr.spectrum_file)]);
+        if (rankMatch.find()) {
+            rank = Integer.parseInt(rankMatch.group(1));
+        } else {
+            // no ranks provided, so need to make the base PSM rank 1 so added PSMs can be other ranks
+            updateRank(1, psmCols);
+        }
+        scanNum = getScanNum(psmCols);
+        rawfile = getRawfile(psmCols);
+
+        // parse glycan and scores
+        String glycan = splits[psmCols.get(PSM_File.PSMattr.glycan)];
+        if (glycan.isEmpty()) {
+            // non-glyco PSM
+            this.glycan = null;
+            return;
+        }
+        try {
+            glycoQval = Double.parseDouble(splits[psmCols.get(PSM_File.PSMattr.glyco_q_val)]);
+        } catch (NumberFormatException ex) {
+            glycoQval = 1;
+        }
+        if (glycoQval > params.maxGlycanQval) {
+            this.glycan = null;
+            return;
+        }
+        this.glycan = GlycanParser.parseGlycanString(glycan, params.glycanResidues);
+        // parse other needed PSM info
+        peptide = splits[psmCols.get(PSM_File.PSMattr.peptide)];
+        protein = splits[psmCols.get(PSM_File.PSMattr.protein)];
+        im = Double.parseDouble(splits[psmCols.get(PSM_File.PSMattr.IM)]);
         rt = Double.parseDouble(splits[psmCols.get(PSM_File.PSMattr.RT)]);
         int proteinStart = Integer.parseInt(splits[psmCols.get(PSM_File.PSMattr.protein_start)]);
         String assignedMods = splits[psmCols.get(PSM_File.PSMattr.assigned_mods)];
@@ -174,19 +262,20 @@ public class PSM implements Comparable<PSM>{
         newSplits[psmCols.get(PSM_File.PSMattr.calc_pep_mz)] = String.format("%.4f", existingPSM.calcMz + ((newGlycan.mass - existingPSM.glycan.mass) / (double) existingPSM.charge));
         newSplits[psmCols.get(PSM_File.PSMattr.delta_mass)] = String.format("%.4f", existingPSM.deltaMass - existingPSM.glycan.mass + newGlycan.mass);
 
-        // RT
-        // todo: compute some RT adjustment...
-
+        // adjust RT and IM
         newSplits[psmCols.get(PSM_File.PSMattr.RT)] = String.format("%.3f", rtAdjuster.getShiftedRT(existingPSM.glycan, newGlycan, existingPSM.apexRT*60));
+        newSplits[psmCols.get(PSM_File.PSMattr.IM)] = String.format("%.3f", rtAdjuster.getShiftedRT(existingPSM.glycan, newGlycan, existingPSM.apexIM));
         double newRT = rtAdjuster.getShiftedRT(existingPSM.glycan, newGlycan, existingPSM.apexRT);  // in minute
+        double newIM = rtAdjuster.getShiftedIM(existingPSM.glycan, newGlycan, existingPSM.apexIM);
         double newMZ = Double.parseDouble(newSplits[psmCols.get(PSM_File.PSMattr.calc_pep_mz)]);
 
         List<PSM> addedPSMs = new ArrayList<>();
         float aveMassDiff = 0;
+        float imDiff = 0;
 
         // match against MS1, get intensity, rt duration and average mass
         Peak peakMatcher = new Peak();
-        peakMatcher.matchMS1((float) newMZ, (float) newRT, 0, existingPSM.charge, 0);
+        peakMatcher.matchMS1((float) newMZ, (float) newRT, (float) newIM, existingPSM.charge, 0);
         if (peakMatcher.quantifiedEntry123 == null) {
             newSplits[psmCols.get(PSM_File.PSMattr.intensity)] = String.valueOf(0);
             addedPSMs.add(new PSM(String.join("\t", newSplits), psmCols, params, true, false, false, aveMassDiff, 0));
@@ -198,7 +287,9 @@ public class PSM implements Comparable<PSM>{
         newSplits[psmCols.get(PSM_File.PSMattr.intensity)] = String.valueOf(peakMatcher.quantifiedEntry123.intensity);
         // fill in averageMassDifference
         aveMassDiff = rtAdjuster.getAverageMassDiff(existingPSM.glycan, newGlycan, existingPSM.averageMass, peakMatcher.averageMass, existingPSM.charge);
+        imDiff = (float) (peakMatcher.quantifiedEntry123.apexIm - existingPSM.apexIM);
         newSplits[psmCols.get(PSM_File.PSMattr.averageMassDiff)] = String.format("%.3f", aveMassDiff);
+        newSplits[psmCols.get(PSM_File.PSMattr.ionMobilityDiff)] = String.format("%.3f", imDiff);
         // todo update spectra information if ms2 candidates found
 
         if (!ms2Candidates.isEmpty()) {
@@ -208,7 +299,7 @@ public class PSM implements Comparable<PSM>{
             for (int i = 0; i < ms2Candidates.size(); i++) {
                 newSplits[psmCols.get(PSM_File.PSMattr.spectrum)] = String.join(".", new String[]{existingPSM.rawfile, String.valueOf(ms2Candidates.get(i).scanNum),
                         String.valueOf(ms2Candidates.get(i).scanNum), String.valueOf(ms2Candidates.get(i).charge)});
-                // update rt to real MS2 rt
+                // update rt,im to real MS2 rt
                 newSplits[psmCols.get(PSM_File.PSMattr.RT)] = String.format("%.3f", ms2Candidates.get(i).rt*60);
                 // generate new PSM
                 PSM addedPSM = new PSM(String.join("\t", newSplits), psmCols, params, true, true, y1booleans.get(i), aveMassDiff, 0);
@@ -217,7 +308,7 @@ public class PSM implements Comparable<PSM>{
             }
 
         } else {
-            // update rt to found apex rt
+            // update rt,im to found apex rt
             newSplits[psmCols.get(PSM_File.PSMattr.RT)] = String.format("%.3f", newRT*60);
             // generate new PSM
             PSM addedPSM = new PSM(String.join("\t", newSplits), psmCols, params, true, false, false, aveMassDiff, 0);

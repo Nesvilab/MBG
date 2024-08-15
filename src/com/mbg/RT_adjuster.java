@@ -8,10 +8,14 @@ import java.util.*;
 public class RT_adjuster {
     static HashMap<String, HashMap<String, List<Float>>> allShiftedRTs;
     static HashMap<String, HashMap<String, Float>> shiftedRTs;
+    static HashMap<String, HashMap<String, List<Float>>> allShiftedIMs;
+    static HashMap<String, HashMap<String, Float>> shiftedIMs;
 
     public RT_adjuster(HashMap<String, GlycoSite> observedGlycoSites) {
         allShiftedRTs = new HashMap<>();
         shiftedRTs = new HashMap<>();
+        allShiftedIMs = new HashMap<>();
+        shiftedIMs = new HashMap<>();
         matchMS1forPSMs(observedGlycoSites);
         calculateMedians();
     }
@@ -21,6 +25,7 @@ public class RT_adjuster {
         for (Map.Entry<String, GlycoSite> siteEntry : observedGlycoSites.entrySet()) {
             GlycoSite site = siteEntry.getValue();
             HashMap<Glycan, Float> glycanRTs = new HashMap<>();
+            HashMap<Glycan, Float> glycanIMs = new HashMap<>();
             for (Map.Entry<String, ArrayList<PSM>> glycanEntry: site.observedGlycans.entrySet()) {
                 ArrayList<PSM> glycan_psm = glycanEntry.getValue();
                 Glycan cGlycan = glycan_psm.get(0).glycan;
@@ -32,6 +37,7 @@ public class RT_adjuster {
                     peakMatcher.matchMS1((float) psm.calcMz, (float) psm.rt / 60, 0, psm.charge, 0);
                     if (peakMatcher.quantifiedEntry123 != null) {
                         psm.apexRT = peakMatcher.quantifiedEntry123.apexRt;
+                        psm.apexIM = peakMatcher.quantifiedEntry123.apexIm;
                         psm.averageMass = peakMatcher.averageMass;
                         psm.intensity = peakMatcher.quantifiedEntry123.intensity;
                         if (psm.intensity > topIntensity) {
@@ -43,15 +49,17 @@ public class RT_adjuster {
                 }
                 if (topApexRT > 0) {
                     glycanRTs.put(cGlycan, topApexRT);
+                    glycanIMs.put(cGlycan, (float) topPSM.apexIM);
                     site.basePSMs.add(topPSM);
                 }
             }
             // storage into RT adjuster for calculating RT median shift
-            collectShiftedRT(glycanRTs);
+            collectShiftedRtIm(glycanRTs, "RT");
+            collectShiftedRtIm(glycanIMs, "IM");
         }
     }
 
-    private static void collectShiftedRT(HashMap<Glycan, Float> glycanRTs) {
+    private static void collectShiftedRtIm(HashMap<Glycan, Float> glycanRTs, String mode) {
         // iterate
         for (Map.Entry<Glycan, Float> rtShiftEntry1: glycanRTs.entrySet()) {
             Glycan glycan1 = rtShiftEntry1.getKey();
@@ -77,18 +85,24 @@ public class RT_adjuster {
                     }
                 }
                 if (ifAdd && totalDiff > 0) {
-                    putData(glycan1.toString(), glycan2.toString(), shifedRT2-shifedRT1);
+                    putData(glycan1.toString(), glycan2.toString(), shifedRT2-shifedRT1, mode);
                 }
             }
         }
     }
 
-    private static void putData(String outerKey, String innerKey, Float value) {
-        // Check if the outer key exists, if not create a new HashMap
-        allShiftedRTs.computeIfAbsent(outerKey, k -> new HashMap<>());
+    private static void putData(String outerKey, String innerKey, Float value, String mode) {
+        HashMap<String, List<Float>> innerMap;
+        if (Objects.equals(mode, "RT")) {
+            // Check if the outer key exists, if not create a new HashMap
+            allShiftedRTs.computeIfAbsent(outerKey, k -> new HashMap<>());
 
-        // Get the inner HashMap for the outer key
-        HashMap<String, List<Float>> innerMap = allShiftedRTs.get(outerKey);
+            // Get the inner HashMap for the outer key
+            innerMap = allShiftedRTs.get(outerKey);
+        } else {
+            allShiftedIMs.computeIfAbsent(outerKey, k -> new HashMap<>());
+            innerMap = allShiftedIMs.get(outerKey);
+        }
 
         // Check if the inner key exists, if not create a new List<Float>
         innerMap.computeIfAbsent(innerKey, k -> new ArrayList<>());
@@ -99,6 +113,7 @@ public class RT_adjuster {
     }
 
     public static void calculateMedians() {
+        // calculate RT median shifts
         for (String player : allShiftedRTs.keySet()) {
             HashMap<String, List<Float>> innerMap = allShiftedRTs.get(player);
             HashMap<String, Float> playerMedians = new HashMap<>();
@@ -108,8 +123,18 @@ public class RT_adjuster {
                 Float median = calculateMedian(scores);
                 playerMedians.put(game, median);
             }
-
             shiftedRTs.put(player, playerMedians);
+        }
+        for (String player : allShiftedIMs.keySet()) {
+            HashMap<String, List<Float>> innerMap = allShiftedIMs.get(player);
+            HashMap<String, Float> playerMedians = new HashMap<>();
+
+            for (String game : innerMap.keySet()) {
+                List<Float> scores = innerMap.get(game);
+                Float median = calculateMedian(scores);
+                playerMedians.put(game, median);
+            }
+            shiftedIMs.put(player, playerMedians);
         }
     }
 
@@ -146,8 +171,25 @@ public class RT_adjuster {
         return (Float) (float) (oldRT + shiftedRT);
     }
 
+    Float getShiftedIM(Glycan oldGlycan, Glycan newGlycan, double oldIM) {
+        Float shiftedIM;
+        if (oldGlycan.mass < newGlycan.mass) {
+            if (shiftedIMs.containsKey(oldGlycan.toString()) && shiftedIMs.get(oldGlycan.toString()).containsKey(newGlycan.toString())) {
+                shiftedIM = shiftedIMs.get(oldGlycan.toString()).get(newGlycan.toString());
+            } else {
+                shiftedIM = (float) 0;
+            }
+        } else {
+            if (shiftedIMs.containsKey(oldGlycan.toString()) && shiftedIMs.get(oldGlycan.toString()).containsKey(newGlycan.toString())) {
+                shiftedIM = -shiftedIMs.get(oldGlycan.toString()).get(newGlycan.toString());
+            } else {
+                shiftedIM = (float) 0;
+            }
+        }
+        return (Float) (float) (oldIM + shiftedIM);
+    }
+
     Float getAverageMassDiff(Glycan oldGlycan, Glycan newGlycan, float oldAveMass, float newAveMass, int charge) {
         return (float) (((newGlycan.mass - oldGlycan.mass) - (newAveMass - oldAveMass) * charge)) ;
     }
-
 }

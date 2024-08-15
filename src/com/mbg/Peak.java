@@ -15,7 +15,7 @@ public final class Peak {
     }
 
     public static void indexBuilder(String path) {
-        api = new IonQuantAPI(path, 11, 5, 0.4f, 0.05f, 2, 3, true);
+        api = new IonQuantAPI(path, 11, 5, 0.4f, 0.05f, 2, 3, false);
         api.buildIndex();
     }
 
@@ -48,16 +48,24 @@ public final class Peak {
         String[] extensions = {".mzML", ".raw", ".d"};
 
         // Iterate through files in the directory
-        for (File file : Objects.requireNonNull(directory.listFiles())) {
-            if (file.isFile() && file.getName().startsWith(filePrefix)) {
-                // Check for each extension in priority order
-                for (String extension : extensions) {
+        for (String extension : extensions) {
+            for (File file : Objects.requireNonNull(directory.listFiles())) {
+                String fileNameWithoutExtension = file.getName();
+                int lastIndexOfDot = fileNameWithoutExtension.lastIndexOf('.');
+                if (lastIndexOfDot != -1) {
+                    fileNameWithoutExtension = fileNameWithoutExtension.substring(0, lastIndexOfDot);
+                } else {
+                    continue;
+                }
+                if (fileNameWithoutExtension.equals(filePrefix)) {
+                    // Check for each extension in priority order
                     if (file.getName().endsWith(extension)) {
                         return file.getAbsolutePath(); // Return the first match
                     }
                 }
             }
         }
+
 
         return null; // No file found with the specified criteria
     }
