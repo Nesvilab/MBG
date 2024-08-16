@@ -1,10 +1,8 @@
 package com.mbg;
 
-import edu.umich.andykong.ptmshepherd.PTMShepherd;
 import umich.ms.glyco.*;
 
 import java.io.BufferedReader;
-import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -26,6 +24,8 @@ public class Params {
     public int minGlycans = 2;
     private static final String defaultResiduePath = "glycan_residues.txt";
     private static Path defaultPTMSconfPath;
+    public static double imTol;
+    public static boolean noPASEF = true;
     public Integer threads;
     public Path psmPath;
     public Path glycanDBpath;

@@ -1,7 +1,11 @@
 package com.mbg;
 
+import java.io.File;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.*;
 
+import umich.ms.fileio.filetypes.mzbin.MZBINFile;
 import umich.ms.glyco.Glycan;
 import umich.ms.glyco.GlycanResidue;
 
@@ -57,11 +61,23 @@ public class GlycanMatching {
     public ArrayList<PSM> fillInGlycoSites(String rawFileName, String msFilePath) throws Exception {
         ArrayList<PSM> newPSMs = new ArrayList<>();
         GlycanResidue mod_nh3 = params.glycanResidues.get("NH4");
-        GlycanResidue neuAc = params.glycanResidues.get("NeuAc");  // for generating decoys
+        GlycanResidue neuAc = params.glycanResidues.get("NeuGc");  // for generating decoys
 
         // read msFile
         MSMS ms2 = new MSMS(rawFileName, msFilePath);
         ms2.msFileReader();
+        // if PASEF data, get im for each MS2
+        Params.noPASEF = false;
+        if (!Params.noPASEF) {
+            Path mzBinPath = Paths.get(msFilePath);
+            mzBinPath = mzBinPath.resolve(rawFileName+".mzBIN");
+            File mzBinFile = mzBinPath.toFile();
+            if (!mzBinFile.exists()) {
+                System.out.printf("No mzBIN file found for %s\n", rawFileName);
+                System.exit(-1);
+            }
+            MSMS.getMS2IMs(mzBinFile, 7);
+        }
         // find file for IonQuant
         String foundFile = findFirstPriorityFile(msFilePath, rawFileName);
         if (foundFile != null) {
@@ -79,7 +95,7 @@ public class GlycanMatching {
             if (site.psms.size() >= params.minPSMs && site.observedGlycans.size() >= params.minGlycans) {
                 for (PSM base_PSM : site.basePSMs) {
                     int rankCounter = 1;
-                    if (base_PSM.scanNum == 8992 || base_PSM.scanNum==9063) {
+                    if (base_PSM.scanNum == 38812 || base_PSM.scanNum==9063) {
                         out.print("Usage:\n");
                     }
                     ArrayList<Glycan> dummy_glycans = PSM.getDummyGlycans(base_PSM, params.toAddResidues);
@@ -94,7 +110,7 @@ public class GlycanMatching {
                         }
 
                         // glycan not observed. Make a PSM for it
-                        List<PSM> addedPSMs = PSM.makeDummyPSM(base_PSM, new_glycan, psmFile.PSMcolumns, params, rankCounter, cRT_adjuster);
+                        List<PSM> addedPSMs = PSM.makeDummyPSM(base_PSM, new_glycan, psmFile.PSMcolumns, params, rankCounter, cRT_adjuster, false);
                         newPSMs.addAll(addedPSMs);
                         // update observed glycans
                         site.observedGlycans.put(new_glycan.toString(), new ArrayList<>());
@@ -104,15 +120,15 @@ public class GlycanMatching {
                 }
                 // make NH3 glycan
                 int rankCounter = 1;
-                for (PSM base_psm : site.basePSMs) {
-                    Glycan new_glycan = PSM.addResidual(base_psm.glycan, mod_nh3);
-                    List<PSM> addedPSMs = PSM.makeDummyPSM(base_psm, new_glycan, psmFile.PSMcolumns, params, rankCounter, cRT_adjuster);
-                    newPSMs.addAll(addedPSMs);
-                }
+//                for (PSM base_psm : site.basePSMs) {
+//                    Glycan new_glycan = PSM.addResidual(base_psm.glycan, mod_nh3);
+//                    List<PSM> addedPSMs = PSM.makeDummyPSM(base_psm, new_glycan, psmFile.PSMcolumns, params, rankCounter, cRT_adjuster);
+//                    newPSMs.addAll(addedPSMs);
+//                }
                 // generate decoy for every psm
                 for (PSM base_psm : site.basePSMs) {
                     Glycan new_glycan = PSM.addResidual(base_psm.glycan, neuAc);
-                    List<PSM> addedPSMs = PSM.makeDummyPSM(base_psm, new_glycan, psmFile.PSMcolumns, params, rankCounter, cRT_adjuster);
+                    List<PSM> addedPSMs = PSM.makeDummyPSM(base_psm, new_glycan, psmFile.PSMcolumns, params, rankCounter, cRT_adjuster, true);
                     newPSMs.addAll(addedPSMs);
                 }
             }

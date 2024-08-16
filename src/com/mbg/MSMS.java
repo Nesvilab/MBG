@@ -1,8 +1,17 @@
 package com.mbg;
 
+import com.google.common.base.Joiner;
 import edu.umich.andykong.ptmshepherd.PSMFile;
+import edu.umich.andykong.ptmshepherd.PTMShepherd;
 import edu.umich.andykong.ptmshepherd.core.MXMLReader;
 import edu.umich.andykong.ptmshepherd.core.Spectrum;
+import umich.ms.fileio.filetypes.bruker.BrukerTdfFile;
+import umich.ms.fileio.filetypes.bruker.BrukerTdfFileBase;
+import umich.ms.fileio.filetypes.bruker.FrameInfo;
+import umich.ms.fileio.filetypes.bruker.Peaklist2D;
+import umich.ms.fileio.filetypes.bruker.dao.Frame;
+import umich.ms.fileio.filetypes.mzbin.MZBINFile;
+
 
 import java.io.File;
 import java.nio.file.Path;
@@ -15,6 +24,7 @@ public class MSMS {
     public static MXMLReader mReader;
     public String rawFileName;
     public File msDir;
+    public static HashMap<Integer, Double> ms2IMs;
 
     /**
      * @param runName
@@ -61,6 +71,22 @@ public class MSMS {
                 .collect(Collectors.toList());
         return candidates;
     }
+
+    public static List<Spectrum> spectraSearcher(double minRT, double maxRT, float minMZ, float maxMZ, float minIM, float maxIM) {
+        List<Spectrum> candidates;
+        Set<Integer> qualifiedScanNumber = MSMS.ms2IMs.entrySet().stream()
+                .filter(entry -> entry.getValue() >= minIM && entry.getValue() <= maxIM)
+                .map(Map.Entry::getKey)
+                .collect(Collectors.toSet());
+
+        candidates = Arrays.stream(mReader.specs)
+                .filter(c -> c.rt >= minRT && c.rt <= maxRT)
+                .filter(c -> c.precursorMass >= minMZ && c.precursorMass <= maxMZ)
+                .filter(c -> qualifiedScanNumber.contains(c.scanNum))
+                .collect(Collectors.toList());
+        return candidates;
+    }
+
     public static List<Boolean> y1Matcher(List<Spectrum> qualifiedSpectra, PSM basepsm, Params params) {
         List<Boolean> hasY1 = new ArrayList<>();
         // match Y1 ion
@@ -76,11 +102,81 @@ public class MSMS {
         return hasY1;
     }
 
+    public static void getMS2IMs(File pathDir, int nThreads) throws Exception {
+        ms2IMs = new HashMap<>();
+        MZBINFile mzbinSource = new MZBINFile(nThreads, pathDir, true);
+        for (MZBINFile.MZBINSpectrum spec: mzbinSource.specs) {
+            ms2IMs.put(spec.scanNum, (double) spec.precursorIM);
+        }
+
+//        try {
+//            BrukerTdfFileBase brukerTdfFileBase = new BrukerTdfFileBase(pathDir, BrukerTdfFileBase.MS2_REPORTING.EACH_PASEF_WINDOW_AS_SEPARATE_SCAN, 1); // Single thread seems to be faster than multi threads.) {
+//            List<FrameInfo> frameInfoList = brukerTdfFileBase.readFrameInfos();
+//            brukerTdfFileBase.close();
+//            int scanMode = getScanMode(frameInfoList);
+//
+//            int scanNum = 0;
+//            for (final List<FrameInfo> frameInfoListChunk: com.google.common.collect.Lists.partition(frameInfoList, 512)){
+//                for (FrameInfo frameInfo : frameInfoListChunk) {
+//
+//                    if (frameInfo.getScanMode() != scanMode) {
+//                        continue;
+//                    }
+//                    Frame frame = brukerTdfFile.readFrameInfoRaw(frameInfo.getFrameId());
+//                    int scanBegin = 0;
+//                    int scanEnd = frame.getNumScans();
+//                    int N = scanEnd - scanBegin;
+//                    double[] scanNums = new double[N];
+//                    for(int i = scanBegin; i < scanEnd; ++i) {
+//                        scanNums[i - scanBegin] = (double)i;
+//                    }
+//                    double[] ims = brukerTdfFile.convertImScanNumTo1k0(frameInfo.getFrameId(), scanNums);
+//                    Peaklist2D spectrum = brukerTdfFile.readFrameRaw(frameInfo.getFrameId());
+//                    System.out.println("1");
+//
+//                }
+//
+//            }
+//            brukerTdfFile.close();
+//        } catch (Exception e) {
+//            System.exit(1);
+//        }
+    }
+
+    public static int getScanMode(List<FrameInfo> frameInfoList) { // 0 = MS, 1 = AutoMSMS, 2 = MRM, 3 = in-source CID, 4 = broadband CID, 8 = PASEF, 9 = DIA, 10 = PRM, 20 = MALDI
+        Set<Integer> scanModes = new HashSet<>();
+        for (FrameInfo frameInfo : frameInfoList) {
+            scanModes.add(frameInfo.getScanMode());
+        }
+
+        if (scanModes.size() == 1) {
+            return scanModes.iterator().next();
+        } else if (scanModes.size() > 1) {
+            if (scanModes.contains(8) && !scanModes.contains(10)) {
+                System.out.println("There are multiple scan modes: " + Joiner.on(",").join(scanModes) + ". Will only use the scans with mode 8 (PASEF).");
+                return 8;
+            } else if (!scanModes.contains(8) && scanModes.contains(10)) {
+                System.out.println("There are multiple scan modes: " + Joiner.on(",").join(scanModes) + ". Will only use the scans with mode 10 (PRM).");
+                return 10;
+            } else if (scanModes.contains(8) && scanModes.contains(10)) {
+                System.out.println("There are multiple scan modes: " + Joiner.on(",").join(scanModes) + ". MSFragger cannot process the data with both 8 (PASEF) and 10 (PRM).");
+                System.exit(1);
+            } else {
+                System.out.println("There are multiple scan modes: " + Joiner.on(",").join(scanModes) + ". None of them is 8 (PASEF) or 10 (PRM).");
+                System.exit(1);
+            }
+        }
+
+        return -1;
+    }
+
 
     public static void main(String [] args) throws Exception {
-        MXMLReader mr = new MXMLReader(new File("Z:\\jishen\\MBG\\data\\cwq_mix2-1_726_calibrated.mzML"), 7);
-        mr.readFully();
-        for(int i = 0; i < mr.specs.length; i++)
-        	System.out.println(mr.specs[i].scanName);
+//        MXMLReader mr = new MXMLReader(new File("Z:\\jishen\\MBG\\data\\cwq_mix2-1_726_calibrated.mzML"), 7);
+//        mr.readFully();
+//        for(int i = 0; i < mr.specs.length; i++)
+//        	System.out.println(mr.specs[i].scanName);
+        String dfile = "Z:\\dpolasky\\data\\glyco\\MBG\\20230728_TIMSTOF_UM6_5858593_SA_EXT00_newdigest_H2_T1_GB12_1_1450.d";
+        getMS2IMs(new File(dfile), 1);
     }
 }

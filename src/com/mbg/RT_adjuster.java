@@ -34,7 +34,7 @@ public class RT_adjuster {
                 float topIntensity = 0;
                 PSM topPSM = null;
                 for (PSM psm : glycan_psm) {
-                    peakMatcher.matchMS1((float) psm.calcMz, (float) psm.rt / 60, 0, psm.charge, 0);
+                    peakMatcher.matchMS1((float) psm.calcMz, (float) psm.rt / 60, (float) psm.im, psm.charge, 0);
                     if (peakMatcher.quantifiedEntry123 != null) {
                         psm.apexRT = peakMatcher.quantifiedEntry123.apexRt;
                         psm.apexIM = peakMatcher.quantifiedEntry123.apexIm;
@@ -68,14 +68,14 @@ public class RT_adjuster {
                 Glycan glycan2 = rtShiftEntry2.getKey();
                 Float shifedRT2 = rtShiftEntry2.getValue();
                 // monosaccharide difference
-                Iterator<Map.Entry<GlycanResidue, Integer>> var2 = glycan1.composition.entrySet().iterator();
+                Iterator<Map.Entry<GlycanResidue, Integer>> var2 = glycan2.composition.entrySet().iterator();
                 boolean ifAdd = true;
                 Integer totalDiff = 0;
                 while (var2.hasNext()) {
                     Map.Entry<GlycanResidue, Integer> compEntry = var2.next();
                     GlycanResidue residueName = compEntry.getKey();
-                    Integer count = compEntry.getValue();
-                    Integer count2 = glycan2.composition.getOrDefault(residueName, 0);
+                    Integer count = glycan1.composition.getOrDefault(residueName, 0);
+                    Integer count2 = compEntry.getValue();
                     if (count2 < count) {
                         ifAdd = false;
                     }
