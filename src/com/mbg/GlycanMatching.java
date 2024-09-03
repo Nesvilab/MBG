@@ -67,7 +67,6 @@ public class GlycanMatching {
         MSMS ms2 = new MSMS(rawFileName, msFilePath);
         ms2.msFileReader();
         // if PASEF data, get im for each MS2
-        Params.noPASEF = false;
         if (!Params.noPASEF) {
             Path mzBinPath = Paths.get(msFilePath);
             mzBinPath = mzBinPath.resolve(rawFileName+".mzBIN");
@@ -89,13 +88,15 @@ public class GlycanMatching {
         }
         // get apex rt for each psm and generate internal median RT shift database; get base PSMs
         RT_adjuster cRT_adjuster = new RT_adjuster(this.observedGlycoSites);
+        // init decoys and targets
+        Scoring.init();
 
         for (Map.Entry<String, GlycoSite> siteEntry: observedGlycoSites.entrySet()) {
             GlycoSite site = siteEntry.getValue();
             if (site.psms.size() >= params.minPSMs && site.observedGlycans.size() >= params.minGlycans) {
                 for (PSM base_PSM : site.basePSMs) {
                     int rankCounter = 1;
-                    if (base_PSM.scanNum == 38812 || base_PSM.scanNum==9063) {
+                    if (base_PSM.scanNum == 924 || base_PSM.scanNum==9063) {
                         out.print("Usage:\n");
                     }
                     ArrayList<Glycan> dummy_glycans = PSM.getDummyGlycans(base_PSM, params.toAddResidues);
@@ -111,6 +112,9 @@ public class GlycanMatching {
 
                         // glycan not observed. Make a PSM for it
                         List<PSM> addedPSMs = PSM.makeDummyPSM(base_PSM, new_glycan, psmFile.PSMcolumns, params, rankCounter, cRT_adjuster, false);
+                        // decoy, not add into newPSMs
+                        PSM.makeDummyPSM(base_PSM, new_glycan, psmFile.PSMcolumns, params, rankCounter, cRT_adjuster, true);
+
                         newPSMs.addAll(addedPSMs);
                         // update observed glycans
                         site.observedGlycans.put(new_glycan.toString(), new ArrayList<>());
@@ -126,13 +130,29 @@ public class GlycanMatching {
 //                    newPSMs.addAll(addedPSMs);
 //                }
                 // generate decoy for every psm
-                for (PSM base_psm : site.basePSMs) {
-                    Glycan new_glycan = PSM.addResidual(base_psm.glycan, neuAc);
-                    List<PSM> addedPSMs = PSM.makeDummyPSM(base_psm, new_glycan, psmFile.PSMcolumns, params, rankCounter, cRT_adjuster, true);
-                    newPSMs.addAll(addedPSMs);
+//                for (PSM base_psm : site.basePSMs) {
+//                    Glycan new_glycan = PSM.addResidual(base_psm.glycan, neuAc);
+//                    List<PSM> addedPSMs = PSM.makeDummyPSM(base_psm, new_glycan, psmFile.PSMcolumns, params, rankCounter, cRT_adjuster, true);
+//                    newPSMs.addAll(addedPSMs);
+//                }
+            }
+        }
+        // get threshold score and coefficient of score function
+        Scoring.getCutOffScore();
+        // get qualified PSMs
+        ArrayList<PSM> qualifiedPSMs = new ArrayList<>();
+        for (PSM p: newPSMs) {
+            if (p.intensity <0.01) {
+                continue;  // remove unmatched PSMs
+            }
+            if (p.hasY1Ion) {  // if detected Y1 ion
+                qualifiedPSMs.add(p);
+            } else {
+                if (Scoring.overThreshold(p)) {
+                    qualifiedPSMs.add(p);
                 }
             }
         }
-        return newPSMs;
+        return qualifiedPSMs;
     }
 }

@@ -31,9 +31,10 @@ public class PSM implements Comparable<PSM>{
     double deltaMass;
     boolean inferredGlycoform;
     boolean hasMS2Spectrum;
-    boolean hasY1Ion;
+    public boolean hasY1Ion;
     float aveMassDiff;
     float imDiff;
+    float rtDiff;
     int rank;
     double intensity;
     public String rawfile;
@@ -112,7 +113,9 @@ public class PSM implements Comparable<PSM>{
         // parse other needed PSM info
         peptide = splits[psmCols.get(PSM_File.PSMattr.peptide)];
         protein = splits[psmCols.get(PSM_File.PSMattr.protein)];
-        im = Double.parseDouble(splits[psmCols.get(PSM_File.PSMattr.IM)]);
+        if (!Params.noPASEF) {
+            im = Double.parseDouble(splits[psmCols.get(PSM_File.PSMattr.IM)]);
+        }
         rt = Double.parseDouble(splits[psmCols.get(PSM_File.PSMattr.RT)]);
         int proteinStart = Integer.parseInt(splits[psmCols.get(PSM_File.PSMattr.protein_start)]);
         String assignedMods = splits[psmCols.get(PSM_File.PSMattr.assigned_mods)];
@@ -267,7 +270,9 @@ public class PSM implements Comparable<PSM>{
 
         // adjust RT and IM
         newSplits[psmCols.get(PSM_File.PSMattr.RT)] = String.format("%.3f", rtAdjuster.getShiftedRT(existingPSM.glycan, newGlycan, existingPSM.apexRT*60));
-        newSplits[psmCols.get(PSM_File.PSMattr.IM)] = String.format("%.3f", rtAdjuster.getShiftedIM(existingPSM.glycan, newGlycan, existingPSM.apexIM));
+        if (!Params.noPASEF) {
+            newSplits[psmCols.get(PSM_File.PSMattr.IM)] = String.format("%.3f", rtAdjuster.getShiftedIM(existingPSM.glycan, newGlycan, existingPSM.apexIM));
+        }
         double newRT = rtAdjuster.getShiftedRT(existingPSM.glycan, newGlycan, existingPSM.apexRT);  // in minute
         double newIM = rtAdjuster.getShiftedIM(existingPSM.glycan, newGlycan, existingPSM.apexIM);
         double newMZ = Double.parseDouble(newSplits[psmCols.get(PSM_File.PSMattr.calc_pep_mz)]);
@@ -294,12 +299,26 @@ public class PSM implements Comparable<PSM>{
         }
         // update intensity
         newSplits[psmCols.get(PSM_File.PSMattr.intensity)] = String.valueOf(peakMatcher.quantifiedEntry123.intensity);
-        // fill in averageMassDifference
+        // fill in averageMassDifference, RT and IM difference
         aveMassDiff = rtAdjuster.getAverageMassDiff(existingPSM.glycan, newGlycan, existingPSM.averageMass, peakMatcher.averageMass, existingPSM.charge);
         rtDiff = java.lang.Math.abs((float) (peakMatcher.quantifiedEntry123.apexRt - newRT));
         imDiff = java.lang.Math.abs((float) (peakMatcher.quantifiedEntry123.apexIm - newIM));
         newSplits[psmCols.get(PSM_File.PSMattr.averageMassDiff)] = String.format("%.3f", rtDiff);
         newSplits[psmCols.get(PSM_File.PSMattr.ionMobilityDiff)] = String.format("%.3f", imDiff);
+        // add intensity, rtDiff, imDiff to decoys or targets for scoring
+        if (!Params.noPASEF) {
+            if (ifdecoy) {
+                Scoring.decoyData.add(new double[] {(double) peakMatcher.quantifiedEntry123.intensity, (double) rtDiff, (double) imDiff});
+            } else {
+                Scoring.targetData.add(new double[] {(double) peakMatcher.quantifiedEntry123.intensity, (double) rtDiff, (double) imDiff});
+            }
+        } else {
+            if (ifdecoy) {
+                Scoring.decoyData.add(new double[] {(double) peakMatcher.quantifiedEntry123.intensity, (double) rtDiff});
+            } else {
+                Scoring.targetData.add(new double[] {(double) peakMatcher.quantifiedEntry123.intensity, (double) rtDiff});
+            }
+        }
         // todo update spectra information if ms2 candidates found
 
         if (!ms2Candidates.isEmpty()) {

@@ -22,10 +22,13 @@ public class Params {
     public double maxGlycanQval = 0.01;
     public int minPSMs = 5;
     public int minGlycans = 2;
+    public static float rtTol = 0.4F;
+    public static float imTol = 0.05F;
+    public static float fdr = 0.01F;
+    public static int mztol = 5;
     private static final String defaultResiduePath = "glycan_residues.txt";
     private static Path defaultPTMSconfPath;
-    public static double imTol;
-    public static boolean noPASEF = true;
+    public static boolean noPASEF = false;
     public Integer threads;
     public Path psmPath;
     public Path glycanDBpath;
@@ -79,6 +82,38 @@ public class Params {
                         minGlycans = Integer.parseInt(args[i + 1].trim());
                     } catch (NumberFormatException ex) {
                         out.printf("Error parsing min Glycans argument %s: not a number", args[i + 1]);
+                        System.exit(1);
+                    }
+                    break;
+                case "--rttol":
+                    try {
+                        rtTol = Float.parseFloat(args[i + 1].trim());
+                    } catch (NumberFormatException ex) {
+                        out.printf("Error parsing rt tolerance argument %s: not a number", args[i + 1]);
+                        System.exit(1);
+                    }
+                    break;
+                case "--imtol":
+                    try {
+                        imTol = Float.parseFloat(args[i + 1].trim());
+                    } catch (NumberFormatException ex) {
+                        out.printf("Error parsing im tolerance argument %s: not a number", args[i + 1]);
+                        System.exit(1);
+                    }
+                    break;
+                case "--fdr":
+                    try {
+                        fdr = Float.parseFloat(args[i + 1].trim());
+                    } catch (NumberFormatException ex) {
+                        out.printf("Error parsing fdr argument %s: not a number", args[i + 1]);
+                        System.exit(1);
+                    }
+                    break;
+                case "--nopasef":
+                    try {
+                        noPASEF = Boolean.parseBoolean(args[i + 1].trim());
+                    } catch (Exception e) {
+                        out.printf("Error parsing pasef argument %s: neither true nor false", args[i + 1]);
                         System.exit(1);
                     }
                     break;
