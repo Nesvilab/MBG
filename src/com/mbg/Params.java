@@ -27,6 +27,7 @@ public class Params {
     public static float fdr = 0.01F;
     public static int mztol = 5;
     private static final String defaultResiduePath = "glycan_residues.txt";
+    private static final String defaultModPath = "glycan_mods.txt";
     private static Path defaultPTMSconfPath;
     public static boolean noPASEF = false;
     public Integer threads;
@@ -142,7 +143,7 @@ public class Params {
             glycanResidues = GlycanParser.parseGlycoResiduesDB(residueDBpath.toString());
         }
         if (glycanModPath == null) {
-            glycanMods = GlycanParser.parseGlycoModsDBStream(Params.class.getResourceAsStream(defaultResiduePath), glycanResidues.size(), glycanResidues);
+            glycanMods = GlycanParser.parseGlycoModsDBStream(Params.class.getResourceAsStream(defaultModPath), glycanResidues.size(), glycanResidues);
         } else {
             glycanMods = GlycanParser.parseGlycoModsDB(glycanModPath.toString(), glycanResidues.size(), glycanResidues);
         }
