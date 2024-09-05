@@ -5,6 +5,7 @@ import umich.ms.glyco.*;
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
+import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -32,7 +33,6 @@ public class Params {
     public static boolean noPASEF = false;
     public Integer threads;
     public Path psmPath;
-    public Path glycanDBpath;
     public Path residueDBpath;
     public Path glycanModPath;
     public String msFilePath;
@@ -52,9 +52,6 @@ public class Params {
                 case "--psm":
                     psmPath = checkFilePath(args[i + 1].trim(), "psm");
                     defaultPTMSconfPath = psmPath.getParent().resolve("shepherd.config");
-                    break;
-                case "--glycandb":
-                    glycanDBpath = checkFilePath(args[i + 1].trim(), "glycan database");
                     break;
                 case "--residuedb":
                     residueDBpath = checkFilePath(args[i + 1].trim(), "residue database");
@@ -132,10 +129,6 @@ public class Params {
             out.println("Error: PSM file path not specified!");
             System.exit(1);
         }
-        if (glycanDBpath == null) {
-            out.println("Error: glycan database not specified!");
-            System.exit(1);
-        }
         // use default residues if none provided
         if (residueDBpath == null) {
             glycanResidues = GlycanParser.parseGlycoResiduesDBStream(Params.class.getResourceAsStream(defaultResiduePath));
@@ -151,7 +144,6 @@ public class Params {
             glycanResidues.put(stringGlycanModEntry.getKey(), stringGlycanModEntry.getValue());
         }
         toAddResidues = getToAddResidues(residualStrings, glycanResidues);
-        glycanDatabase = GlycanParser.loadGlycansFromText(glycanDBpath.toString(), DatabaseType.byonic, glycanResidues);
         // parse ptmsherped config file to get the path of spectra
         msFilePath = getMSFilePath(defaultPTMSconfPath);
     }

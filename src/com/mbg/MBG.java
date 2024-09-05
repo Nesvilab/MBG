@@ -71,7 +71,6 @@ public class MBG {
         out.print("Args:\n" +
                 " --match: main mode to perform glycoform inference\n" +
                 "      --psm: psm file path (string)\n" +
-                "      --glycandb: glycan database path (string, optional)\n" +
                 "      --residuedb: residue definitions path (string, optional)\n" +
                 "      --maxq: maximum glycan q-value to accept as an input glycoPSM (float, optional)\n" +
                 "      --minpsms: minimum number of glycoPSMs for a given glycan to be used for inference\n" +
