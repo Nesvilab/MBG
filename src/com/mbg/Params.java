@@ -29,6 +29,9 @@ public class Params {
     private static final String defaultModPath = "glycan_mods.txt";
     private Path defaultPTMSconfPath;
     public boolean noPASEF = false;
+    public int minIsotopesIonQuant = 2;
+    public int minScansIonQuant = 3;
+    public int numThreads = 4;
     public Integer threads;
     public Path psmPath;
     public Path residueDBpath;
@@ -110,6 +113,30 @@ public class Params {
                         noPASEF = Boolean.parseBoolean(args[i + 1].trim());
                     } catch (Exception e) {
                         out.printf("Error parsing pasef argument %s: neither true nor false", args[i + 1]);
+                        System.exit(1);
+                    }
+                    break;
+                case "--minscans":
+                    try {
+                        minScansIonQuant = Integer.parseInt(args[i + 1].trim());
+                    } catch (Exception e) {
+                        out.printf("Error parsing minscans argument %s: must be integer", args[i + 1]);
+                        System.exit(1);
+                    }
+                    break;
+                case "--minisotopes":
+                    try {
+                        minIsotopesIonQuant = Integer.parseInt(args[i + 1].trim());
+                    } catch (Exception e) {
+                        out.printf("Error parsing minisotopes argument %s: must be integer", args[i + 1]);
+                        System.exit(1);
+                    }
+                    break;
+                case "--numthreads":
+                    try {
+                        numThreads = Integer.parseInt(args[i + 1].trim());
+                    } catch (Exception e) {
+                        out.printf("Error parsing numthreads argument %s: must be integer", args[i + 1]);
                         System.exit(1);
                     }
                     break;
