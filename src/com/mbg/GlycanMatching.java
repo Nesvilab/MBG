@@ -5,7 +5,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
 
-import umich.ms.fileio.filetypes.mzbin.MZBINFile;
 import umich.ms.glyco.Glycan;
 import umich.ms.glyco.GlycanResidue;
 
@@ -67,7 +66,7 @@ public class GlycanMatching {
         MSMS ms2 = new MSMS(rawFileName, msFilePath);
         ms2.msFileReader();
         // if PASEF data, get im for each MS2
-        if (!Params.noPASEF) {
+        if (!params.noPASEF) {
             Path mzBinPath = Paths.get(msFilePath);
             mzBinPath = mzBinPath.resolve(rawFileName+".mzBIN");
             File mzBinFile = mzBinPath.toFile();
@@ -81,7 +80,7 @@ public class GlycanMatching {
         String foundFile = findFirstPriorityFile(msFilePath, rawFileName);
         if (foundFile != null) {
             // build index for IonQuant
-            Peak.indexBuilder(foundFile);
+            Peak.indexBuilder(foundFile, params);
         } else {
             System.out.println("No file found with extension .mzML, .raw or .d.");
             System.exit(-1);
@@ -148,7 +147,7 @@ public class GlycanMatching {
             if (p.hasY1Ion) {  // if detected Y1 ion
                 qualifiedPSMs.add(p);
             } else {
-                if (Scoring.overThreshold(p)) {
+                if (Scoring.overThreshold(p, params.noPASEF)) {
                     qualifiedPSMs.add(p);
                 }
             }

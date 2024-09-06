@@ -18,19 +18,17 @@ import static java.lang.System.out;
 
 public class Params {
 
-    public ArrayList<Glycan> glycanDatabase;
-    public int numGlycanResidues;
     public double maxGlycanQval = 0.01;
     public int minPSMs = 5;
     public int minGlycans = 2;
-    public static float rtTol = 0.4F;
-    public static float imTol = 0.05F;
-    public static float fdr = 0.01F;
-    public static int mztol = 5;
+    public float rtTol = 0.4F;
+    public float imTol = 0.05F;
+    public float fdr = 0.01F;
+    public int mztol = 5;
     private static final String defaultResiduePath = "glycan_residues.txt";
     private static final String defaultModPath = "glycan_mods.txt";
-    private static Path defaultPTMSconfPath;
-    public static boolean noPASEF = false;
+    private Path defaultPTMSconfPath;
+    public boolean noPASEF = false;
     public Integer threads;
     public Path psmPath;
     public Path residueDBpath;

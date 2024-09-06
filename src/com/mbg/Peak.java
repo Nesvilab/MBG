@@ -14,8 +14,8 @@ public final class Peak {
     public Peak() {
     }
 
-    public static void indexBuilder(String path) {
-        api = new IonQuantAPI(path, 11, Params.mztol, Params.rtTol, Params.imTol, 2, 3, Params.noPASEF);
+    public static void indexBuilder(String path, Params params) {
+        api = new IonQuantAPI(path, 11, params.mztol, params.rtTol, params.imTol, 2, 3, params.noPASEF);
         api.buildIndex();
     }
 

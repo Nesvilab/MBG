@@ -193,9 +193,9 @@ public class Scoring {
         return scores;
     }
 
-    public static boolean overThreshold(PSM psm) {
+    public static boolean overThreshold(PSM psm, boolean noPASEF) {
         double[] data;
-        if (Params.noPASEF) {
+        if (noPASEF) {
             data = new double[]{psm.intensity, (double) psm.rtDiff};
         } else {
             data = new double[]{psm.intensity, (double) psm.rtDiff, (double) psm.imDiff};

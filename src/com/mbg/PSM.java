@@ -113,7 +113,7 @@ public class PSM implements Comparable<PSM>{
         // parse other needed PSM info
         peptide = splits[psmCols.get(PSM_File.PSMattr.peptide)];
         protein = splits[psmCols.get(PSM_File.PSMattr.protein)];
-        if (!Params.noPASEF) {
+        if (!params.noPASEF) {
             im = Double.parseDouble(splits[psmCols.get(PSM_File.PSMattr.IM)]);
         }
         rt = Double.parseDouble(splits[psmCols.get(PSM_File.PSMattr.RT)]);
@@ -270,7 +270,7 @@ public class PSM implements Comparable<PSM>{
 
         // adjust RT and IM
         newSplits[psmCols.get(PSM_File.PSMattr.RT)] = String.format("%.3f", rtAdjuster.getShiftedRT(existingPSM.glycan, newGlycan, existingPSM.apexRT*60));
-        if (!Params.noPASEF) {
+        if (!params.noPASEF) {
             newSplits[psmCols.get(PSM_File.PSMattr.IM)] = String.format("%.3f", rtAdjuster.getShiftedIM(existingPSM.glycan, newGlycan, existingPSM.apexIM));
         }
         double newRT = rtAdjuster.getShiftedRT(existingPSM.glycan, newGlycan, existingPSM.apexRT);  // in minute
@@ -306,7 +306,7 @@ public class PSM implements Comparable<PSM>{
         newSplits[psmCols.get(PSM_File.PSMattr.averageMassDiff)] = String.format("%.3f", rtDiff);
         newSplits[psmCols.get(PSM_File.PSMattr.ionMobilityDiff)] = String.format("%.3f", imDiff);
         // add intensity, rtDiff, imDiff to decoys or targets for scoring
-        if (!Params.noPASEF) {
+        if (!params.noPASEF) {
             if (ifdecoy) {
                 Scoring.decoyData.add(new double[] {(double) peakMatcher.quantifiedEntry123.intensity, (double) rtDiff, (double) imDiff});
             } else {
