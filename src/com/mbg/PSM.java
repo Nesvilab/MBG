@@ -285,7 +285,7 @@ public class PSM implements Comparable<PSM>{
         // match against MS1, get intensity, rt duration and average mass
         Peak peakMatcher = new Peak();
         peakMatcher.matchMS1((float) newMZ, (float) newRT, (float) newIM, existingPSM.charge, 0);
-        if (peakMatcher.quantifiedEntry123 == null) {
+        if (peakMatcher.quantifiedEntry == null) {
             newSplits[psmCols.get(PSM_File.PSMattr.intensity)] = String.valueOf(0);
             addedPSMs.add(new PSM(String.join("\t", newSplits), psmCols, params, true, false, false, aveMassDiff, 0));
             return addedPSMs;
@@ -293,30 +293,30 @@ public class PSM implements Comparable<PSM>{
         // to find MS2
         List<Spectrum> ms2Candidates;
         if (params.noPASEF) {
-            ms2Candidates = MSMS.spectraSearcher(peakMatcher.quantifiedEntry123.rtStart, peakMatcher.quantifiedEntry123.rtEnd, (float) (newMZ-1), (float) (newMZ+1));
+            ms2Candidates = MSMS.spectraSearcher(peakMatcher.quantifiedEntry.rtStart, peakMatcher.quantifiedEntry.rtEnd, (float) (newMZ-1), (float) (newMZ+1));
         } else {
-            ms2Candidates = MSMS.spectraSearcher(peakMatcher.quantifiedEntry123.rtStart, peakMatcher.quantifiedEntry123.rtEnd, (float) (newMZ-1), (float) (newMZ+1), peakMatcher.quantifiedEntry123.imStart, peakMatcher.quantifiedEntry123.imEnd);
+            ms2Candidates = MSMS.spectraSearcher(peakMatcher.quantifiedEntry.rtStart, peakMatcher.quantifiedEntry.rtEnd, (float) (newMZ-1), (float) (newMZ+1), peakMatcher.quantifiedEntry.imStart, peakMatcher.quantifiedEntry.imEnd);
         }
         // update intensity
-        newSplits[psmCols.get(PSM_File.PSMattr.intensity)] = String.valueOf(peakMatcher.quantifiedEntry123.intensity);
+        newSplits[psmCols.get(PSM_File.PSMattr.intensity)] = String.valueOf(peakMatcher.quantifiedEntry.intensity);
         // fill in averageMassDifference, RT and IM difference
         aveMassDiff = rtAdjuster.getAverageMassDiff(existingPSM.glycan, newGlycan, existingPSM.averageMass, peakMatcher.averageMass, existingPSM.charge);
-        rtDiff = java.lang.Math.abs((float) (peakMatcher.quantifiedEntry123.apexRt - newRT));
-        imDiff = java.lang.Math.abs((float) (peakMatcher.quantifiedEntry123.apexIm - newIM));
+        rtDiff = java.lang.Math.abs((float) (peakMatcher.quantifiedEntry.apexRt - newRT));
+        imDiff = java.lang.Math.abs((float) (peakMatcher.quantifiedEntry.apexIm - newIM));
         newSplits[psmCols.get(PSM_File.PSMattr.averageMassDiff)] = String.format("%.3f", rtDiff);
         newSplits[psmCols.get(PSM_File.PSMattr.ionMobilityDiff)] = String.format("%.3f", imDiff);
         // add intensity, rtDiff, imDiff to decoys or targets for scoring
         if (!params.noPASEF) {
             if (ifdecoy) {
-                Scoring.decoyData.add(new double[] {(double) peakMatcher.quantifiedEntry123.intensity, (double) rtDiff, (double) imDiff});
+                Scoring.decoyData.add(new double[] {(double) peakMatcher.quantifiedEntry.intensity, (double) rtDiff, (double) imDiff});
             } else {
-                Scoring.targetData.add(new double[] {(double) peakMatcher.quantifiedEntry123.intensity, (double) rtDiff, (double) imDiff});
+                Scoring.targetData.add(new double[] {(double) peakMatcher.quantifiedEntry.intensity, (double) rtDiff, (double) imDiff});
             }
         } else {
             if (ifdecoy) {
-                Scoring.decoyData.add(new double[] {(double) peakMatcher.quantifiedEntry123.intensity, (double) rtDiff});
+                Scoring.decoyData.add(new double[] {(double) peakMatcher.quantifiedEntry.intensity, (double) rtDiff});
             } else {
-                Scoring.targetData.add(new double[] {(double) peakMatcher.quantifiedEntry123.intensity, (double) rtDiff});
+                Scoring.targetData.add(new double[] {(double) peakMatcher.quantifiedEntry.intensity, (double) rtDiff});
             }
         }
         // todo update spectra information if ms2 candidates found

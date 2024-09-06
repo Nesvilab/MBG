@@ -95,9 +95,7 @@ public class GlycanMatching {
             if (site.psms.size() >= params.minPSMs && site.observedGlycans.size() >= params.minGlycans) {
                 for (PSM base_PSM : site.basePSMs) {
                     int rankCounter = 1;
-                    if (base_PSM.scanNum == 924 || base_PSM.scanNum==9063) {
-                        out.print("Usage:\n");
-                    }
+
                     ArrayList<Glycan> dummy_glycans = PSM.getDummyGlycans(base_PSM, params.toAddResidues);
                     for (Glycan new_glycan: dummy_glycans) {
                         if (site.observedGlycans.containsKey(new_glycan.toString()) || site.basePSM == null) {

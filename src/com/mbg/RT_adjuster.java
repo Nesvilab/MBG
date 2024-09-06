@@ -35,11 +35,11 @@ public class RT_adjuster {
                 PSM topPSM = null;
                 for (PSM psm : glycan_psm) {
                     peakMatcher.matchMS1((float) psm.calcMz, (float) psm.rt / 60, (float) psm.im, psm.charge, 0);
-                    if (peakMatcher.quantifiedEntry123 != null) {
-                        psm.apexRT = peakMatcher.quantifiedEntry123.apexRt;
-                        psm.apexIM = peakMatcher.quantifiedEntry123.apexIm;
+                    if (peakMatcher.quantifiedEntry != null) {
+                        psm.apexRT = peakMatcher.quantifiedEntry.apexRt;
+                        psm.apexIM = peakMatcher.quantifiedEntry.apexIm;
                         psm.averageMass = peakMatcher.averageMass;
-                        psm.intensity = peakMatcher.quantifiedEntry123.intensity;
+                        psm.intensity = peakMatcher.quantifiedEntry.intensity;
                         if (psm.intensity > topIntensity) {
                             topApexRT = (float) psm.apexRT;
                             topIntensity = (float) psm.intensity;
