@@ -19,23 +19,13 @@ public class MBG {
         }
         try {
             /* Args:
-             * --clean: alternate mode that removes inferred glycans from the PSM table if no intensity is found
-             *      --psm: psm table to clean
-             * --match: main mode to perform glycoform inference
              *      --psm: psm file path (string)
              *      --glycandb: glycan database path (string, optional)
              *      --residuedb: residue definitions path (string, optional)
              *      --maxq: maximum glycan q-value to accept as an input glycoPSM (float, optional)
              *      --minpsms: minimum number of glycoPSMs for a given glycan to be used for inference
              */
-            if (Objects.equals(args[0], "--clean")) {
-                out.printf("Glycoform inference v%s: cleaning PSM table after quant\n", version);
-                Params params = new Params(args);
-                PSM_File psmFile = new PSM_File(params);
-                TableCleaner cleaner = new TableCleaner(params, psmFile);
-                cleaner.cleanPSMtable();
-
-            } else if (Objects.equals(args[0], "--match")) {
+            if (Objects.equals(args[0], "--match")) {
                 out.printf("Running glycoform inference v%s\n", version);
                 Params params = new Params(args);
 
@@ -54,8 +44,6 @@ public class MBG {
                 out.print("Usage:\n");
                 out.printf("\tTo perform glycoform inference:\n" +
                         "\t\tjava -jar mbg-%s.jar --match [args]\n", version);
-                out.printf("\tTo clean the PSM table after inference and quantification:\n" +
-                        "\t\tjava -jar mbg-%s.jar --clean [args]\n", version);
                 out.println();
                 printHelp();
                 System.exit(0);
