@@ -32,7 +32,6 @@ public class Params {
     public int minIsotopesIonQuant = 2;
     public int minScansIonQuant = 3;
     public int numThreads = 4;
-    public Integer threads;
     public Path psmPath;
     public Path residueDBpath;
     public Path glycanModPath;
@@ -216,8 +215,6 @@ public class Params {
                 String tsvTxt = st.nextToken();
                 String mzPath = st.nextToken();
                 pathMap.put(tsvTxt, mzPath);
-            } else if (key.equals("threads")) {
-                threads = Integer.parseInt(value.trim());
             }
         }
         in.close();
