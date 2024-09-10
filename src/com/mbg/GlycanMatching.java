@@ -57,10 +57,11 @@ public class GlycanMatching {
      * Given a glycan database and rules from Params, fill in the unobserved glycans for each glycosite
      * and generate dummy PSMs for them.
      */
-    public ArrayList<PSM> fillInGlycoSites(String rawFileName, String msFilePath) throws Exception {
+    public ArrayList<PSM> fillInGlycoSites(String rawFileName) throws Exception {
         ArrayList<PSM> newPSMs = new ArrayList<>();
         GlycanResidue mod_nh3 = params.glycanResidues.get("NH4");
         GlycanResidue neuAc = params.glycanResidues.get("NeuGc");  // for generating decoys
+        String msFilePath = matchMSfilename(rawFileName, params.msFilePathsMap);
 
         // read msFile
         MSMS ms2 = new MSMS(rawFileName, msFilePath);
@@ -151,5 +152,16 @@ public class GlycanMatching {
             }
         }
         return qualifiedPSMs;
+    }
+
+    // Match the name in the psm.tsv (base filename without the extension) to the file path from the manifest
+    private String matchMSfilename(String rawfileName, HashMap<String, String> msFilePathsMap) {
+        if (msFilePathsMap.containsKey(rawfileName)) {
+            return msFilePathsMap.get(rawfileName);
+        } else {
+            out.printf("Error: Could not find MS spectrum file for rawfile %s from the psm.tsv. Please check the manifest file and psm.tsv\n", rawfileName);
+            System.exit(1);
+            return null;
+        }
     }
 }
