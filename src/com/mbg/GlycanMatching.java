@@ -73,7 +73,7 @@ public class GlycanMatching {
                 System.out.printf("No mzBIN file found for %s\n", rawFileName);
                 System.exit(-1);
             }
-            MSMS.getMS2IMs(mzBinFile, 7);
+            MSMS.getMS2IMs(mzBinFile, params.numThreads);
         }
         // find file for IonQuant
         String foundFile = findFirstPriorityFile(msFilePath, rawFileName);
