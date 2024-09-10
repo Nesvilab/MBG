@@ -108,39 +108,6 @@ public class MSMS {
         for (MZBINFile.MZBINSpectrum spec: mzbinSource.specs) {
             ms2IMs.put(spec.scanNum, (double) spec.precursorIM);
         }
-
-//        try {
-//            BrukerTdfFileBase brukerTdfFileBase = new BrukerTdfFileBase(pathDir, BrukerTdfFileBase.MS2_REPORTING.EACH_PASEF_WINDOW_AS_SEPARATE_SCAN, 1); // Single thread seems to be faster than multi threads.) {
-//            List<FrameInfo> frameInfoList = brukerTdfFileBase.readFrameInfos();
-//            brukerTdfFileBase.close();
-//            int scanMode = getScanMode(frameInfoList);
-//
-//            int scanNum = 0;
-//            for (final List<FrameInfo> frameInfoListChunk: com.google.common.collect.Lists.partition(frameInfoList, 512)){
-//                for (FrameInfo frameInfo : frameInfoListChunk) {
-//
-//                    if (frameInfo.getScanMode() != scanMode) {
-//                        continue;
-//                    }
-//                    Frame frame = brukerTdfFile.readFrameInfoRaw(frameInfo.getFrameId());
-//                    int scanBegin = 0;
-//                    int scanEnd = frame.getNumScans();
-//                    int N = scanEnd - scanBegin;
-//                    double[] scanNums = new double[N];
-//                    for(int i = scanBegin; i < scanEnd; ++i) {
-//                        scanNums[i - scanBegin] = (double)i;
-//                    }
-//                    double[] ims = brukerTdfFile.convertImScanNumTo1k0(frameInfo.getFrameId(), scanNums);
-//                    Peaklist2D spectrum = brukerTdfFile.readFrameRaw(frameInfo.getFrameId());
-//                    System.out.println("1");
-//
-//                }
-//
-//            }
-//            brukerTdfFile.close();
-//        } catch (Exception e) {
-//            System.exit(1);
-//        }
     }
 
     public static int getScanMode(List<FrameInfo> frameInfoList) { // 0 = MS, 1 = AutoMSMS, 2 = MRM, 3 = in-source CID, 4 = broadband CID, 8 = PASEF, 9 = DIA, 10 = PRM, 20 = MALDI

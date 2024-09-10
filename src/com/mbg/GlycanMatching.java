@@ -59,8 +59,6 @@ public class GlycanMatching {
      */
     public ArrayList<PSM> fillInGlycoSites(String rawFileName) throws Exception {
         ArrayList<PSM> newPSMs = new ArrayList<>();
-        GlycanResidue mod_nh3 = params.glycanResidues.get("NH4");
-        GlycanResidue neuAc = params.glycanResidues.get("NeuGc");  // for generating decoys
         String msFilePath = matchMSfilename(rawFileName, params.msFilePathsMap);
 
         // read msFile
@@ -120,19 +118,6 @@ public class GlycanMatching {
                     }
 
                 }
-                // make NH3 glycan
-                int rankCounter = 1;
-//                for (PSM base_psm : site.basePSMs) {
-//                    Glycan new_glycan = PSM.addResidual(base_psm.glycan, mod_nh3);
-//                    List<PSM> addedPSMs = PSM.makeDummyPSM(base_psm, new_glycan, psmFile.PSMcolumns, params, rankCounter, cRT_adjuster);
-//                    newPSMs.addAll(addedPSMs);
-//                }
-                // generate decoy for every psm
-//                for (PSM base_psm : site.basePSMs) {
-//                    Glycan new_glycan = PSM.addResidual(base_psm.glycan, neuAc);
-//                    List<PSM> addedPSMs = PSM.makeDummyPSM(base_psm, new_glycan, psmFile.PSMcolumns, params, rankCounter, cRT_adjuster, true);
-//                    newPSMs.addAll(addedPSMs);
-//                }
             }
         }
         // get threshold score and coefficient of score function
