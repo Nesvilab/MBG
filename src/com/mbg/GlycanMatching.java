@@ -60,14 +60,14 @@ public class GlycanMatching {
     public ArrayList<PSM> fillInGlycoSites(String rawFileName) throws Exception {
         ArrayList<PSM> newPSMs = new ArrayList<>();
         String msFilePath = matchMSfilename(rawFileName, params.msFilePathsMap);
+        Path msFileDir = Paths.get(msFilePath).getParent();
 
         // read msFile
         MSMS ms2 = new MSMS(rawFileName, msFilePath);
-        ms2.msFileReader();
+        ms2.msFileReader(params.numThreads);
         // if PASEF data, get im for each MS2
         if (!params.noPASEF) {
-            Path mzBinPath = Paths.get(msFilePath);
-            mzBinPath = mzBinPath.resolve(rawFileName+".mzBIN");
+            Path mzBinPath = msFileDir.resolve(rawFileName+".mzBIN");
             File mzBinFile = mzBinPath.toFile();
             if (!mzBinFile.exists()) {
                 System.out.printf("No mzBIN file found for %s\n", rawFileName);
@@ -76,7 +76,8 @@ public class GlycanMatching {
             MSMS.getMS2IMs(mzBinFile, params.numThreads);
         }
         // find file for IonQuant
-        String foundFile = findFirstPriorityFile(msFilePath, rawFileName);
+        String[] extensions = {".mzML", ".raw", ".d"};
+        String foundFile = findFirstPriorityFile(msFileDir.toString(), rawFileName, extensions);
         if (foundFile != null) {
             // build index for IonQuant
             Peak.indexBuilder(foundFile, params);
