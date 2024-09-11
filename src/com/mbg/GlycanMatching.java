@@ -134,10 +134,23 @@ public class GlycanMatching {
 //                }
             }
         }
+        // if decoy list is empty, return all newPSMs
+        if (Scoring.decoyData.isEmpty()) {
+            return newPSMs;
+        }
+        ArrayList<PSM> qualifiedPSMs = new ArrayList<>();
+        // if TMT labeled sample, only keep PSMs with MS2
+        if (params.runTMT) {
+            for (PSM p: newPSMs) {
+                if (p.hasY1Ion) {  // if detected Y1 ion
+                    qualifiedPSMs.add(p);
+                }
+            }
+            return qualifiedPSMs;
+        }
         // get threshold score and coefficient of score function
         Scoring.getCutOffScore();
         // get qualified PSMs
-        ArrayList<PSM> qualifiedPSMs = new ArrayList<>();
         for (PSM p: newPSMs) {
             if (p.intensity <0.01) {
                 continue;  // remove unmatched PSMs

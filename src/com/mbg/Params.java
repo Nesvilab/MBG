@@ -29,6 +29,7 @@ public class Params {
     private static final String defaultModPath = "glycan_mods.txt";
     private Path defaultPTMSconfPath;
     public boolean noPASEF = false;
+    public boolean runTMT = false;
     public int minIsotopesIonQuant = 2;
     public int minScansIonQuant = 3;
     public int numThreads = 4;
@@ -112,6 +113,14 @@ public class Params {
                         noPASEF = Boolean.parseBoolean(args[i + 1].trim());
                     } catch (Exception e) {
                         out.printf("Error parsing pasef argument %s: neither true nor false", args[i + 1]);
+                        System.exit(1);
+                    }
+                    break;
+                case "--runtmt":
+                    try {
+                        runTMT = Boolean.parseBoolean(args[i + 1].trim());
+                    } catch (Exception e) {
+                        out.printf("Error parsing runtmt argument %s: neither true nor false", args[i + 1]);
                         System.exit(1);
                     }
                     break;
