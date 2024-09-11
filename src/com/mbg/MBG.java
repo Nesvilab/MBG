@@ -30,6 +30,7 @@ public class MBG {
                 Params params = new Params(args);
 
                 PSM_File psmFile = new PSM_File(params);
+                out.printf("Reading PSM file %s\n", psmFile.file.toString());
                 ArrayList<PSM> newPSMs = new ArrayList<>();
                 for (Map.Entry<String, ArrayList<PSM>> rawfileEntry: psmFile.rawfilePSMmap.entrySet()) {
                     // infer glycoforms within each raw file

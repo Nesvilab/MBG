@@ -63,6 +63,7 @@ public class GlycanMatching {
         Path msFileDir = Paths.get(msFilePath).getParent();
 
         // read msFile
+        out.printf("Reading spectrum file %s\n", rawFileName);
         MSMS ms2 = new MSMS(rawFileName, msFilePath);
         ms2.msFileReader(params.numThreads);
         // if PASEF data, get im for each MS2
