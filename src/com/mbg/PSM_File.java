@@ -119,22 +119,6 @@ public class PSM_File {
         success = newFileName.renameTo(this.file);
     }
 
-    public void printCleanedPSMs(ArrayList<PSM> psms) throws IOException {
-        String tempName = this.file.getAbsolutePath() + ".mbg.tsv";
-        PrintWriter out = new PrintWriter(new FileWriter(tempName));
-
-        // write header
-        out.println(String.join("\t", this.headers));
-
-        for (PSM psm: psms) {
-            out.println(String.join("\t", psm.splits));
-        }
-        out.close();
-
-        boolean success = this.file.delete();
-        File newFileName = new File(tempName);
-        success = newFileName.renameTo(this.file);
-    }
 
     public enum PSMattr {
         RT,

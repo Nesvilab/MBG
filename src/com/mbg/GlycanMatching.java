@@ -57,27 +57,28 @@ public class GlycanMatching {
      * Given a glycan database and rules from Params, fill in the unobserved glycans for each glycosite
      * and generate dummy PSMs for them.
      */
-    public ArrayList<PSM> fillInGlycoSites(String rawFileName, String msFilePath) throws Exception {
+    public ArrayList<PSM> fillInGlycoSites(String rawFileName) throws Exception {
         ArrayList<PSM> newPSMs = new ArrayList<>();
-        GlycanResidue mod_nh3 = params.glycanResidues.get("NH4");
-        GlycanResidue neuAc = params.glycanResidues.get("NeuGc");  // for generating decoys
+        String msFilePath = matchMSfilename(rawFileName, params.msFilePathsMap);
+        Path msFileDir = Paths.get(msFilePath).getParent();
 
         // read msFile
+        out.printf("Reading spectrum file %s\n", rawFileName);
         MSMS ms2 = new MSMS(rawFileName, msFilePath);
-        ms2.msFileReader();
+        ms2.msFileReader(params.numThreads);
         // if PASEF data, get im for each MS2
         if (!params.noPASEF) {
-            Path mzBinPath = Paths.get(msFilePath);
-            mzBinPath = mzBinPath.resolve(rawFileName+".mzBIN");
+            Path mzBinPath = msFileDir.resolve(rawFileName+".mzBIN");
             File mzBinFile = mzBinPath.toFile();
             if (!mzBinFile.exists()) {
                 System.out.printf("No mzBIN file found for %s\n", rawFileName);
                 System.exit(-1);
             }
-            MSMS.getMS2IMs(mzBinFile, 7);
+            MSMS.getMS2IMs(mzBinFile, params.numThreads);
         }
         // find file for IonQuant
-        String foundFile = findFirstPriorityFile(msFilePath, rawFileName);
+        String[] extensions = {".mzML", ".raw", ".d"};
+        String foundFile = findFirstPriorityFile(msFileDir.toString(), rawFileName, extensions);
         if (foundFile != null) {
             // build index for IonQuant
             Peak.indexBuilder(foundFile, params);
@@ -119,19 +120,6 @@ public class GlycanMatching {
                     }
 
                 }
-                // make NH3 glycan
-                int rankCounter = 1;
-//                for (PSM base_psm : site.basePSMs) {
-//                    Glycan new_glycan = PSM.addResidual(base_psm.glycan, mod_nh3);
-//                    List<PSM> addedPSMs = PSM.makeDummyPSM(base_psm, new_glycan, psmFile.PSMcolumns, params, rankCounter, cRT_adjuster);
-//                    newPSMs.addAll(addedPSMs);
-//                }
-                // generate decoy for every psm
-//                for (PSM base_psm : site.basePSMs) {
-//                    Glycan new_glycan = PSM.addResidual(base_psm.glycan, neuAc);
-//                    List<PSM> addedPSMs = PSM.makeDummyPSM(base_psm, new_glycan, psmFile.PSMcolumns, params, rankCounter, cRT_adjuster, true);
-//                    newPSMs.addAll(addedPSMs);
-//                }
             }
         }
         // if decoy list is empty, return all newPSMs
@@ -164,5 +152,16 @@ public class GlycanMatching {
             }
         }
         return qualifiedPSMs;
+    }
+
+    // Match the name in the psm.tsv (base filename without the extension) to the file path from the manifest
+    private String matchMSfilename(String rawfileName, HashMap<String, String> msFilePathsMap) {
+        if (msFilePathsMap.containsKey(rawfileName)) {
+            return msFilePathsMap.get(rawfileName);
+        } else {
+            out.printf("Error: Could not find MS spectrum file for rawfile %s from the psm.tsv. Please check the manifest file and psm.tsv\n", rawfileName);
+            System.exit(1);
+            return null;
+        }
     }
 }

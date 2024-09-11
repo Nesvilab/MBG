@@ -27,7 +27,6 @@ public class Params {
     public int mztol = 5;
     private static final String defaultResiduePath = "glycan_residues.txt";
     private static final String defaultModPath = "glycan_mods.txt";
-    private Path defaultPTMSconfPath;
     public boolean noPASEF = false;
     public boolean runTMT = false;
     public int minIsotopesIonQuant = 2;
@@ -36,24 +35,27 @@ public class Params {
     public Path psmPath;
     public Path residueDBpath;
     public Path glycanModPath;
-    public String msFilePath;
+    public HashMap<String, String> msFilePathsMap;
     public HashMap<String, GlycanResidue> glycanResidues;
     public HashMap<String, GlycanMod> glycanMods;
     public HashMap<String, GlycanResidue> toAddResidues;
     private String[] residualStrings;
+    private Path manifestPath;
 
     /**
      * Parse command line args to parameters for matching (inference) mode
      *
      * @param args command line args
      */
-    public Params(String[] args) throws Exception {
+    public Params(String[] args) {
         for (int i = 1; i < args.length; i += 2) {
             switch (args[i]) {
                 case "--psm":
                     psmPath = checkFilePath(args[i + 1].trim(), "psm");
-                    defaultPTMSconfPath = psmPath.getParent().resolve("shepherd.config");
                     break;
+                case "--manifest":
+                    manifestPath = checkFilePath(args[i + 1].trim(), "manifest");
+                    msFilePathsMap = readManifest();
                 case "--residuedb":
                     residueDBpath = checkFilePath(args[i + 1].trim(), "residue database");
                     break;
@@ -177,8 +179,6 @@ public class Params {
             glycanResidues.put(stringGlycanModEntry.getKey(), stringGlycanModEntry.getValue());
         }
         toAddResidues = getToAddResidues(residualStrings, glycanResidues);
-        // parse ptmsherped config file to get the path of spectra
-        msFilePath = getMSFilePath(defaultPTMSconfPath);
     }
 
     public static Path checkFilePath(String inputPath, String pathName) {
@@ -205,29 +205,24 @@ public class Params {
         return toAddResidues;
     }
 
-    private String getMSFilePath(Path shepConfigPath) throws IOException {
-        HashMap<String, String> pathMap = new HashMap<>();
-        BufferedReader in = new BufferedReader(new FileReader(shepConfigPath.toFile()));
-        String cline;
-        while ((cline = in.readLine()) != null) {
-            int comments = cline.indexOf("//");
-            if (comments >= 0)
-                cline = cline.substring(0, comments);
-            cline = cline.trim();
-            if (!cline.contains("="))
-                continue;
-            String key = cline.substring(0, cline.indexOf("=")).trim();
-            String value = cline.substring(cline.indexOf("=") + 1).trim();
-            if (key.equals("dataset")) {
-                StringTokenizer st = new StringTokenizer(value);
-                String dsName = st.nextToken();
-                String tsvTxt = st.nextToken();
-                String mzPath = st.nextToken();
-                pathMap.put(tsvTxt, mzPath);
+    private HashMap<String, String> readManifest() {
+        HashMap<String, String> msFilesMap = new HashMap<>();
+        try {
+            BufferedReader reader = new BufferedReader(new FileReader(manifestPath.toFile()));
+            String line;
+            while ((line = reader.readLine()) != null) {
+                String[] splits = line.split("\t");
+                Path path = Paths.get(splits[0]);
+                String fileName = path.getFileName().toString();
+                int dotIndex = fileName.lastIndexOf('.');
+                msFilesMap.put(fileName.substring(0, dotIndex), splits[0].replace("\\", "\\\\"));
             }
+            reader.close();
+        } catch (IOException ex) {
+            out.printf("Error reading FragPipe manifest file %s\n", manifestPath);
+            ex.printStackTrace();
+            System.exit(1);
         }
-        in.close();
-        // get current ms file path
-        return pathMap.get(psmPath.toString());
+        return msFilesMap;
     }
 }

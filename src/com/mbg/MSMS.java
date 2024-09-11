@@ -1,26 +1,18 @@
 package com.mbg;
 
 import com.google.common.base.Joiner;
-import edu.umich.andykong.ptmshepherd.PSMFile;
-import edu.umich.andykong.ptmshepherd.PTMShepherd;
 import edu.umich.andykong.ptmshepherd.core.MXMLReader;
 import edu.umich.andykong.ptmshepherd.core.Spectrum;
-import umich.ms.fileio.filetypes.bruker.BrukerTdfFile;
-import umich.ms.fileio.filetypes.bruker.BrukerTdfFileBase;
 import umich.ms.fileio.filetypes.bruker.FrameInfo;
-import umich.ms.fileio.filetypes.bruker.Peaklist2D;
-import umich.ms.fileio.filetypes.bruker.dao.Frame;
 import umich.ms.fileio.filetypes.mzbin.MZBINFile;
 
 
 import java.io.File;
-import java.nio.file.Path;
+import java.io.FileNotFoundException;
 import java.util.*;
 import java.util.stream.Collectors;
 
 public class MSMS {
-    public Path msPath;
-    public HashMap<String, File> mappings = new HashMap<>();  // cwq_mix2-1_726 -> {File@993} "Z:\jishen\MBG\data\cwq_mix2-1_726_calibrated.mzML"
     public static MXMLReader mReader;
     public String rawFileName;
     public File msDir;
@@ -34,26 +26,20 @@ public class MSMS {
     public MSMS(String runName, String msFilePath) throws Exception {
         // init arguments
         rawFileName = runName;
-        HashSet<String> runNames = new HashSet<>();
-        runNames.add(runName);
-        mappings.put(runName, null);
         File path = new File(msFilePath);
-        // put all ms file names into runName and mappings
-//        runNames = (HashSet<String>) psmFile.rawfilePSMmap.keySet();
-//        for (String fs: psmFile.rawfilePSMmap.keySet()) {
-//            mappings.put(fs, null);
-//        }
-        // fill in mappings
-        PSMFile.getMappings(path, mappings, runNames);
+        String[] extensions = {".mzBIN_cache", "_calibrated.mzML", "_uncalibrated.mzML", "_calibrated.mgf", "_uncalibrated.mgf", ".mzML", ".mzXML", ".mzBIN", ".mgf", ".raw"};
+        String filePath = Peak.findFirstPriorityFile(path.getParent(), runName, extensions);
+        if (filePath == null) {
+            throw new FileNotFoundException(String.format("Could not locate MS file %s in directory %s\n", runName, path.getParent()));
+        }
+        msDir = new File(filePath);
     }
 
     /** read ms file using PTMShepherd
      * @throws Exception
      */
-    public void msFileReader() throws Exception {
-        //
-        msDir = mappings.get(rawFileName);
-        mReader = new MXMLReader(msDir, 7);
+    public void msFileReader(int numThreads) throws Exception {
+        mReader = new MXMLReader(msDir, numThreads);
         mReader.readFully();
     }
 
@@ -108,39 +94,6 @@ public class MSMS {
         for (MZBINFile.MZBINSpectrum spec: mzbinSource.specs) {
             ms2IMs.put(spec.scanNum, (double) spec.precursorIM);
         }
-
-//        try {
-//            BrukerTdfFileBase brukerTdfFileBase = new BrukerTdfFileBase(pathDir, BrukerTdfFileBase.MS2_REPORTING.EACH_PASEF_WINDOW_AS_SEPARATE_SCAN, 1); // Single thread seems to be faster than multi threads.) {
-//            List<FrameInfo> frameInfoList = brukerTdfFileBase.readFrameInfos();
-//            brukerTdfFileBase.close();
-//            int scanMode = getScanMode(frameInfoList);
-//
-//            int scanNum = 0;
-//            for (final List<FrameInfo> frameInfoListChunk: com.google.common.collect.Lists.partition(frameInfoList, 512)){
-//                for (FrameInfo frameInfo : frameInfoListChunk) {
-//
-//                    if (frameInfo.getScanMode() != scanMode) {
-//                        continue;
-//                    }
-//                    Frame frame = brukerTdfFile.readFrameInfoRaw(frameInfo.getFrameId());
-//                    int scanBegin = 0;
-//                    int scanEnd = frame.getNumScans();
-//                    int N = scanEnd - scanBegin;
-//                    double[] scanNums = new double[N];
-//                    for(int i = scanBegin; i < scanEnd; ++i) {
-//                        scanNums[i - scanBegin] = (double)i;
-//                    }
-//                    double[] ims = brukerTdfFile.convertImScanNumTo1k0(frameInfo.getFrameId(), scanNums);
-//                    Peaklist2D spectrum = brukerTdfFile.readFrameRaw(frameInfo.getFrameId());
-//                    System.out.println("1");
-//
-//                }
-//
-//            }
-//            brukerTdfFile.close();
-//        } catch (Exception e) {
-//            System.exit(1);
-//        }
     }
 
     public static int getScanMode(List<FrameInfo> frameInfoList) { // 0 = MS, 1 = AutoMSMS, 2 = MRM, 3 = in-source CID, 4 = broadband CID, 8 = PASEF, 9 = DIA, 10 = PRM, 20 = MALDI

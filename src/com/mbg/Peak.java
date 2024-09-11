@@ -41,22 +41,14 @@ public final class Peak {
         averageMass = (float) (((entry1.intensity*mz)+(entry2.intensity*(mz+1.002))+(entry3.intensity*(mz+2.004))) / intensitySum);
     }
 
-    public static String findFirstPriorityFile(String directoryPath, String filePrefix) {
+    public static String findFirstPriorityFile(String directoryPath, String filePrefix, String[] extensions) {
         File directory = new File(directoryPath);
 
-        // Define priority order for extensions
-        String[] extensions = {".mzML", ".raw", ".d"};
 
         // Iterate through files in the directory
         for (String extension : extensions) {
             for (File file : Objects.requireNonNull(directory.listFiles())) {
-                String fileNameWithoutExtension = file.getName();
-                int lastIndexOfDot = fileNameWithoutExtension.lastIndexOf('.');
-                if (lastIndexOfDot != -1) {
-                    fileNameWithoutExtension = fileNameWithoutExtension.substring(0, lastIndexOfDot);
-                } else {
-                    continue;
-                }
+                String fileNameWithoutExtension = file.getName().replace(extension, "");
                 if (fileNameWithoutExtension.equals(filePrefix)) {
                     // Check for each extension in priority order
                     if (file.getName().endsWith(extension)) {

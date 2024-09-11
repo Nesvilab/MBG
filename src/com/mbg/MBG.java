@@ -9,7 +9,7 @@ import static java.lang.System.out;
 public class MBG {
 
     private static final String name = "Glycoform Inference";
-    private static final String version = "0.2.1";
+    private static final String version = "0.2.3";
 
     public static void main(String[] args) {
         long time = System.nanoTime();
@@ -30,12 +30,13 @@ public class MBG {
                 Params params = new Params(args);
 
                 PSM_File psmFile = new PSM_File(params);
+                out.printf("Reading PSM file %s\n", psmFile.file.toString());
                 ArrayList<PSM> newPSMs = new ArrayList<>();
                 for (Map.Entry<String, ArrayList<PSM>> rawfileEntry: psmFile.rawfilePSMmap.entrySet()) {
                     // infer glycoforms within each raw file
                     GlycanMatching matcher = new GlycanMatching(params, psmFile, rawfileEntry.getValue());
                     matcher.groupGlycosites();
-                    newPSMs.addAll(matcher.fillInGlycoSites(rawfileEntry.getKey(), params.msFilePath));
+                    newPSMs.addAll(matcher.fillInGlycoSites(rawfileEntry.getKey()));
                 }
                 psmFile.printNewPSMs(newPSMs);
 
