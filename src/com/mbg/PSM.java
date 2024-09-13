@@ -326,7 +326,7 @@ public class PSM implements Comparable<PSM>{
             List<Boolean> y1booleans;
             y1booleans = MSMS.y1Matcher(ms2Candidates, existingPSM, params);
             for (int i = 0; i < ms2Candidates.size(); i++) {
-                newSplits[psmCols.get(PSM_File.PSMattr.spectrum)] = String.join(".", new String[]{existingPSM.rawfile, String.valueOf(ms2Candidates.get(i).scanNum),
+                newSplits[psmCols.get(PSM_File.PSMattr.spectrum)] = String.join(".", new String[]{existingPSM.rawfile, String.format("%0" + MSMS.maxScanNumLength + "d", ms2Candidates.get(i).scanNum),
                         String.valueOf(ms2Candidates.get(i).scanNum), String.valueOf(ms2Candidates.get(i).charge)});
                 // update rt,im to real MS2 rt
                 newSplits[psmCols.get(PSM_File.PSMattr.RT)] = String.format("%.3f", ms2Candidates.get(i).rt*60);

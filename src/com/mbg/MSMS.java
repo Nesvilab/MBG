@@ -17,6 +17,7 @@ public class MSMS {
     public String rawFileName;
     public File msDir;
     public static HashMap<Integer, Double> ms2IMs;
+    public static int maxScanNumLength;
 
     /**
      * @param runName
@@ -41,6 +42,8 @@ public class MSMS {
     public void msFileReader(int numThreads) throws Exception {
         mReader = new MXMLReader(msDir, numThreads);
         mReader.readFully();
+        // get the length of spectrum number of the last spectrum
+        maxScanNumLength = String.valueOf(mReader.specs[mReader.specs.length - 1].scanNum).length();
     }
 
     /** generate all candidates of given range of RT and MZ
