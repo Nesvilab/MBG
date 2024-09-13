@@ -122,11 +122,17 @@ public class GlycanMatching {
                 }
             }
         }
-        // if decoy list is empty, return all newPSMs
-        if (Scoring.decoyData.isEmpty()) {
-            return newPSMs;
-        }
         ArrayList<PSM> qualifiedPSMs = new ArrayList<>();
+        // if decoy list is empty or decoy or target list is too small to scoring, return all newPSMs
+        if (Scoring.decoyData.isEmpty() || Scoring.decoyData.size() < 2 || Scoring.targetData.size() < 2) {
+            for (PSM p: newPSMs) {
+                if (p.intensity <0.01) {
+                    continue;  // remove unmatched PSMs
+                }
+                qualifiedPSMs.add(p);
+            return qualifiedPSMs;
+            }
+        }
         // if TMT labeled sample, only keep PSMs with MS2
         if (params.runTMT) {
             for (PSM p: newPSMs) {

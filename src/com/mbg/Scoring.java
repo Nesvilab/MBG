@@ -146,7 +146,7 @@ public class Scoring {
         }
         int iOfDecoy = getLastValueBelowThreshold(fdrs, fdrCutOff);
         int n = decoyIndexes.get(iOfDecoy);
-        return targetScores.get(n-iOfDecoy);
+        return targetScores.get(n-iOfDecoy-1);
     }
 
     private static List<Integer> getDecoyIndexes(List<Double> targetScores, List<Double> decoyScores) {
