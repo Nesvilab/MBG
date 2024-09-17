@@ -5,17 +5,27 @@ import umich.ms.glyco.GlycanResidue;
 
 import java.util.*;
 
+import static java.lang.System.out;
+
 public class RT_adjuster {
     static HashMap<String, HashMap<String, List<Float>>> allShiftedRTs;
     static HashMap<String, HashMap<String, Float>> shiftedRTs;
     static HashMap<String, HashMap<String, List<Float>>> allShiftedIMs;
     static HashMap<String, HashMap<String, Float>> shiftedIMs;
+    static HashMap<String, List<Float>> allShiftedMonoRTs;
+    static HashMap<String, List<Float>> allShiftedMonoIMs;
+    static HashMap<String, Float> monosaccharideRtShifts;
+    static HashMap<String, Float> monosaccharideImShifts;
 
     public RT_adjuster(HashMap<String, GlycoSite> observedGlycoSites) {
         allShiftedRTs = new HashMap<>();
         shiftedRTs = new HashMap<>();
         allShiftedIMs = new HashMap<>();
         shiftedIMs = new HashMap<>();
+        allShiftedMonoRTs = new HashMap<>(); // storage monosaccharide difference RTs
+        allShiftedMonoIMs = new HashMap<>(); // storage monosaccharide difference IMs
+        monosaccharideRtShifts = new HashMap<>();
+        monosaccharideImShifts = new HashMap<>();
         matchMS1forPSMs(observedGlycoSites);
         calculateMedians();
     }
@@ -86,8 +96,33 @@ public class RT_adjuster {
                 }
                 if (ifAdd && totalDiff > 0) {
                     putData(glycan1.toString(), glycan2.toString(), shifedRT2-shifedRT1, mode);
+                    putMonoData(glycan1, glycan2, shifedRT2-shifedRT1, mode);
                 }
             }
+        }
+    }
+
+    private static void putMonoData(Glycan g1, Glycan g2, Float value, String mode) {
+        // get the shifted monosaccharide difference, g2 should always bigger than g1
+        String shiftedMonosaccharide = "";
+        for (Map.Entry<GlycanResidue, Integer> compEntry2: g2.composition.entrySet()) {
+            GlycanResidue glycanResidue = compEntry2.getKey();
+            int residueNum2 = compEntry2.getValue();
+            if (!g1.composition.containsKey(glycanResidue) || residueNum2 - g1.composition.get(glycanResidue) == 1) {
+                shiftedMonosaccharide = glycanResidue.toString();
+                break;
+            }
+        }
+        if (shiftedMonosaccharide.isEmpty()) {
+            out.printf("Error: shifted monosaccharide difference not equal to 1 between %s and %s\n", g1.toString(), g2.toString());
+            System.exit(1);
+        }
+        if (Objects.equals(mode, "RT")) {
+            allShiftedMonoRTs.computeIfAbsent(shiftedMonosaccharide, k -> new ArrayList<>());
+            allShiftedMonoRTs.get(shiftedMonosaccharide).add(value);
+        } else {
+            allShiftedMonoIMs.computeIfAbsent(shiftedMonosaccharide, k -> new ArrayList<>());
+            allShiftedMonoIMs.get(shiftedMonosaccharide).add(value);
         }
     }
 
@@ -114,8 +149,8 @@ public class RT_adjuster {
 
     public static void calculateMedians() {
         // calculate RT median shifts
-        for (String player : allShiftedRTs.keySet()) {
-            HashMap<String, List<Float>> innerMap = allShiftedRTs.get(player);
+        for (String glycanName : allShiftedRTs.keySet()) {
+            HashMap<String, List<Float>> innerMap = allShiftedRTs.get(glycanName);
             HashMap<String, Float> playerMedians = new HashMap<>();
 
             for (String game : innerMap.keySet()) {
@@ -123,10 +158,11 @@ public class RT_adjuster {
                 Float median = calculateMedian(scores);
                 playerMedians.put(game, median);
             }
-            shiftedRTs.put(player, playerMedians);
+            shiftedRTs.put(glycanName, playerMedians);
         }
-        for (String player : allShiftedIMs.keySet()) {
-            HashMap<String, List<Float>> innerMap = allShiftedIMs.get(player);
+        // calculate IM median shifts
+        for (String glycanName : allShiftedIMs.keySet()) {
+            HashMap<String, List<Float>> innerMap = allShiftedIMs.get(glycanName);
             HashMap<String, Float> playerMedians = new HashMap<>();
 
             for (String game : innerMap.keySet()) {
@@ -134,7 +170,15 @@ public class RT_adjuster {
                 Float median = calculateMedian(scores);
                 playerMedians.put(game, median);
             }
-            shiftedIMs.put(player, playerMedians);
+            shiftedIMs.put(glycanName, playerMedians);
+        }
+        // calculate RT median shifts of monosaccharides
+        for (String residual : allShiftedMonoRTs.keySet()) {
+            monosaccharideRtShifts.put(residual,calculateMedian(allShiftedMonoRTs.get(residual)));
+        }
+        // calculate IM median shifts of monosaccharides
+        for (String residual : allShiftedMonoIMs.keySet()) {
+            monosaccharideImShifts.put(residual,calculateMedian(allShiftedMonoIMs.get(residual)));
         }
     }
 
@@ -152,6 +196,7 @@ public class RT_adjuster {
             return scores.get(size / 2);
         }
     }
+
 
     Float getShiftedRT(Glycan oldGlycan, Glycan newGlycan, double oldRT) {
         Float shiftedRT;
