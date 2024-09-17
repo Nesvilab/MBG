@@ -414,7 +414,6 @@ public class PSM implements Comparable<PSM>{
             GlycanResidue residual = residualEntry.getValue();
             if (psm.glycan.composition.containsKey(residual)) {
                 int count = psm.glycan.composition.get(residual);
-                // add
                 HashMap<GlycanResidue, Integer> newCompositionAdd = new HashMap(psm.glycan.composition);
                 newCompositionAdd.put(residual, count + 1);
                 dummy_glycans.add(new Glycan(newCompositionAdd));

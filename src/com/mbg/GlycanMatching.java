@@ -103,8 +103,8 @@ public class GlycanMatching {
                             // this glycan was observed for this site, no action required
                             continue;
                         }
-                        if (!Arrays.asList(qualifiedGlycans).contains(new_glycan.toString())) {
-                            // this glycan not detected in psm.tsv
+                        if (!Arrays.asList(qualifiedGlycans).contains(new_glycan.toString()) & !params.expandDB) {
+                            // this glycan not detected in psm.tsv ever, and do not expanding glycan database
                             continue;
                         }
 
