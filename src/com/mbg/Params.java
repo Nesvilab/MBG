@@ -127,6 +127,14 @@ public class Params {
                         System.exit(1);
                     }
                     break;
+                case "--expanddb":
+                    try {
+                        expandDB = Boolean.parseBoolean(args[i + 1].trim());
+                    } catch (Exception e) {
+                        out.printf("Error parsing expanddb argument %s: neither true nor false", args[i + 1]);
+                        System.exit(1);
+                    }
+                    break;
                 case "--minscans":
                     try {
                         minScansIonQuant = Integer.parseInt(args[i + 1].trim());

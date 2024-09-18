@@ -231,7 +231,7 @@ public class PSM implements Comparable<PSM>{
      * @param psmCols
      * @param params
      */
-    public static List<PSM> makeDummyPSM(PSM existingPSM, Glycan newGlycan, HashMap<PSM_File.PSMattr, Integer> psmCols, Params params, int rankCounter, RT_adjuster rtAdjuster, boolean ifdecoy) {
+    public static List<PSM> makeDummyPSM(PSM existingPSM, Glycan newGlycan, HashMap<PSM_File.PSMattr, Integer> psmCols, Params params, int rankCounter, RT_adjuster rtAdjuster, boolean ifdecoy, boolean expanded_glycan) {
         String[] newSplits = new String[existingPSM.splits.length];
         System.arraycopy(existingPSM.splits, 0, newSplits, 0, newSplits.length);
 
@@ -269,13 +269,13 @@ public class PSM implements Comparable<PSM>{
         newSplits[psmCols.get(PSM_File.PSMattr.delta_mass)] = String.format("%.4f", existingPSM.deltaMass);
 
         // adjust RT and IM
-        newSplits[psmCols.get(PSM_File.PSMattr.RT)] = String.format("%.3f", rtAdjuster.getShiftedRT(existingPSM.glycan, newGlycan, existingPSM.apexRT*60));
-        if (!params.noPASEF) {
-            newSplits[psmCols.get(PSM_File.PSMattr.IM)] = String.format("%.3f", rtAdjuster.getShiftedIM(existingPSM.glycan, newGlycan, existingPSM.apexIM));
-        }
-        double newRT = rtAdjuster.getShiftedRT(existingPSM.glycan, newGlycan, existingPSM.apexRT);  // in minute
-        double newIM = rtAdjuster.getShiftedIM(existingPSM.glycan, newGlycan, existingPSM.apexIM);
+        double newRT = rtAdjuster.getShiftedRT(existingPSM.glycan, newGlycan, existingPSM.apexRT, expanded_glycan);  // in minute
+        double newIM = rtAdjuster.getShiftedIM(existingPSM.glycan, newGlycan, existingPSM.apexIM, expanded_glycan);
         double newMZ = Double.parseDouble(newSplits[psmCols.get(PSM_File.PSMattr.calc_pep_mz)]);
+        newSplits[psmCols.get(PSM_File.PSMattr.RT)] = String.format("%.3f", newRT);
+        if (!params.noPASEF) {
+            newSplits[psmCols.get(PSM_File.PSMattr.IM)] = String.format("%.3f", newIM);
+        }
 
         List<PSM> addedPSMs = new ArrayList<>();
         float aveMassDiff = 0;
@@ -303,7 +303,11 @@ public class PSM implements Comparable<PSM>{
         aveMassDiff = rtAdjuster.getAverageMassDiff(existingPSM.glycan, newGlycan, existingPSM.averageMass, peakMatcher.averageMass, existingPSM.charge);
         rtDiff = java.lang.Math.abs((float) (peakMatcher.quantifiedEntry.apexRt - newRT));
         imDiff = java.lang.Math.abs((float) (peakMatcher.quantifiedEntry.apexIm - newIM));
-        newSplits[psmCols.get(PSM_File.PSMattr.averageMassDiff)] = String.format("%.3f", rtDiff);
+        if (expanded_glycan) {
+            newSplits[psmCols.get(PSM_File.PSMattr.averageMassDiff)] = String.format("%.3f", 1.0);
+        } else {
+            newSplits[psmCols.get(PSM_File.PSMattr.averageMassDiff)] = String.format("%.3f", 0.0);
+        }
         newSplits[psmCols.get(PSM_File.PSMattr.ionMobilityDiff)] = String.format("%.3f", imDiff);
         // add intensity, rtDiff, imDiff to decoys or targets for scoring
         if (!params.noPASEF) {
@@ -360,7 +364,7 @@ public class PSM implements Comparable<PSM>{
     private static double getShiftedRT(Glycan oldGlycan, Glycan newGlycan, double oldRT, RT_adjuster rtAdjuster) {
         //
         double newRT;
-        if (glycanMassShift.containsKey(newGlycan.name)) {
+        if (RT_adjuster.monosaccharideRtShifts.containsKey(newGlycan.name)) {
             newRT = oldRT + glycanMassShift.get(newGlycan.name).getOrDefault(oldGlycan.name, 0f);
         } else
             newRT = oldRT;

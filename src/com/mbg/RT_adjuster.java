@@ -104,6 +104,18 @@ public class RT_adjuster {
 
     private static void putMonoData(Glycan g1, Glycan g2, Float value, String mode) {
         // get the shifted monosaccharide difference, g2 should always bigger than g1
+        String shiftedMonosaccharide = getShiftedMonosaccharide(g1, g2);
+        if (Objects.equals(mode, "RT")) {
+            allShiftedMonoRTs.computeIfAbsent(shiftedMonosaccharide, k -> new ArrayList<>());
+            allShiftedMonoRTs.get(shiftedMonosaccharide).add(value);
+        } else {
+            allShiftedMonoIMs.computeIfAbsent(shiftedMonosaccharide, k -> new ArrayList<>());
+            allShiftedMonoIMs.get(shiftedMonosaccharide).add(value);
+        }
+    }
+
+    private static String getShiftedMonosaccharide(Glycan g1, Glycan g2) {
+        // g2 should always bigger than g1
         String shiftedMonosaccharide = "";
         for (Map.Entry<GlycanResidue, Integer> compEntry2: g2.composition.entrySet()) {
             GlycanResidue glycanResidue = compEntry2.getKey();
@@ -117,13 +129,7 @@ public class RT_adjuster {
             out.printf("Error: shifted monosaccharide difference not equal to 1 between %s and %s\n", g1.toString(), g2.toString());
             System.exit(1);
         }
-        if (Objects.equals(mode, "RT")) {
-            allShiftedMonoRTs.computeIfAbsent(shiftedMonosaccharide, k -> new ArrayList<>());
-            allShiftedMonoRTs.get(shiftedMonosaccharide).add(value);
-        } else {
-            allShiftedMonoIMs.computeIfAbsent(shiftedMonosaccharide, k -> new ArrayList<>());
-            allShiftedMonoIMs.get(shiftedMonosaccharide).add(value);
-        }
+        return shiftedMonosaccharide;
     }
 
     private static void putData(String outerKey, String innerKey, Float value, String mode) {
@@ -198,8 +204,18 @@ public class RT_adjuster {
     }
 
 
-    Float getShiftedRT(Glycan oldGlycan, Glycan newGlycan, double oldRT) {
+    Float getShiftedRT(Glycan oldGlycan, Glycan newGlycan, double oldRT, boolean expanded_glycan) {
         Float shiftedRT;
+        if (expanded_glycan) {
+            if (oldGlycan.mass < newGlycan.mass) {
+                String shiftedMonosaccharide = getShiftedMonosaccharide(oldGlycan, newGlycan);
+                shiftedRT = monosaccharideRtShifts.get(shiftedMonosaccharide);
+            } else {
+                String shiftedMonosaccharide = getShiftedMonosaccharide(newGlycan, oldGlycan);
+                shiftedRT = -monosaccharideRtShifts.get(shiftedMonosaccharide);
+            }
+            return (float) (oldRT + shiftedRT);
+        }
         if (oldGlycan.mass < newGlycan.mass) {
             if (shiftedRTs.containsKey(oldGlycan.toString()) && shiftedRTs.get(oldGlycan.toString()).containsKey(newGlycan.toString())) {
                 shiftedRT = shiftedRTs.get(oldGlycan.toString()).get(newGlycan.toString());
@@ -213,11 +229,21 @@ public class RT_adjuster {
                 shiftedRT = (float) 0;
             }
         }
-        return (Float) (float) (oldRT + shiftedRT);
+        return (float) (oldRT + shiftedRT);
     }
 
-    Float getShiftedIM(Glycan oldGlycan, Glycan newGlycan, double oldIM) {
+    Float getShiftedIM(Glycan oldGlycan, Glycan newGlycan, double oldIM, boolean expanded_glycan) {
         Float shiftedIM;
+        if (expanded_glycan) {
+            if (oldGlycan.mass < newGlycan.mass) {
+                String shiftedMonosaccharide = getShiftedMonosaccharide(oldGlycan, newGlycan);
+                shiftedIM = monosaccharideImShifts.get(shiftedMonosaccharide);
+            } else {
+                String shiftedMonosaccharide = getShiftedMonosaccharide(newGlycan, oldGlycan);
+                shiftedIM = -monosaccharideImShifts.get(shiftedMonosaccharide);
+            }
+            return (float) (oldIM + shiftedIM);
+        }
         if (oldGlycan.mass < newGlycan.mass) {
             if (shiftedIMs.containsKey(oldGlycan.toString()) && shiftedIMs.get(oldGlycan.toString()).containsKey(newGlycan.toString())) {
                 shiftedIM = shiftedIMs.get(oldGlycan.toString()).get(newGlycan.toString());

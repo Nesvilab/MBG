@@ -103,15 +103,19 @@ public class GlycanMatching {
                             // this glycan was observed for this site, no action required
                             continue;
                         }
-                        if (!Arrays.asList(qualifiedGlycans).contains(new_glycan.toString()) & !params.expandDB) {
+                        boolean expanded_glycan = false;
+                        if (!Arrays.asList(qualifiedGlycans).contains(new_glycan.toString())) {
                             // this glycan not detected in psm.tsv ever, and do not expanding glycan database
-                            continue;
+                            if (params.expandDB) {
+                                expanded_glycan = true;
+                            } else {
+                                continue;
+                            }
                         }
-
                         // glycan not observed. Make a PSM for it
-                        List<PSM> addedPSMs = PSM.makeDummyPSM(base_PSM, new_glycan, psmFile.PSMcolumns, params, rankCounter, cRT_adjuster, false);
+                        List<PSM> addedPSMs = PSM.makeDummyPSM(base_PSM, new_glycan, psmFile.PSMcolumns, params, rankCounter, cRT_adjuster, false, expanded_glycan);
                         // decoy, not add into newPSMs
-                        PSM.makeDummyPSM(base_PSM, new_glycan, psmFile.PSMcolumns, params, rankCounter, cRT_adjuster, true);
+                        PSM.makeDummyPSM(base_PSM, new_glycan, psmFile.PSMcolumns, params, rankCounter, cRT_adjuster, true, false);
 
                         newPSMs.addAll(addedPSMs);
                         // update observed glycans
