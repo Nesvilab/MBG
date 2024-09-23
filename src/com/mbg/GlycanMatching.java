@@ -6,7 +6,6 @@ import java.nio.file.Paths;
 import java.util.*;
 
 import umich.ms.glyco.Glycan;
-import umich.ms.glyco.GlycanResidue;
 
 import static com.mbg.Peak.findFirstPriorityFile;
 import static java.lang.System.out;
@@ -60,6 +59,7 @@ public class GlycanMatching {
     public ArrayList<PSM> fillInGlycoSites(String rawFileName) throws Exception {
         ArrayList<PSM> newPSMs = new ArrayList<>();
         String msFilePath = matchMSfilename(rawFileName, params.msFilePathsMap);
+//        msFilePath = "Z:\\dpolasky\\data\\glyco\\PXD036791_Nielsen_TMT-oglyc\\Lumos_T1\\191113_Lumos_(LC1200)_MIN_NTERT_T1_Trypsin_TMT6plex_Oglyco_Jacalin_Differentials_V1_High_pH_1.mzML";
         Path msFileDir = Paths.get(msFilePath).getParent();
 
         // read msFile
@@ -95,34 +95,7 @@ public class GlycanMatching {
             GlycoSite site = siteEntry.getValue();
             if (site.psms.size() >= params.minPSMs && site.observedGlycans.size() >= params.minGlycans) {
                 for (PSM base_PSM : site.basePSMs) {
-                    int rankCounter = 1;
-
-                    ArrayList<Glycan> dummy_glycans = PSM.getDummyGlycans(base_PSM, params.toAddResidues);
-                    for (Glycan new_glycan: dummy_glycans) {
-                        if (site.observedGlycans.containsKey(new_glycan.toString()) || site.basePSM == null) {
-                            // this glycan was observed for this site, no action required
-                            continue;
-                        }
-                        boolean expanded_glycan = false;
-                        if (!Arrays.asList(qualifiedGlycans).contains(new_glycan.toString())) {
-                            // this glycan not detected in psm.tsv ever, and do not expanding glycan database
-                            if (params.expandDB) {
-                                expanded_glycan = true;
-                            } else {
-                                continue;
-                            }
-                        }
-                        // glycan not observed. Make a PSM for it
-                        List<PSM> addedPSMs = PSM.makeDummyPSM(base_PSM, new_glycan, psmFile.PSMcolumns, params, rankCounter, cRT_adjuster, false, expanded_glycan);
-                        // decoy, not add into newPSMs
-                        PSM.makeDummyPSM(base_PSM, new_glycan, psmFile.PSMcolumns, params, rankCounter, cRT_adjuster, true, false);
-
-                        newPSMs.addAll(addedPSMs);
-                        // update observed glycans
-                        site.observedGlycans.put(new_glycan.toString(), new ArrayList<>());
-                        rankCounter++;
-                    }
-
+                    getInferredPSMs(base_PSM, params, site, cRT_adjuster, newPSMs, 2);
                 }
             }
         }
@@ -134,8 +107,8 @@ public class GlycanMatching {
                     continue;  // remove unmatched PSMs
                 }
                 qualifiedPSMs.add(p);
-            return qualifiedPSMs;
             }
+            return qualifiedPSMs;
         }
         // if TMT labeled sample, only keep PSMs with MS2
         if (params.runTMT) {
@@ -162,6 +135,42 @@ public class GlycanMatching {
             }
         }
         return qualifiedPSMs;
+    }
+
+    private void getInferredPSMs(PSM base_PSM, Params params, GlycoSite site, RT_adjuster cRT_adjuster, ArrayList<PSM> newPSMs, Integer steps) {
+        if (steps < 1) {
+            return;
+        }
+        int rankCounter = 1;
+        ArrayList<Glycan> dummy_glycans = PSM.getDummyGlycans(base_PSM, params.toAddResidues);
+        for (Glycan new_glycan: dummy_glycans) {
+            if (site.observedGlycans.containsKey(new_glycan.toString()) || site.basePSM == null) {
+                // this glycan was observed for this site, no action required
+                continue;
+            }
+            boolean expanded_glycan = false;
+            if (!Arrays.asList(qualifiedGlycans).contains(new_glycan.toString())) {
+                // this glycan not detected in psm.tsv ever, and do not expanding glycan database
+                if (params.expandDB > 0) {
+                    expanded_glycan = true;
+                } else {
+                    continue;
+                }
+            }
+            // glycan not observed. Make a PSM for it
+            List<PSM> addedPSMs = PSM.makeDummyPSM(base_PSM, new_glycan, psmFile.PSMcolumns, params, rankCounter, cRT_adjuster, false, expanded_glycan);
+            // decoy, not add into newPSMs
+            PSM.makeDummyPSM(base_PSM, new_glycan, psmFile.PSMcolumns, params, rankCounter, cRT_adjuster, true, false);
+
+            newPSMs.addAll(addedPSMs);
+            // update observed glycans
+            site.observedGlycans.put(new_glycan.toString(), new ArrayList<>());
+            rankCounter++;
+            // set current inferred PSMs as base PSM, if within path and has matched PSM
+            if (steps>0 & addedPSMs.get(0).intensity > 0.01) {
+                getInferredPSMs(addedPSMs.get(0), params, site, cRT_adjuster, newPSMs, steps-1);
+            }
+        }
     }
 
     // Match the name in the psm.tsv (base filename without the extension) to the file path from the manifest

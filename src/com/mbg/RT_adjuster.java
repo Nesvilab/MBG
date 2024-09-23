@@ -209,10 +209,10 @@ public class RT_adjuster {
         if (expanded_glycan) {
             if (oldGlycan.mass < newGlycan.mass) {
                 String shiftedMonosaccharide = getShiftedMonosaccharide(oldGlycan, newGlycan);
-                shiftedRT = monosaccharideRtShifts.get(shiftedMonosaccharide);
+                shiftedRT = monosaccharideRtShifts.getOrDefault(shiftedMonosaccharide, (float) 0);
             } else {
                 String shiftedMonosaccharide = getShiftedMonosaccharide(newGlycan, oldGlycan);
-                shiftedRT = -monosaccharideRtShifts.get(shiftedMonosaccharide);
+                shiftedRT = -monosaccharideRtShifts.getOrDefault(shiftedMonosaccharide, (float) 0);
             }
             return (float) (oldRT + shiftedRT);
         }
@@ -237,10 +237,10 @@ public class RT_adjuster {
         if (expanded_glycan) {
             if (oldGlycan.mass < newGlycan.mass) {
                 String shiftedMonosaccharide = getShiftedMonosaccharide(oldGlycan, newGlycan);
-                shiftedIM = monosaccharideImShifts.get(shiftedMonosaccharide);
+                shiftedIM = monosaccharideImShifts.getOrDefault(shiftedMonosaccharide, (float) 0);
             } else {
                 String shiftedMonosaccharide = getShiftedMonosaccharide(newGlycan, oldGlycan);
-                shiftedIM = -monosaccharideImShifts.get(shiftedMonosaccharide);
+                shiftedIM = -monosaccharideImShifts.getOrDefault(shiftedMonosaccharide, (float) 0);
             }
             return (float) (oldIM + shiftedIM);
         }

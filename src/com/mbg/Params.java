@@ -29,7 +29,7 @@ public class Params {
     private static final String defaultModPath = "glycan_mods.txt";
     public boolean noPASEF = false;
     public boolean runTMT = false;
-    public boolean expandDB = true;
+    public int expandDB = 1;
     public int minIsotopesIonQuant = 2;
     public int minScansIonQuant = 3;
     public int numThreads = 4;
@@ -129,7 +129,7 @@ public class Params {
                     break;
                 case "--expanddb":
                     try {
-                        expandDB = Boolean.parseBoolean(args[i + 1].trim());
+                        expandDB = Integer.parseInt(args[i + 1].trim());
                     } catch (Exception e) {
                         out.printf("Error parsing expanddb argument %s: neither true nor false", args[i + 1]);
                         System.exit(1);
