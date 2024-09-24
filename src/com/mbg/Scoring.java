@@ -14,7 +14,6 @@ public class Scoring {
     public static List<double[]> decoyData;
     public static List<double[]> targetData;
     public static double thresholdScore;
-    public static double fdrCurOff=0.05;
     private static double[] coefficients;
     private static double intercept;
 
@@ -24,7 +23,7 @@ public class Scoring {
         targetData = new ArrayList<>();
     }
 
-    public static void getCutOffScore() throws Exception {
+    public static void getCutOffScore(double fdrCurOff) throws Exception {
         // Calculate mean vectors
         double[] decoyMean = calculateMean(decoyData);
         double[] targetMean = calculateMean(targetData);

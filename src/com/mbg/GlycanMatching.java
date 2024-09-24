@@ -120,7 +120,7 @@ public class GlycanMatching {
             return qualifiedPSMs;
         }
         // get threshold score and coefficient of score function
-        Scoring.getCutOffScore();
+        Scoring.getCutOffScore(params.fdr);
         // get qualified PSMs
         for (PSM p: newPSMs) {
             if (p.intensity <0.01) {
