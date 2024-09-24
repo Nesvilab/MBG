@@ -55,7 +55,7 @@ public class PSM implements Comparable<PSM>{
             int add = addCols;
             ArrayList<String> newSplits = new ArrayList<>(Arrays.asList(splits));
             while (add > 0) {
-                newSplits.add(psmCols.get(PSM_File.PSMattr.glyco_q_val) + 1, "");
+                newSplits.add(PSM_File.insertIndex, "");
                 add--;
             }
             splits = newSplits.toArray(new String[0]);
@@ -100,10 +100,15 @@ public class PSM implements Comparable<PSM>{
             this.glycan = null;
             return;
         }
-        try {
-            glycoQval = Double.parseDouble(splits[psmCols.get(PSM_File.PSMattr.glyco_q_val)]);
-        } catch (NumberFormatException ex) {
-            glycoQval = 1;
+        if (!psmCols.containsKey(PSM_File.PSMattr.glyco_q_val)) {
+            glycoQval = 0;
+        }
+        else {
+            try {
+                glycoQval = Double.parseDouble(splits[psmCols.get(PSM_File.PSMattr.glyco_q_val)]);
+            } catch (NumberFormatException ex) {
+                glycoQval = 1;
+            }
         }
         if (glycoQval > params.maxGlycanQval) {
             this.glycan = null;

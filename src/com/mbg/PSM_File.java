@@ -12,6 +12,7 @@ public class PSM_File {
     public HashMap<PSMattr, Integer> PSMcolumns;
     private static final HashMap<PSMattr, String> columnNames;
     public int addCols;
+    public static int insertIndex;
 
     static {
         columnNames = new HashMap<>();
@@ -48,12 +49,17 @@ public class PSM_File {
         // handle inserting new header(s) if needed
         if (PSMcolumns.getOrDefault(PSMattr.inferred_glycoform, -1) == -1) {
             addCols = 5;
+            if (PSMcolumns.containsKey(PSMattr.glyco_q_val)) {
+                insertIndex = PSMcolumns.get(PSMattr.glyco_q_val)+1;
+            } else {
+                insertIndex = PSMcolumns.get(PSMattr.glycan)+1;
+            }
             ArrayList<String> newHeaders = new ArrayList<>(Arrays.asList(this.headers));
-            newHeaders.add(PSMcolumns.get(PSMattr.glyco_q_val) + 1, columnNames.get(PSMattr.inferred_glycoform));
-            newHeaders.add(PSMcolumns.get(PSMattr.glyco_q_val) + 1, columnNames.get(PSMattr.has_ms2_spec));
-            newHeaders.add(PSMcolumns.get(PSMattr.glyco_q_val) + 1, columnNames.get(PSMattr.has_Y1));
-            newHeaders.add(PSMcolumns.get(PSMattr.glyco_q_val) + 1, columnNames.get(PSMattr.averageMassDiff));
-            newHeaders.add(PSMcolumns.get(PSMattr.glyco_q_val) + 1, columnNames.get(PSMattr.ionMobilityDiff));
+            newHeaders.add(insertIndex, columnNames.get(PSMattr.inferred_glycoform));
+            newHeaders.add(insertIndex, columnNames.get(PSMattr.has_ms2_spec));
+            newHeaders.add(insertIndex, columnNames.get(PSMattr.has_Y1));
+            newHeaders.add(insertIndex, columnNames.get(PSMattr.averageMassDiff));
+            newHeaders.add(insertIndex, columnNames.get(PSMattr.ionMobilityDiff));
             headers = newHeaders.toArray(new String[0]);
             this.PSMcolumns = initPSMcolumns();
         } else {
