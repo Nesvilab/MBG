@@ -29,7 +29,7 @@ public class Params {
     private static final String defaultModPath = "glycan_mods.txt";
     public boolean noPASEF = false;
     public boolean runTMT = false;
-    public int expandDB = 1;
+    public int expandDB = 0;
     public int minIsotopesIonQuant = 2;
     public int minScansIonQuant = 3;
     public int numThreads = 4;
