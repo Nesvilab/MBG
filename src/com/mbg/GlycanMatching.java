@@ -59,7 +59,7 @@ public class GlycanMatching {
     public ArrayList<PSM> fillInGlycoSites(String rawFileName) throws Exception {
         ArrayList<PSM> newPSMs = new ArrayList<>();
         String msFilePath = matchMSfilename(rawFileName, params.msFilePathsMap);
-//        msFilePath = "Z:\\dpolasky\\data\\glyco\\PXD036791_Nielsen_TMT-oglyc\\Lumos_T1\\191113_Lumos_(LC1200)_MIN_NTERT_T1_Trypsin_TMT6plex_Oglyco_Jacalin_Differentials_V1_High_pH_1.mzML";
+//        msFilePath = "Z:\\dpolasky\\data\\glyco\\pGlyco2\\yeast_PXD005565\\cwq_mix2-1_726.mzML";
         Path msFileDir = Paths.get(msFilePath).getParent();
 
         // read msFile
@@ -93,9 +93,12 @@ public class GlycanMatching {
 
         for (Map.Entry<String, GlycoSite> siteEntry: observedGlycoSites.entrySet()) {
             GlycoSite site = siteEntry.getValue();
+            if (Objects.equals(site.protein, "sp|Q09920|FIO1_SCHPO")) {
+                System.out.println(1);
+            }
             if (site.psms.size() >= params.minPSMs && site.observedGlycans.size() >= params.minGlycans) {
                 for (PSM base_PSM : site.basePSMs) {
-                    getInferredPSMs(base_PSM, params, site, cRT_adjuster, newPSMs, 2);
+                    getInferredPSMs(base_PSM, params, site, cRT_adjuster, newPSMs, params.expandDB);
                 }
             }
         }

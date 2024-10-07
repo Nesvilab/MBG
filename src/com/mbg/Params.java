@@ -23,7 +23,7 @@ public class Params {
     public int minGlycans = 2;
     public float rtTol = 0.4F;
     public float imTol = 0.05F;
-    public float fdr = 0.01F;
+    public float fdr = 0.05F;
     public int mztol = 5;
     private static final String defaultResiduePath = "glycan_residues.txt";
     private static final String defaultModPath = "glycan_mods.txt";

@@ -37,6 +37,8 @@ public class PSM implements Comparable<PSM>{
     float rtDiff;
     int rank;
     double intensity;
+    double avePPM;
+    double kl; // isotope distribution score
     public String rawfile;
 
     private static final Pattern modMassPattern = Pattern.compile("[\\d]+[A-Z]\\(([\\d.]+)\\)");
@@ -308,6 +310,8 @@ public class PSM implements Comparable<PSM>{
         aveMassDiff = rtAdjuster.getAverageMassDiff(existingPSM.glycan, newGlycan, existingPSM.averageMass, peakMatcher.averageMass, existingPSM.charge);
         rtDiff = java.lang.Math.abs((float) (peakMatcher.quantifiedEntry.apexRt - newRT));
         imDiff = java.lang.Math.abs((float) (peakMatcher.quantifiedEntry.apexIm - newIM));
+        // get average mass error in ppm for scoring
+        double c_avePPM = (double) (Math.abs(peakMatcher.quantifiedEntry.ppm0) + Math.abs(peakMatcher.quantifiedEntry.ppm1) + Math.abs(peakMatcher.quantifiedEntry.ppm2)) / 3;
         if (expanded_glycan) {
             newSplits[psmCols.get(PSM_File.PSMattr.averageMassDiff)] = String.format("%.3f", 1.0);
         } else {
@@ -317,15 +321,15 @@ public class PSM implements Comparable<PSM>{
         // add intensity, rtDiff, imDiff to decoys or targets for scoring
         if (!params.noPASEF) {
             if (ifdecoy) {
-                Scoring.decoyData.add(new double[] {(double) peakMatcher.quantifiedEntry.intensity, (double) rtDiff, (double) imDiff});
+                Scoring.decoyData.add(new double[] {(double) peakMatcher.quantifiedEntry.intensity, c_avePPM, peakMatcher.quantifiedEntry.kl, (double) rtDiff, (double) imDiff});
             } else {
-                Scoring.targetData.add(new double[] {(double) peakMatcher.quantifiedEntry.intensity, (double) rtDiff, (double) imDiff});
+                Scoring.targetData.add(new double[] {(double) peakMatcher.quantifiedEntry.intensity, c_avePPM, peakMatcher.quantifiedEntry.kl, (double) rtDiff, (double) imDiff});
             }
         } else {
             if (ifdecoy) {
-                Scoring.decoyData.add(new double[] {(double) peakMatcher.quantifiedEntry.intensity, (double) rtDiff});
+                Scoring.decoyData.add(new double[] {(double) peakMatcher.quantifiedEntry.intensity, c_avePPM, peakMatcher.quantifiedEntry.kl, (double) rtDiff});
             } else {
-                Scoring.targetData.add(new double[] {(double) peakMatcher.quantifiedEntry.intensity, (double) rtDiff});
+                Scoring.targetData.add(new double[] {(double) peakMatcher.quantifiedEntry.intensity, c_avePPM, peakMatcher.quantifiedEntry.kl, (double) rtDiff});
             }
         }
         // todo update spectra information if ms2 candidates found
@@ -342,6 +346,8 @@ public class PSM implements Comparable<PSM>{
                 // generate new PSM
                 PSM addedPSM = new PSM(String.join("\t", newSplits), psmCols, params, true, true, y1booleans.get(i), rtDiff, 0);
                 addedPSM.updateRank(existingPSM.rank + rankCounter, psmCols);
+                addedPSM.avePPM = c_avePPM;
+                addedPSM.kl = peakMatcher.quantifiedEntry.kl;
                 addedPSMs.add(addedPSM);
             }
 
@@ -351,6 +357,8 @@ public class PSM implements Comparable<PSM>{
             // generate new PSM
             PSM addedPSM = new PSM(String.join("\t", newSplits), psmCols, params, true, false, false, rtDiff, 0);
             addedPSM.updateRank(existingPSM.rank + rankCounter, psmCols);
+            addedPSM.avePPM = c_avePPM;
+            addedPSM.kl = peakMatcher.quantifiedEntry.kl;
             addedPSMs.add(addedPSM);
         }
         return addedPSMs;

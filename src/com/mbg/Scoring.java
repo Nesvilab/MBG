@@ -33,7 +33,7 @@ public class Scoring {
         RealMatrix targetCov = calculateCovariance(targetData, targetMean);
 
         // Calculate pooled covariance matrix
-        RealMatrix pooledCov = calculatePooledCovariance(decoyCov, targetCov, decoyData.size(), targetData.size());
+        RealMatrix pooledCov = calculatePooledCovariance(targetCov, decoyCov, decoyData.size(), targetData.size());
 
         // Check for singularity and handle it
         LUDecomposition lu = new LUDecomposition(pooledCov);
@@ -47,10 +47,10 @@ public class Scoring {
         RealMatrix invPooledCov = lu.getSolver().getInverse();
 
         // Calculate coefficients of the discriminant function
-        coefficients = calculateCoefficients(decoyMean, targetMean, invPooledCov);
+        coefficients = calculateCoefficients(targetMean, decoyMean, invPooledCov);
 
         // Calculate intercept of the discriminant function
-        intercept = calculateIntercept(decoyMean, targetMean, coefficients);
+        intercept = calculateIntercept(targetMean, decoyMean, coefficients);
 
         // Print results
         System.out.println("Coefficients: " + java.util.Arrays.toString(coefficients));
@@ -141,7 +141,7 @@ public class Scoring {
         // calculate FDRs for each point
         List<Double> fdrs = new ArrayList<>();
         for (int i = 0; i < decoyIndexes.size(); i++) {
-            fdrs.add((double) (i+1/ (decoyIndexes.get(i)+1)));
+            fdrs.add((double) (i+1)/ (decoyIndexes.get(i)+1));
         }
         int iOfDecoy = getLastValueBelowThreshold(fdrs, fdrCutOff);
         int n = decoyIndexes.get(iOfDecoy);
@@ -198,9 +198,9 @@ public class Scoring {
     public static boolean overThreshold(PSM psm, boolean noPASEF) {
         double[] data;
         if (noPASEF) {
-            data = new double[]{psm.intensity, (double) psm.rtDiff};
+            data = new double[]{psm.intensity, psm.avePPM, psm.kl, (double) psm.rtDiff};
         } else {
-            data = new double[]{psm.intensity, (double) psm.rtDiff, (double) psm.imDiff};
+            data = new double[]{psm.intensity, psm.avePPM, psm.kl, (double) psm.rtDiff, (double) psm.imDiff};
         }
         double c_score = calculateScore(data, coefficients, intercept);
         return c_score > thresholdScore;
