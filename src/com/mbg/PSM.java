@@ -480,7 +480,8 @@ public class PSM implements Comparable<PSM>{
                 }
             }
         }
-        return -1;
+        // todo return correct glycosite Index when there is multiple glycan on peptide
+        return 1;
     }
 
     public String getGlycoSiteID() {

@@ -59,7 +59,7 @@ public class GlycanMatching {
     public ArrayList<PSM> fillInGlycoSites(String rawFileName) throws Exception {
         ArrayList<PSM> newPSMs = new ArrayList<>();
         String msFilePath = matchMSfilename(rawFileName, params.msFilePathsMap);
-//        msFilePath = "Z:\\dpolasky\\data\\glyco\\pGlyco2\\yeast_PXD005565\\cwq_mix2-1_726.mzML";
+//        msFilePath = "Z:\\jishen\\data\\glyco\\pglyconovo\\raw\\Supplementary-Note-5-RAW_MS\\Model-Fly-H-1802-6.raw";
         Path msFileDir = Paths.get(msFilePath).getParent();
 
         // read msFile
@@ -141,7 +141,7 @@ public class GlycanMatching {
     }
 
     private void getInferredPSMs(PSM base_PSM, Params params, GlycoSite site, RT_adjuster cRT_adjuster, ArrayList<PSM> newPSMs, Integer steps) {
-        if (steps < 1) {
+        if (steps < 0) {
             return;
         }
         int rankCounter = 1;
