@@ -257,7 +257,12 @@ public class RT_adjuster {
                 shiftedIM = (float) 0;
             }
         }
-        return (Float) (float) (oldIM + shiftedIM);
+        float newIM = (float) (oldIM + shiftedIM);
+        if (newIM < 0) {
+            return (float) 0;
+        } else {
+            return newIM;
+        }
     }
 
     Float getAverageMassDiff(Glycan oldGlycan, Glycan newGlycan, float oldAveMass, float newAveMass, int charge) {
