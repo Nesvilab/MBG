@@ -242,7 +242,12 @@ public class RT_adjuster {
                 String shiftedMonosaccharide = getShiftedMonosaccharide(newGlycan, oldGlycan);
                 shiftedIM = -monosaccharideImShifts.getOrDefault(shiftedMonosaccharide, (float) 0);
             }
-            return (float) (oldIM + shiftedIM);
+            float newIM = (float) (oldIM + shiftedIM);
+            if (newIM < 0) {
+                return (float) 0;
+            } else {
+                return newIM;
+            }
         }
         if (oldGlycan.mass < newGlycan.mass) {
             if (shiftedIMs.containsKey(oldGlycan.toString()) && shiftedIMs.get(oldGlycan.toString()).containsKey(newGlycan.toString())) {
