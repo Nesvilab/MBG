@@ -276,8 +276,8 @@ public class PSM implements Comparable<PSM>{
         newSplits[psmCols.get(PSM_File.PSMattr.delta_mass)] = String.format("%.4f", existingPSM.deltaMass);
 
         // adjust RT and IM
-        double newRT = rtAdjuster.getShiftedRT(existingPSM.glycan, newGlycan, existingPSM.apexRT, expanded_glycan);  // in minute
-        double newIM = rtAdjuster.getShiftedIM(existingPSM.glycan, newGlycan, existingPSM.apexIM, expanded_glycan);
+        double newRT = rtAdjuster.getShiftedRT(existingPSM.glycan, newGlycan, existingPSM.apexRT);  // in minute
+        double newIM = rtAdjuster.getShiftedIM(existingPSM.glycan, newGlycan, existingPSM.apexIM);
         double newMZ = Double.parseDouble(newSplits[psmCols.get(PSM_File.PSMattr.calc_pep_mz)]);
         newSplits[psmCols.get(PSM_File.PSMattr.RT)] = String.format("%.3f", newRT);
         if (!params.noPASEF) {

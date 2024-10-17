@@ -204,18 +204,8 @@ public class RT_adjuster {
     }
 
 
-    Float getShiftedRT(Glycan oldGlycan, Glycan newGlycan, double oldRT, boolean expanded_glycan) {
+    Float getShiftedRT(Glycan oldGlycan, Glycan newGlycan, double oldRT) {
         Float shiftedRT;
-        if (expanded_glycan) {
-            if (oldGlycan.mass < newGlycan.mass) {
-                String shiftedMonosaccharide = getShiftedMonosaccharide(oldGlycan, newGlycan);
-                shiftedRT = monosaccharideRtShifts.getOrDefault(shiftedMonosaccharide, (float) 0);
-            } else {
-                String shiftedMonosaccharide = getShiftedMonosaccharide(newGlycan, oldGlycan);
-                shiftedRT = -monosaccharideRtShifts.getOrDefault(shiftedMonosaccharide, (float) 0);
-            }
-            return (float) (oldRT + shiftedRT);
-        }
         if (oldGlycan.mass < newGlycan.mass) {
             if (shiftedRTs.containsKey(oldGlycan.toString()) && shiftedRTs.get(oldGlycan.toString()).containsKey(newGlycan.toString())) {
                 shiftedRT = shiftedRTs.get(oldGlycan.toString()).get(newGlycan.toString());
@@ -232,23 +222,8 @@ public class RT_adjuster {
         return (float) (oldRT + shiftedRT);
     }
 
-    Float getShiftedIM(Glycan oldGlycan, Glycan newGlycan, double oldIM, boolean expanded_glycan) {
+    Float getShiftedIM(Glycan oldGlycan, Glycan newGlycan, double oldIM) {
         Float shiftedIM;
-        if (expanded_glycan) {
-            if (oldGlycan.mass < newGlycan.mass) {
-                String shiftedMonosaccharide = getShiftedMonosaccharide(oldGlycan, newGlycan);
-                shiftedIM = monosaccharideImShifts.getOrDefault(shiftedMonosaccharide, (float) 0);
-            } else {
-                String shiftedMonosaccharide = getShiftedMonosaccharide(newGlycan, oldGlycan);
-                shiftedIM = -monosaccharideImShifts.getOrDefault(shiftedMonosaccharide, (float) 0);
-            }
-            float newIM = (float) (oldIM + shiftedIM);
-            if (newIM < 0) {
-                return (float) 0;
-            } else {
-                return newIM;
-            }
-        }
         if (oldGlycan.mass < newGlycan.mass) {
             if (shiftedIMs.containsKey(oldGlycan.toString()) && shiftedIMs.get(oldGlycan.toString()).containsKey(newGlycan.toString())) {
                 shiftedIM = shiftedIMs.get(oldGlycan.toString()).get(newGlycan.toString());
