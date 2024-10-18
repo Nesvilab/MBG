@@ -160,6 +160,10 @@ public class GlycanMatching {
                     continue;
                 }
             }
+            // check if mass of dummy glycan is too close to glycans on current site
+            if (isWithinDistance(site.glycanMasses, new_glycan.mass, 1.5)) {
+                continue;
+            }
             // glycan not observed. Make a PSM for it
             List<PSM> addedPSMs = PSM.makeDummyPSM(base_PSM, new_glycan, psmFile.PSMcolumns, params, rankCounter, cRT_adjuster, false, expanded_glycan);
             // decoy, not add into newPSMs
@@ -168,12 +172,22 @@ public class GlycanMatching {
             newPSMs.addAll(addedPSMs);
             // update observed glycans
             site.observedGlycans.put(new_glycan.toString(), new ArrayList<>());
+            site.glycanMasses.add(new_glycan.mass);
             rankCounter++;
             // set current inferred PSMs as base PSM, if within path and has matched PSM
             if (steps>0 & addedPSMs.get(0).intensity > 0.01) {
                 getInferredPSMs(addedPSMs.get(0), params, site, cRT_adjuster, newPSMs, steps-1);
             }
         }
+    }
+
+    private boolean isWithinDistance(List<Double> list, double inputValue, double distance) {
+        for (double element : list) {
+            if (Math.abs(element - inputValue) <= distance) {
+                return true;
+            }
+        }
+        return false;
     }
 
     // Match the name in the psm.tsv (base filename without the extension) to the file path from the manifest

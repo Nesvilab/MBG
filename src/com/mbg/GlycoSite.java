@@ -11,6 +11,7 @@ public class GlycoSite {
     String id;
     PSM basePSM;
     ArrayList<PSM> basePSMs;  // the most intense PSMs among multiple PSMs of this glycopeptide
+    ArrayList<Double> glycanMasses;
 
     public GlycoSite(PSM firstPSM, String id) {
         this.protein = firstPSM.protein;
@@ -33,6 +34,7 @@ public class GlycoSite {
             glycoPSMs = observedGlycans.get(glycanComp);
         } else {
             glycoPSMs = new ArrayList<>();
+            glycanMasses.add(psm.glycan.mass);
         }
         glycoPSMs.add(psm);
         observedGlycans.put(glycanComp, glycoPSMs);
