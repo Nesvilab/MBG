@@ -33,7 +33,7 @@ public class PSM_File {
         columnNames.put(PSMattr.inferred_glycoform, "Inferred Glycoform?");
         columnNames.put(PSMattr.has_ms2_spec, "Has MS2 Spectrum?");
         columnNames.put(PSMattr.has_Y1, "Has Y1 ion?");
-        columnNames.put(PSMattr.averageMassDiff, "averageMassDifference");
+        columnNames.put(PSMattr.MBG_score, "MBG Score");
         columnNames.put(PSMattr.ionMobilityDiff, "ionMobilityDifference");
         columnNames.put(PSMattr.spectrum_file, "Spectrum File");
         columnNames.put(PSMattr.intensity, "Intensity");
@@ -58,7 +58,7 @@ public class PSM_File {
             newHeaders.add(insertIndex, columnNames.get(PSMattr.inferred_glycoform));
             newHeaders.add(insertIndex, columnNames.get(PSMattr.has_ms2_spec));
             newHeaders.add(insertIndex, columnNames.get(PSMattr.has_Y1));
-            newHeaders.add(insertIndex, columnNames.get(PSMattr.averageMassDiff));
+            newHeaders.add(insertIndex, columnNames.get(PSMattr.MBG_score));
             newHeaders.add(insertIndex, columnNames.get(PSMattr.ionMobilityDiff));
             headers = newHeaders.toArray(new String[0]);
             this.PSMcolumns = initPSMcolumns();
@@ -145,7 +145,7 @@ public class PSM_File {
         spectrum_file,
         has_ms2_spec,
         has_Y1,
-        averageMassDiff,
+        MBG_score,
         ionMobilityDiff,
         intensity
     }

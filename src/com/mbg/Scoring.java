@@ -1,9 +1,7 @@
 package com.mbg;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.List;
+import java.util.*;
+
 import org.apache.commons.math3.linear.Array2DRowRealMatrix;
 import org.apache.commons.math3.linear.RealMatrix;
 import org.apache.commons.math3.linear.LUDecomposition;
@@ -195,7 +193,11 @@ public class Scoring {
         return scores;
     }
 
-    public static boolean overThreshold(PSM psm, boolean noPASEF) {
+    public static boolean overThreshold(double c_score) {
+        return c_score > thresholdScore;
+    }
+
+    public static double getMBGScore(PSM psm, HashMap<PSM_File.PSMattr, Integer> psmCols, boolean noPASEF) {
         double[] data;
         if (noPASEF) {
             data = new double[]{psm.intensity, psm.avePPM, psm.kl, (double) psm.rtDiff};
@@ -203,7 +205,9 @@ public class Scoring {
             data = new double[]{psm.intensity, psm.avePPM, psm.kl, (double) psm.rtDiff, (double) psm.imDiff};
         }
         double c_score = calculateScore(data, coefficients, intercept);
-        return c_score > thresholdScore;
+        // update MBG score
+        psm.add_MBG_score(psmCols, c_score);
+        return c_score;
     }
 }
 

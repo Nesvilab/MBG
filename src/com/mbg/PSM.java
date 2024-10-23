@@ -84,7 +84,7 @@ public class PSM implements Comparable<PSM>{
         splits[psmCols.get(PSM_File.PSMattr.inferred_glycoform)] = String.valueOf(inferredGlycoform);
         splits[psmCols.get(PSM_File.PSMattr.has_ms2_spec)] = String.valueOf(hasMS2Spectrum);
         splits[psmCols.get(PSM_File.PSMattr.has_Y1)] = String.valueOf(hasY1Ion);
-        splits[psmCols.get(PSM_File.PSMattr.averageMassDiff)] = String.valueOf(aveMassDiff);
+        splits[psmCols.get(PSM_File.PSMattr.MBG_score)] = String.valueOf(0);
         Matcher rankMatch = rankPattern.matcher(splits[psmCols.get(PSM_File.PSMattr.spectrum_file)]);
         if (rankMatch.find()) {
             rank = Integer.parseInt(rankMatch.group(1));
@@ -174,7 +174,6 @@ public class PSM implements Comparable<PSM>{
         splits[psmCols.get(PSM_File.PSMattr.inferred_glycoform)] = String.valueOf(inferredGlycoform);
         splits[psmCols.get(PSM_File.PSMattr.has_ms2_spec)] = String.valueOf(hasMS2Spectrum);
         splits[psmCols.get(PSM_File.PSMattr.has_Y1)] = String.valueOf(hasY1Ion);
-        splits[psmCols.get(PSM_File.PSMattr.averageMassDiff)] = String.valueOf(aveMassDiff);
         splits[psmCols.get(PSM_File.PSMattr.ionMobilityDiff)] = String.valueOf(imDiff);
         Matcher rankMatch = rankPattern.matcher(splits[psmCols.get(PSM_File.PSMattr.spectrum_file)]);
         if (rankMatch.find()) {
@@ -312,11 +311,6 @@ public class PSM implements Comparable<PSM>{
         imDiff = java.lang.Math.abs((float) (peakMatcher.quantifiedEntry.apexIm - newIM));
         // get average mass error in ppm for scoring
         double c_avePPM = (double) (Math.abs(peakMatcher.quantifiedEntry.ppm0) + Math.abs(peakMatcher.quantifiedEntry.ppm1) + Math.abs(peakMatcher.quantifiedEntry.ppm2)) / 3;
-        if (expanded_glycan) {
-            newSplits[psmCols.get(PSM_File.PSMattr.averageMassDiff)] = String.format("%.3f", 1.0);
-        } else {
-            newSplits[psmCols.get(PSM_File.PSMattr.averageMassDiff)] = String.format("%.3f", 0.0);
-        }
         newSplits[psmCols.get(PSM_File.PSMattr.ionMobilityDiff)] = String.format("%.3f", imDiff);
         // add intensity, rtDiff, imDiff to decoys or targets for scoring
         if (!params.noPASEF) {
@@ -409,6 +403,10 @@ public class PSM implements Comparable<PSM>{
             difference += Math.abs(glycan1.getOrDefault(key, 0) - glycan2.getOrDefault(key, 0));
         }
         return difference;
+    }
+
+    public void add_MBG_score(HashMap<PSM_File.PSMattr, Integer> psmCols, double score) {
+        splits[psmCols.get(PSM_File.PSMattr.MBG_score)] = String.format("%.3f", score);
     }
 
     /**

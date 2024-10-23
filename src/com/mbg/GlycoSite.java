@@ -24,6 +24,7 @@ public class GlycoSite {
         glycoPSMs.add(firstPSM);
         observedGlycans.put(firstPSM.glycan.name, glycoPSMs);
         basePSMs = new ArrayList<>();
+        glycanMasses = new ArrayList<>();
     }
 
     public void addPSM(PSM psm) {

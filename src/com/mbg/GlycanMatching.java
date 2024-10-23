@@ -129,10 +129,12 @@ public class GlycanMatching {
             if (p.intensity <0.01) {
                 continue;  // remove unmatched PSMs
             }
+            // get updated score
+            double cScore = Scoring.getMBGScore(p, psmFile.PSMcolumns, params.noPASEF);
             if (p.hasY1Ion) {  // if detected Y1 ion
                 qualifiedPSMs.add(p);
             } else {
-                if (Scoring.overThreshold(p, params.noPASEF)) {
+                if (Scoring.overThreshold(cScore)) {
                     qualifiedPSMs.add(p);
                 }
             }
