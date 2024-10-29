@@ -86,13 +86,14 @@ public class RT_adjuster {
                     GlycanResidue residueName = compEntry.getKey();
                     Integer count = glycan1.composition.getOrDefault(residueName, 0);
                     Integer count2 = compEntry.getValue();
-                    if (count2 < count) {
+                    // glycan2 must greater than glycan1 and contains all monosaccharides of glycan1
+                    if (count2 < count || glycan2.composition.keySet().containsAll(glycan1.composition.keySet())) {
                         ifAdd = false;
                     }
                     totalDiff += count2 - count;
-                    if (totalDiff > 1) {
-                        ifAdd = false;
-                    }
+//                    if (totalDiff > 1) {
+//                        ifAdd = false;
+//                    }
                 }
                 if (ifAdd && totalDiff > 0) {
                     putData(glycan1.toString(), glycan2.toString(), shifedRT2-shifedRT1, mode);
@@ -104,13 +105,13 @@ public class RT_adjuster {
 
     private static void putMonoData(Glycan g1, Glycan g2, Float value, String mode) {
         // get the shifted monosaccharide difference, g2 should always bigger than g1
-        String shiftedMonosaccharide = getShiftedMonosaccharide(g1, g2);
+        String shiftedSaccharides = getShiftedSaccharides(g1, g2);
         if (Objects.equals(mode, "RT")) {
-            allShiftedMonoRTs.computeIfAbsent(shiftedMonosaccharide, k -> new ArrayList<>());
-            allShiftedMonoRTs.get(shiftedMonosaccharide).add(value);
+            allShiftedMonoRTs.computeIfAbsent(shiftedSaccharides, k -> new ArrayList<>());
+            allShiftedMonoRTs.get(shiftedSaccharides).add(value);
         } else {
-            allShiftedMonoIMs.computeIfAbsent(shiftedMonosaccharide, k -> new ArrayList<>());
-            allShiftedMonoIMs.get(shiftedMonosaccharide).add(value);
+            allShiftedMonoIMs.computeIfAbsent(shiftedSaccharides, k -> new ArrayList<>());
+            allShiftedMonoIMs.get(shiftedSaccharides).add(value);
         }
     }
 
@@ -126,10 +127,34 @@ public class RT_adjuster {
             }
         }
         if (shiftedMonosaccharide.isEmpty()) {
-            out.printf("Error: shifted monosaccharide difference not equal to 1 between %s and %s\n", g1.toString(), g2.toString());
+            out.printf("Error: shifted monosaccharide difference not equal to 1 between %s and %s\n", g1.toString(), g2);
             System.exit(1);
         }
         return shiftedMonosaccharide;
+    }
+
+    /** get saccharide difference between two glycans
+     *
+     * @param g1 smaller glycan
+     * @param g2 bigger glycan
+     * @return
+     */
+    private static String getShiftedSaccharides(Glycan g1, Glycan g2) {
+        String shiftedSaccharides = "";
+        HashMap<GlycanResidue, Integer> compositionDiff = new HashMap<>();
+        for (Map.Entry<GlycanResidue, Integer> compEntry2: g2.composition.entrySet()) {
+            GlycanResidue glycanResidue = compEntry2.getKey();
+            int residueNum2 = compEntry2.getValue();
+            int diff = residueNum2 - g1.composition.getOrDefault(glycanResidue, 0);
+            if (diff > 0) {
+                compositionDiff.put(glycanResidue, diff);
+            }
+        }
+        if (!compositionDiff.isEmpty()) {
+            Glycan glycanDiff = new Glycan(compositionDiff);
+            shiftedSaccharides = glycanDiff.toString();
+        }
+        return shiftedSaccharides;
     }
 
     private static void putData(String outerKey, String innerKey, Float value, String mode) {

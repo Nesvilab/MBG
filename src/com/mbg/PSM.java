@@ -429,11 +429,11 @@ public class PSM implements Comparable<PSM>{
             GlycanResidue residual = residualEntry.getValue();
             if (psm.glycan.composition.containsKey(residual)) {
                 int count = psm.glycan.composition.get(residual);
-                HashMap<GlycanResidue, Integer> newCompositionAdd = new HashMap(psm.glycan.composition);
+                HashMap<GlycanResidue, Integer> newCompositionAdd = new HashMap<>(psm.glycan.composition);
                 newCompositionAdd.put(residual, count + 1);
                 dummy_glycans.add(new Glycan(newCompositionAdd));
                 // loss
-                HashMap<GlycanResidue, Integer> newCompositionLoss = new HashMap(psm.glycan.composition);
+                HashMap<GlycanResidue, Integer> newCompositionLoss = new HashMap<>(psm.glycan.composition);
                 if (count > 1) {
                     newCompositionLoss.put(residual, count - 1);
                     dummy_glycans.add(new Glycan(newCompositionLoss));
@@ -455,6 +455,46 @@ public class PSM implements Comparable<PSM>{
             }
         }
         return dummy_glycans;
+    }
+
+    public static ArrayList<Glycan> getDummyGlycansV2(PSM psm, List<Glycan> toAddglycans) {
+        ArrayList<Glycan> dummy_glycans = new ArrayList<>();
+        for (Glycan cGlycan: toAddglycans) {
+            // generate dummy PSMs with gained or lost glycan
+            // gained
+            saccharidesAdder(psm.glycan, cGlycan, dummy_glycans, true);
+            // loss
+            saccharidesAdder(psm.glycan, cGlycan, dummy_glycans, false);
+        }
+        return dummy_glycans;
+    }
+
+    private static void saccharidesAdder(Glycan oldGlycan, Glycan glycanToAdd, ArrayList<Glycan> dummy_glycans, boolean ifAdd) {
+        HashMap<GlycanResidue, Integer> newCompositionAdd = new HashMap<>(oldGlycan.composition);
+        if (ifAdd) {
+            for (Map.Entry<GlycanResidue, Integer> residueIntegerEntry: glycanToAdd.composition.entrySet()) {
+                GlycanResidue cResidual = residueIntegerEntry.getKey();
+                if (oldGlycan.composition.containsKey(cResidual)) {
+                    newCompositionAdd.put(cResidual, residueIntegerEntry.getValue() + oldGlycan.composition.get(cResidual));
+                } else {
+                    newCompositionAdd.put(cResidual, residueIntegerEntry.getValue());
+                }
+            }
+        } else {
+            for (Map.Entry<GlycanResidue, Integer> residueIntegerEntry : glycanToAdd.composition.entrySet()) {
+                GlycanResidue cResidual = residueIntegerEntry.getKey();
+                int lossN = residueIntegerEntry.getValue();
+                int oldN = oldGlycan.composition.getOrDefault(cResidual, 0);
+                if (oldN < lossN) {
+                    return;
+                } else if (oldN == lossN) {
+                    newCompositionAdd.remove(cResidual);
+                } else {
+                    newCompositionAdd.put(cResidual, oldN - lossN);
+                }
+            }
+        }
+        dummy_glycans.add(new Glycan(newCompositionAdd));
     }
 
 

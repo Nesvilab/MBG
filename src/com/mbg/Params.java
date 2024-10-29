@@ -5,14 +5,12 @@ import umich.ms.glyco.*;
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
-import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.StringTokenizer;
 
 import static java.lang.System.out;
 
@@ -40,6 +38,7 @@ public class Params {
     public HashMap<String, GlycanResidue> glycanResidues;
     public HashMap<String, GlycanMod> glycanMods;
     public HashMap<String, GlycanResidue> toAddResidues;
+    public ArrayList<Glycan> toAddGlycans;
     private String[] residualStrings;
     private Path manifestPath;
 
@@ -188,6 +187,7 @@ public class Params {
             glycanResidues.put(stringGlycanModEntry.getKey(), stringGlycanModEntry.getValue());
         }
         toAddResidues = getToAddResidues(residualStrings, glycanResidues);
+        toAddGlycans = getToAddGlycans(residualStrings, glycanResidues);
     }
 
     public static Path checkFilePath(String inputPath, String pathName) {
@@ -212,6 +212,24 @@ public class Params {
             toAddResidues.put(residue, residues.get(residue));
         }
         return toAddResidues;
+    }
+
+    private ArrayList<Glycan> getToAddGlycans(String[] residualStrings, HashMap<String, GlycanResidue> residues) {
+        ArrayList<Glycan> toAddGlycans = new ArrayList<>();
+        for (String residue : residualStrings) {
+            HashMap<GlycanResidue, Integer> cComp = new HashMap<>();
+            cComp.put(residues.get(residue), 1);
+            toAddGlycans.add(new Glycan(cComp));
+        }
+        // add HexNAc(1)Hex(1), HexNAc(1)Hex(1)NeuAc(1)
+        HashMap<GlycanResidue, Integer> cComp = new HashMap<>();
+        cComp.put(residues.get("HexNAc"), 1);
+        cComp.put(residues.get("Hex"), 1);
+        toAddGlycans.add(new Glycan(cComp));
+        HashMap<GlycanResidue, Integer> cComp2 = new HashMap<>(cComp);
+        cComp2.put(residues.get("NeuAc"), 1);
+        toAddGlycans.add(new Glycan(cComp2));
+        return toAddGlycans;
     }
 
     private HashMap<String, String> readManifest() {

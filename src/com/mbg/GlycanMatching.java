@@ -147,7 +147,7 @@ public class GlycanMatching {
             return;
         }
         int rankCounter = 1;
-        ArrayList<Glycan> dummy_glycans = PSM.getDummyGlycans(base_PSM, params.toAddResidues);
+        ArrayList<Glycan> dummy_glycans = PSM.getDummyGlycansV2(base_PSM, params.toAddGlycans);
         for (Glycan new_glycan: dummy_glycans) {
             if (site.observedGlycans.containsKey(new_glycan.toString()) || site.basePSM == null) {
                 // this glycan was observed for this site, no action required
