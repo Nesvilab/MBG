@@ -93,7 +93,7 @@ public class GlycanMatching {
 
         for (Map.Entry<String, GlycoSite> siteEntry: observedGlycoSites.entrySet()) {
             GlycoSite site = siteEntry.getValue();
-            if (Objects.equals(site.protein, "sp|P02787|TRFE_HUMAN")) {
+            if (Objects.equals(site.protein, "sp|P04196|HRG_HUMAN")) {
                 System.out.println(1);
             }
             if (site.psms.size() >= params.minPSMs && site.observedGlycans.size() >= params.minGlycans) {

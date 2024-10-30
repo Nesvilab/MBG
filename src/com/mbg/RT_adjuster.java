@@ -235,13 +235,15 @@ public class RT_adjuster {
             if (shiftedRTs.containsKey(oldGlycan.toString()) && shiftedRTs.get(oldGlycan.toString()).containsKey(newGlycan.toString())) {
                 shiftedRT = shiftedRTs.get(oldGlycan.toString()).get(newGlycan.toString());
             } else {
-                shiftedRT = (float) 0;
+                String shiftedMonosaccharide = getShiftedSaccharides(oldGlycan, newGlycan);
+                shiftedRT = monosaccharideRtShifts.getOrDefault(shiftedMonosaccharide, (float) 0);
             }
         } else {
             if (shiftedRTs.containsKey(oldGlycan.toString()) && shiftedRTs.get(oldGlycan.toString()).containsKey(newGlycan.toString())) {
                 shiftedRT = -shiftedRTs.get(oldGlycan.toString()).get(newGlycan.toString());
             } else {
-                shiftedRT = (float) 0;
+                String shiftedMonosaccharide = getShiftedSaccharides(newGlycan, oldGlycan);
+                shiftedRT = -monosaccharideRtShifts.getOrDefault(shiftedMonosaccharide, (float) 0);
             }
         }
         return (float) (oldRT + shiftedRT);
@@ -253,13 +255,15 @@ public class RT_adjuster {
             if (shiftedIMs.containsKey(oldGlycan.toString()) && shiftedIMs.get(oldGlycan.toString()).containsKey(newGlycan.toString())) {
                 shiftedIM = shiftedIMs.get(oldGlycan.toString()).get(newGlycan.toString());
             } else {
-                shiftedIM = (float) 0;
+                String shiftedMonosaccharide = getShiftedSaccharides(oldGlycan, newGlycan);
+                shiftedIM = monosaccharideImShifts.getOrDefault(shiftedMonosaccharide, (float) 0);
             }
         } else {
             if (shiftedIMs.containsKey(oldGlycan.toString()) && shiftedIMs.get(oldGlycan.toString()).containsKey(newGlycan.toString())) {
                 shiftedIM = -shiftedIMs.get(oldGlycan.toString()).get(newGlycan.toString());
             } else {
-                shiftedIM = (float) 0;
+                String shiftedMonosaccharide = getShiftedMonosaccharide(newGlycan, oldGlycan);
+                shiftedIM = -monosaccharideImShifts.getOrDefault(shiftedMonosaccharide, (float) 0);
             }
         }
         float newIM = (float) (oldIM + shiftedIM);
