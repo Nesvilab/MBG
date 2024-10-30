@@ -494,6 +494,10 @@ public class PSM implements Comparable<PSM>{
                 }
             }
         }
+        // if empty after subtraction, ignore this empty glycan
+        if (newCompositionAdd.isEmpty()) {
+            return;
+        }
         dummy_glycans.add(new Glycan(newCompositionAdd));
     }
 

@@ -59,7 +59,7 @@ public class GlycanMatching {
     public ArrayList<PSM> fillInGlycoSites(String rawFileName) throws Exception {
         ArrayList<PSM> newPSMs = new ArrayList<>();
         String msFilePath = matchMSfilename(rawFileName, params.msFilePathsMap);
-//        msFilePath = "Z:\\jishen\\data\\glyco\\pglyconovo\\raw\\Supplementary-Note-5-RAW_MS\\Model-Fly-H-1802-6.raw";
+//        msFilePath = "Z:\\dpolasky\\data\\glyco\\MBG\\20230728_TIMSTOF_UM6_5858593_SA_EXT00_newdigest_H2_T3_GA6_1_1425.d";
         Path msFileDir = Paths.get(msFilePath).getParent();
 
         // read msFile
@@ -93,7 +93,7 @@ public class GlycanMatching {
 
         for (Map.Entry<String, GlycoSite> siteEntry: observedGlycoSites.entrySet()) {
             GlycoSite site = siteEntry.getValue();
-            if (Objects.equals(site.protein, "sp|Q09920|FIO1_SCHPO")) {
+            if (Objects.equals(site.protein, "sp|P02787|TRFE_HUMAN")) {
                 System.out.println(1);
             }
             if (site.psms.size() >= params.minPSMs && site.observedGlycans.size() >= params.minGlycans) {
