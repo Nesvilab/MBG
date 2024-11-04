@@ -76,6 +76,10 @@ public class RT_adjuster {
             Float shifedRT1 = rtShiftEntry1.getValue();
             for (Map.Entry<Glycan, Float> rtShiftEntry2: glycanRTs.entrySet()) {
                 Glycan glycan2 = rtShiftEntry2.getKey();
+                // if glycan1 contain monosaccharide that not in glycan2
+                if (!glycan2.composition.keySet().containsAll(glycan1.composition.keySet())) {
+                    continue;
+                }
                 Float shifedRT2 = rtShiftEntry2.getValue();
                 // monosaccharide difference
                 Iterator<Map.Entry<GlycanResidue, Integer>> var2 = glycan2.composition.entrySet().iterator();
@@ -87,7 +91,7 @@ public class RT_adjuster {
                     Integer count = glycan1.composition.getOrDefault(residueName, 0);
                     Integer count2 = compEntry.getValue();
                     // glycan2 must greater than glycan1 and contains all monosaccharides of glycan1
-                    if (count2 < count || glycan2.composition.keySet().containsAll(glycan1.composition.keySet())) {
+                    if (count2 < count) {
                         ifAdd = false;
                     }
                     totalDiff += count2 - count;

@@ -186,7 +186,7 @@ public class Params {
         for (Map.Entry<String, GlycanMod> stringGlycanModEntry : glycanMods.entrySet()) {
             glycanResidues.put(stringGlycanModEntry.getKey(), stringGlycanModEntry.getValue());
         }
-        toAddResidues = getToAddResidues(residualStrings, glycanResidues);
+//        toAddResidues = getToAddResidues(residualStrings, glycanResidues);
         toAddGlycans = getToAddGlycans(residualStrings, glycanResidues);
     }
 
@@ -217,18 +217,15 @@ public class Params {
     private ArrayList<Glycan> getToAddGlycans(String[] residualStrings, HashMap<String, GlycanResidue> residues) {
         ArrayList<Glycan> toAddGlycans = new ArrayList<>();
         for (String residue : residualStrings) {
+            if (residue.contains("(")) {
+                // treat as a glycan
+                toAddGlycans.add(GlycanParser.parseGlycanString(residue, residues));
+            } else {
             HashMap<GlycanResidue, Integer> cComp = new HashMap<>();
             cComp.put(residues.get(residue), 1);
             toAddGlycans.add(new Glycan(cComp));
+            }
         }
-        // add HexNAc(1)Hex(1), HexNAc(1)Hex(1)NeuAc(1)
-        HashMap<GlycanResidue, Integer> cComp = new HashMap<>();
-        cComp.put(residues.get("HexNAc"), 1);
-        cComp.put(residues.get("Hex"), 1);
-        toAddGlycans.add(new Glycan(cComp));
-        HashMap<GlycanResidue, Integer> cComp2 = new HashMap<>(cComp);
-        cComp2.put(residues.get("NeuAc"), 1);
-        toAddGlycans.add(new Glycan(cComp2));
         return toAddGlycans;
     }
 

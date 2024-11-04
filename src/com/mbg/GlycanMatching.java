@@ -31,12 +31,11 @@ public class GlycanMatching {
             if (psm.glycan == null) {
                 continue;
             }
-            String siteID = psm.getGlycoSiteID();
-            if (observedGlycoSites.containsKey(siteID)) {
-                observedGlycoSites.get(siteID).addPSM(psm);
+            if (observedGlycoSites.containsKey(psm.peptide)) {
+                observedGlycoSites.get(psm.peptide).addPSM(psm);
             } else {
                 // new site
-                observedGlycoSites.put(siteID, new GlycoSite(psm, siteID));
+                observedGlycoSites.put(psm.peptide, new GlycoSite(psm, psm.peptide));
             }
             // counts observed glycans
             if (allObservedGlycans.containsKey(psm.glycan.toString())) {
@@ -93,7 +92,7 @@ public class GlycanMatching {
 
         for (Map.Entry<String, GlycoSite> siteEntry: observedGlycoSites.entrySet()) {
             GlycoSite site = siteEntry.getValue();
-            if (Objects.equals(site.protein, "sp|P04196|HRG_HUMAN")) {
+            if (Objects.equals(site.id, "TKPREEQYNSTYR")) {
                 System.out.println(1);
             }
             if (site.psms.size() >= params.minPSMs && site.observedGlycans.size() >= params.minGlycans) {
@@ -173,8 +172,10 @@ public class GlycanMatching {
 
             newPSMs.addAll(addedPSMs);
             // update observed glycans
-            site.observedGlycans.put(new_glycan.toString(), new ArrayList<>());
-            site.glycanMasses.add(new_glycan.mass);
+            if (addedPSMs.get(0).intensity > 0.01) {
+                site.observedGlycans.put(new_glycan.toString(), new ArrayList<>());
+                site.glycanMasses.add(new_glycan.mass);
+            }
             rankCounter++;
             // set current inferred PSMs as base PSM, if within path and has matched PSM
             if (steps>0 & addedPSMs.get(0).intensity > 0.01) {
