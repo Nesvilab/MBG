@@ -39,6 +39,7 @@ public class PSM implements Comparable<PSM>{
     double intensity;
     double avePPM;
     double kl; // isotope distribution score
+    int shiftFrequency;
     public String rawfile;
 
     private static final Pattern modMassPattern = Pattern.compile("[\\d]+[A-Z]\\(([\\d.]+)\\)");
@@ -307,23 +308,24 @@ public class PSM implements Comparable<PSM>{
         newSplits[psmCols.get(PSM_File.PSMattr.intensity)] = String.valueOf(peakMatcher.quantifiedEntry.intensity);
         // fill in averageMassDifference, RT and IM difference
         aveMassDiff = rtAdjuster.getAverageMassDiff(existingPSM.glycan, newGlycan, existingPSM.averageMass, peakMatcher.averageMass, existingPSM.charge);
-        rtDiff = java.lang.Math.abs((float) (peakMatcher.quantifiedEntry.apexRt - newRT));
-        imDiff = java.lang.Math.abs((float) (peakMatcher.quantifiedEntry.apexIm - newIM));
+        rtDiff = Math.abs((float) (peakMatcher.quantifiedEntry.apexRt - newRT));
+        imDiff = Math.abs((float) (peakMatcher.quantifiedEntry.apexIm - newIM));
         // get average mass error in ppm for scoring
         double c_avePPM = (double) (Math.abs(peakMatcher.quantifiedEntry.ppm0) + Math.abs(peakMatcher.quantifiedEntry.ppm1) + Math.abs(peakMatcher.quantifiedEntry.ppm2)) / 3;
         newSplits[psmCols.get(PSM_File.PSMattr.ionMobilityDiff)] = String.format("%.3f", imDiff);
-        // add intensity, rtDiff, imDiff to decoys or targets for scoring
+        // add intensity, rtDiff, imDiff, glycan shift frequency to decoys or targets for scoring
+        int shiftFrequency = rtAdjuster.getShiftFrequency(existingPSM.glycan, newGlycan);
         if (!params.noPASEF) {
             if (ifdecoy) {
-                Scoring.decoyData.add(new double[] {(double) peakMatcher.quantifiedEntry.intensity, c_avePPM, peakMatcher.quantifiedEntry.kl, (double) rtDiff, (double) imDiff});
+                Scoring.decoyData.add(new double[] {(double) peakMatcher.quantifiedEntry.intensity, c_avePPM, peakMatcher.quantifiedEntry.kl, shiftFrequency, (double) rtDiff, (double) imDiff});
             } else {
-                Scoring.targetData.add(new double[] {(double) peakMatcher.quantifiedEntry.intensity, c_avePPM, peakMatcher.quantifiedEntry.kl, (double) rtDiff, (double) imDiff});
+                Scoring.targetData.add(new double[] {(double) peakMatcher.quantifiedEntry.intensity, c_avePPM, peakMatcher.quantifiedEntry.kl, shiftFrequency, (double) rtDiff, (double) imDiff});
             }
         } else {
             if (ifdecoy) {
-                Scoring.decoyData.add(new double[] {(double) peakMatcher.quantifiedEntry.intensity, c_avePPM, peakMatcher.quantifiedEntry.kl, (double) rtDiff});
+                Scoring.decoyData.add(new double[] {(double) peakMatcher.quantifiedEntry.intensity, c_avePPM, peakMatcher.quantifiedEntry.kl, shiftFrequency, (double) rtDiff});
             } else {
-                Scoring.targetData.add(new double[] {(double) peakMatcher.quantifiedEntry.intensity, c_avePPM, peakMatcher.quantifiedEntry.kl, (double) rtDiff});
+                Scoring.targetData.add(new double[] {(double) peakMatcher.quantifiedEntry.intensity, c_avePPM, peakMatcher.quantifiedEntry.kl, shiftFrequency, (double) rtDiff});
             }
         }
         // todo update spectra information if ms2 candidates found
@@ -335,24 +337,26 @@ public class PSM implements Comparable<PSM>{
             for (int i = 0; i < ms2Candidates.size(); i++) {
                 newSplits[psmCols.get(PSM_File.PSMattr.spectrum)] = String.join(".", new String[]{existingPSM.rawfile, String.format("%0" + MSMS.maxScanNumLength + "d", ms2Candidates.get(i).scanNum),
                         String.format("%0" + MSMS.maxScanNumLength + "d", ms2Candidates.get(i).scanNum), String.valueOf(ms2Candidates.get(i).charge)});
-                // update rt,im to real MS2 rt
+                // update rt,im with real MS2 rt
                 newSplits[psmCols.get(PSM_File.PSMattr.RT)] = String.format("%.3f", ms2Candidates.get(i).rt*60);
                 // generate new PSM
                 PSM addedPSM = new PSM(String.join("\t", newSplits), psmCols, params, true, true, y1booleans.get(i), rtDiff, 0);
                 addedPSM.updateRank(existingPSM.rank + rankCounter, psmCols);
                 addedPSM.avePPM = c_avePPM;
                 addedPSM.kl = peakMatcher.quantifiedEntry.kl;
+                addedPSM.shiftFrequency = shiftFrequency;
                 addedPSMs.add(addedPSM);
             }
 
         } else {
-            // update rt,im to found apex rt
+            // update rt,im to find apex rt
             newSplits[psmCols.get(PSM_File.PSMattr.RT)] = String.format("%.3f", newRT*60);
             // generate new PSM
             PSM addedPSM = new PSM(String.join("\t", newSplits), psmCols, params, true, false, false, rtDiff, 0);
             addedPSM.updateRank(existingPSM.rank + rankCounter, psmCols);
             addedPSM.avePPM = c_avePPM;
             addedPSM.kl = peakMatcher.quantifiedEntry.kl;
+            addedPSM.shiftFrequency = shiftFrequency;
             addedPSMs.add(addedPSM);
         }
         return addedPSMs;

@@ -58,7 +58,7 @@ public class GlycanMatching {
     public ArrayList<PSM> fillInGlycoSites(String rawFileName) throws Exception {
         ArrayList<PSM> newPSMs = new ArrayList<>();
         String msFilePath = matchMSfilename(rawFileName, params.msFilePathsMap);
-//        msFilePath = "Z:\\dpolasky\\data\\glyco\\MBG\\20230728_TIMSTOF_UM6_5858593_SA_EXT00_newdigest_H2_T3_GA6_1_1425.d";
+//        msFilePath = "Z:\\dpolasky\\data\\glyco\\pGlyco2\\yeast_PXD005565\\cwq_mix2-1_726.raw";
         Path msFileDir = Paths.get(msFilePath).getParent();
 
         // read msFile

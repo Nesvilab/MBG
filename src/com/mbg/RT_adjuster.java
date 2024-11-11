@@ -281,4 +281,13 @@ public class RT_adjuster {
     Float getAverageMassDiff(Glycan oldGlycan, Glycan newGlycan, float oldAveMass, float newAveMass, int charge) {
         return (float) (((newGlycan.mass - oldGlycan.mass) - (newAveMass - oldAveMass) * charge)) ;
     }
+
+    Integer getShiftFrequency(Glycan oldGlycan, Glycan newGlycan) {
+        if (allShiftedRTs.containsKey(oldGlycan.toString()) && allShiftedRTs.get(oldGlycan.toString()).containsKey(newGlycan.toString())) {
+            return allShiftedRTs.get(oldGlycan.toString()).get(newGlycan.toString()).size();
+        }
+        else {
+            return 0;
+        }
+    }
 }

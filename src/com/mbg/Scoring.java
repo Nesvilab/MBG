@@ -200,9 +200,9 @@ public class Scoring {
     public static double getMBGScore(PSM psm, HashMap<PSM_File.PSMattr, Integer> psmCols, boolean noPASEF) {
         double[] data;
         if (noPASEF) {
-            data = new double[]{psm.intensity, psm.avePPM, psm.kl, (double) psm.rtDiff};
+            data = new double[]{psm.intensity, psm.avePPM, psm.kl, psm.shiftFrequency, (double) psm.rtDiff};
         } else {
-            data = new double[]{psm.intensity, psm.avePPM, psm.kl, (double) psm.rtDiff, (double) psm.imDiff};
+            data = new double[]{psm.intensity, psm.avePPM, psm.kl, psm.shiftFrequency, (double) psm.rtDiff, (double) psm.imDiff};
         }
         double c_score = calculateScore(data, coefficients, intercept);
         // update MBG score
