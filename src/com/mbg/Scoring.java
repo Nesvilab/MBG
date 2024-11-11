@@ -58,6 +58,7 @@ public class Scoring {
         List<Double> targetScores = calculateScores(targetData, coefficients, intercept);
         List<Double> decoyScores = calculateScores(decoyData, coefficients, intercept);
         thresholdScore = getCutOff(fdrCurOff, targetScores, decoyScores);
+        System.out.println(thresholdScore);
         // Classify a new data point (replace with your actual data)
 //        double[] newDataPoint = new double[]{3.5, 4.5, 5.5};
 //        double score = calculateScore(newDataPoint, coefficients, intercept);
@@ -200,9 +201,9 @@ public class Scoring {
     public static double getMBGScore(PSM psm, HashMap<PSM_File.PSMattr, Integer> psmCols, boolean noPASEF) {
         double[] data;
         if (noPASEF) {
-            data = new double[]{psm.intensity, psm.avePPM, psm.kl, psm.shiftFrequency, (double) psm.rtDiff};
+            data = new double[]{psm.intensity, psm.avePPM, psm.kl, psm.shiftFrequency, psm.featureIntensity, (double) psm.rtDiff};
         } else {
-            data = new double[]{psm.intensity, psm.avePPM, psm.kl, psm.shiftFrequency, (double) psm.rtDiff, (double) psm.imDiff};
+            data = new double[]{psm.intensity, psm.avePPM, psm.kl, psm.shiftFrequency, psm.featureIntensity, (double) psm.rtDiff, (double) psm.imDiff};
         }
         double c_score = calculateScore(data, coefficients, intercept);
         // update MBG score

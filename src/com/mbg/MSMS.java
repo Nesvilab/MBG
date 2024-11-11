@@ -76,19 +76,28 @@ public class MSMS {
         return candidates;
     }
 
-    public static List<Boolean> y1Matcher(List<Spectrum> qualifiedSpectra, PSM basepsm, Params params) {
-        List<Boolean> hasY1 = new ArrayList<>();
+    public static List<Double> y1Matcher(List<Spectrum> qualifiedSpectra, PSM basepsm, Params params) {
+        List<Double> yIntensities = new ArrayList<>();
         // match Y1 ion
         double pepMass = basepsm.calcMass - basepsm.glycan.mass;
         double y1Mass = pepMass + params.glycanResidues.get("HexNAc").mass;
         for (Spectrum spec :qualifiedSpectra) {
-            if (spec.findIonNeutral(y1Mass, 20, spec.charge) > 0) {
-                hasY1.add(true);
-            } else {
-                hasY1.add(false);
+            double baseIntensity = spec.peakInt[0];
+            for (double inten : spec.peakInt) {
+                if (inten > baseIntensity) {
+                    baseIntensity = inten;
+                }
             }
+            if (baseIntensity < 1) {
+                yIntensities.add(0.0);
+                continue; // in case of zero division error
+            }
+            double y1Intensity = spec.findIonNeutral(y1Mass, 20, spec.charge);
+            double y0Intensity = spec.findIonNeutral(pepMass, 20, spec.charge);
+            double featureIntensity = (y1Intensity+y0Intensity) / baseIntensity;
+            yIntensities.add(featureIntensity);
         }
-        return hasY1;
+        return yIntensities;
     }
 
     public static void getMS2IMs(File pathDir, int nThreads) throws Exception {

@@ -71,7 +71,7 @@ public class PSM_File {
         String line;
         while((line = in.readLine()) != null) {
             if (line.length() > 0) {
-                PSM psm = new PSM(line, PSMcolumns, params, false, false, false, 0, addCols);
+                PSM psm = new PSM(line, PSMcolumns, params, false, false, 0.0, 0, addCols);
                 allPSMs.add(psm);
                 if (rawfilePSMmap.containsKey(psm.rawfile)) {
                     rawfilePSMmap.get(psm.rawfile).add(psm);

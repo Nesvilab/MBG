@@ -115,7 +115,7 @@ public class GlycanMatching {
         // if TMT labeled sample, only keep PSMs with MS2
         if (params.runTMT) {
             for (PSM p: newPSMs) {
-                if (p.hasY1Ion) {  // if detected Y1 ion
+                if (p.yIntensities > 0) {  // if detected Y1 ion
                     qualifiedPSMs.add(p);
                 }
             }
@@ -130,12 +130,8 @@ public class GlycanMatching {
             }
             // get updated score
             double cScore = Scoring.getMBGScore(p, psmFile.PSMcolumns, params.noPASEF);
-            if (p.hasY1Ion) {  // if detected Y1 ion
+            if (Scoring.overThreshold(cScore)) {
                 qualifiedPSMs.add(p);
-            } else {
-                if (Scoring.overThreshold(cScore)) {
-                    qualifiedPSMs.add(p);
-                }
             }
         }
         return qualifiedPSMs;
