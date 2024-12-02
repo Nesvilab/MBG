@@ -51,7 +51,7 @@ public class PSM implements Comparable<PSM>{
     /**
      * Initialize a PSM object from a line of the psm.tsv table
      */
-    public PSM(String psmLine, HashMap<PSM_File.PSMattr, Integer> psmCols, Params params, boolean isInferred, boolean hasMS2, double hasY1, float massDifference, int addCols) {
+    public PSM(String psmLine, HashMap<PSM_File.PSMattr, Integer> psmCols, Params params, boolean isInferred, boolean hasMS2, double hasY1, String parentGlycan, String addedResidual, int addCols) {
         splits = psmLine.split("\t");
 
         // expand to hold new columns if needed
@@ -66,19 +66,16 @@ public class PSM implements Comparable<PSM>{
             inferredGlycoform = isInferred;
             hasMS2Spectrum = hasMS2;
             yIntensities = hasY1;
-            aveMassDiff = massDifference;
         } else {
             if (!isInferred) {
                 // if this is a re-analysis (i.e., not adding new columns) and this is not an inferred PSM from this analysis, read its inferred status from the previous result
                 inferredGlycoform = Boolean.parseBoolean(splits[psmCols.get(PSM_File.PSMattr.inferred_glycoform)]);
                 hasMS2Spectrum = Boolean.parseBoolean(splits[psmCols.get(PSM_File.PSMattr.has_ms2_spec)]);
                 yIntensities = Double.parseDouble(splits[psmCols.get(PSM_File.PSMattr.has_Y1)]);
-                aveMassDiff = massDifference;
             } else {
                 inferredGlycoform = isInferred;
                 hasMS2Spectrum = hasMS2;
                 yIntensities = hasY1;
-                aveMassDiff = massDifference;
             }
         }
 
@@ -87,6 +84,8 @@ public class PSM implements Comparable<PSM>{
         splits[psmCols.get(PSM_File.PSMattr.has_ms2_spec)] = String.valueOf(hasMS2Spectrum);
         splits[psmCols.get(PSM_File.PSMattr.has_Y1)] = String.valueOf(yIntensities);
         splits[psmCols.get(PSM_File.PSMattr.MBG_score)] = String.valueOf(0);
+        splits[psmCols.get(PSM_File.PSMattr.parent_glycan)] = parentGlycan;
+        splits[psmCols.get(PSM_File.PSMattr.added_residual)] = addedResidual;
         Matcher rankMatch = rankPattern.matcher(splits[psmCols.get(PSM_File.PSMattr.spectrum_file)]);
         if (rankMatch.find()) {
             rank = Integer.parseInt(rankMatch.group(1));
@@ -239,7 +238,7 @@ public class PSM implements Comparable<PSM>{
      * @param psmCols
      * @param params
      */
-    public static List<PSM> makeDummyPSM(PSM existingPSM, Glycan newGlycan, HashMap<PSM_File.PSMattr, Integer> psmCols, Params params, int rankCounter, RT_adjuster rtAdjuster, boolean ifdecoy, boolean expanded_glycan) {
+    public static List<PSM> makeDummyPSM(PSM existingPSM, Glycan newGlycan, HashMap<PSM_File.PSMattr, Integer> psmCols, Params params, int rankCounter, RT_adjuster rtAdjuster, boolean ifdecoy, String parentGlycan, String addedResidual) {
         String[] newSplits = new String[existingPSM.splits.length];
         System.arraycopy(existingPSM.splits, 0, newSplits, 0, newSplits.length);
 
@@ -295,7 +294,7 @@ public class PSM implements Comparable<PSM>{
         peakMatcher.matchMS1((float) newMZ, (float) newRT, (float) newIM, existingPSM.charge, 0);
         if (peakMatcher.quantifiedEntry == null) {
             newSplits[psmCols.get(PSM_File.PSMattr.intensity)] = String.valueOf(0);
-            addedPSMs.add(new PSM(String.join("\t", newSplits), psmCols, params, true, false, 0, aveMassDiff, 0));
+            addedPSMs.add(new PSM(String.join("\t", newSplits), psmCols, params, true, false, 0, parentGlycan, addedResidual, 0));
             return addedPSMs;
         }
         // to find MS2
@@ -313,7 +312,6 @@ public class PSM implements Comparable<PSM>{
         imDiff = Math.abs((float) (peakMatcher.quantifiedEntry.apexIm - newIM));
         // get average mass error in ppm for scoring
         double c_avePPM = (double) (Math.abs(peakMatcher.quantifiedEntry.ppm0) + Math.abs(peakMatcher.quantifiedEntry.ppm1) + Math.abs(peakMatcher.quantifiedEntry.ppm2)) / 3;
-        newSplits[psmCols.get(PSM_File.PSMattr.ionMobilityDiff)] = String.format("%.3f", imDiff);
 
         // todo update spectra information if ms2 candidates found
         int shiftFrequency = rtAdjuster.getShiftFrequency(existingPSM.glycan, newGlycan);
@@ -334,7 +332,7 @@ public class PSM implements Comparable<PSM>{
                 // update rt,im with real MS2 rt
                 newSplits[psmCols.get(PSM_File.PSMattr.RT)] = String.format("%.3f", ms2Candidates.get(i).rt*60);
                 // generate new PSM
-                PSM addedPSM = new PSM(String.join("\t", newSplits), psmCols, params, true, true, yIntensities.get(i), rtDiff, 0);
+                PSM addedPSM = new PSM(String.join("\t", newSplits), psmCols, params, true, true, yIntensities.get(i), parentGlycan, addedResidual, 0);
                 addedPSM.updateRank(existingPSM.rank + rankCounter, psmCols);
                 addedPSM.avePPM = c_avePPM;
                 addedPSM.kl = peakMatcher.quantifiedEntry.kl;
@@ -347,7 +345,7 @@ public class PSM implements Comparable<PSM>{
             // update rt,im to find apex rt
             newSplits[psmCols.get(PSM_File.PSMattr.RT)] = String.format("%.3f", newRT*60);
             // generate new PSM
-            PSM addedPSM = new PSM(String.join("\t", newSplits), psmCols, params, true, false, 0, rtDiff, 0);
+            PSM addedPSM = new PSM(String.join("\t", newSplits), psmCols, params, true, false, 0, parentGlycan, addedResidual,  0);
             addedPSM.updateRank(existingPSM.rank + rankCounter, psmCols);
             addedPSM.avePPM = c_avePPM;
             addedPSM.kl = peakMatcher.quantifiedEntry.kl;
@@ -472,16 +470,23 @@ public class PSM implements Comparable<PSM>{
         return dummy_glycans;
     }
 
-    public static ArrayList<Glycan> getDummyGlycansV2(PSM psm, List<Glycan> toAddglycans) {
+    public static HashMap<Glycan, String> getDummyGlycansV2(PSM psm, List<Glycan> toAddglycans) {
         ArrayList<Glycan> dummy_glycans = new ArrayList<>();
+        ArrayList<String> addedResiduals = new ArrayList<>();
         for (Glycan cGlycan: toAddglycans) {
             // generate dummy PSMs with gained or lost glycan
             // gained
             saccharidesAdder(psm.glycan, cGlycan, dummy_glycans, true);
+            addedResiduals.add(cGlycan.toString());
             // loss
             saccharidesAdder(psm.glycan, cGlycan, dummy_glycans, false);
+            addedResiduals.add(cGlycan.toString());
         }
-        return dummy_glycans;
+        HashMap<Glycan, String> glycanMap = new HashMap<>();
+        for (int i = 0; i < dummy_glycans.size(); i++) {
+            glycanMap.put(dummy_glycans.get(i), addedResiduals.get(i));
+        }
+        return glycanMap;
     }
 
     private static void saccharidesAdder(Glycan oldGlycan, Glycan glycanToAdd, ArrayList<Glycan> dummy_glycans, boolean ifAdd) {

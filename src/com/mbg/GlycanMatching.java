@@ -142,8 +142,10 @@ public class GlycanMatching {
             return;
         }
         int rankCounter = 1;
-        ArrayList<Glycan> dummy_glycans = PSM.getDummyGlycansV2(base_PSM, params.toAddGlycans);
-        for (Glycan new_glycan: dummy_glycans) {
+        HashMap<Glycan, String> dummy_glycans = PSM.getDummyGlycansV2(base_PSM, params.toAddGlycans);
+        for (Map.Entry<Glycan, String> glycanEntry: dummy_glycans.entrySet()) {
+            Glycan new_glycan = glycanEntry.getKey();
+            String addedResidual = glycanEntry.getValue();
             if (site.observedGlycans.containsKey(new_glycan.toString()) || site.basePSM == null) {
                 // this glycan was observed for this site, no action required
                 continue;
@@ -162,9 +164,9 @@ public class GlycanMatching {
                 continue;
             }
             // glycan not observed. Make a PSM for it
-            List<PSM> addedPSMs = PSM.makeDummyPSM(base_PSM, new_glycan, psmFile.PSMcolumns, params, rankCounter, cRT_adjuster, false, expanded_glycan);
+            List<PSM> addedPSMs = PSM.makeDummyPSM(base_PSM, new_glycan, psmFile.PSMcolumns, params, rankCounter, cRT_adjuster, false, base_PSM.glycan.toString(), addedResidual);
             // decoy, not add into newPSMs
-            PSM.makeDummyPSM(base_PSM, new_glycan, psmFile.PSMcolumns, params, rankCounter, cRT_adjuster, true, false);
+            PSM.makeDummyPSM(base_PSM, new_glycan, psmFile.PSMcolumns, params, rankCounter, cRT_adjuster, true, base_PSM.glycan.toString(), addedResidual);
 
             newPSMs.addAll(addedPSMs);
             // update observed glycans

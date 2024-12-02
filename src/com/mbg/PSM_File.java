@@ -34,7 +34,8 @@ public class PSM_File {
         columnNames.put(PSMattr.has_ms2_spec, "Has MS2 Spectrum?");
         columnNames.put(PSMattr.has_Y1, "Has Y1 ion?");
         columnNames.put(PSMattr.MBG_score, "MBG Score");
-        columnNames.put(PSMattr.ionMobilityDiff, "ionMobilityDifference");
+        columnNames.put(PSMattr.parent_glycan, "Parent Glycan");
+        columnNames.put(PSMattr.added_residual, "Added residual");
         columnNames.put(PSMattr.spectrum_file, "Spectrum File");
         columnNames.put(PSMattr.intensity, "Intensity");
     }
@@ -48,7 +49,7 @@ public class PSM_File {
 
         // handle inserting new header(s) if needed
         if (PSMcolumns.getOrDefault(PSMattr.inferred_glycoform, -1) == -1) {
-            addCols = 5;
+            addCols = 6;
             if (PSMcolumns.containsKey(PSMattr.glyco_q_val)) {
                 insertIndex = PSMcolumns.get(PSMattr.glyco_q_val)+1;
             } else {
@@ -59,7 +60,8 @@ public class PSM_File {
             newHeaders.add(insertIndex, columnNames.get(PSMattr.has_ms2_spec));
             newHeaders.add(insertIndex, columnNames.get(PSMattr.has_Y1));
             newHeaders.add(insertIndex, columnNames.get(PSMattr.MBG_score));
-            newHeaders.add(insertIndex, columnNames.get(PSMattr.ionMobilityDiff));
+            newHeaders.add(insertIndex, columnNames.get(PSMattr.parent_glycan));
+            newHeaders.add(insertIndex, columnNames.get(PSMattr.added_residual));
             headers = newHeaders.toArray(new String[0]);
             this.PSMcolumns = initPSMcolumns();
         } else {
@@ -71,7 +73,7 @@ public class PSM_File {
         String line;
         while((line = in.readLine()) != null) {
             if (line.length() > 0) {
-                PSM psm = new PSM(line, PSMcolumns, params, false, false, 0.0, 0, addCols);
+                PSM psm = new PSM(line, PSMcolumns, params, false, false, 0.0, "", "", addCols);
                 allPSMs.add(psm);
                 if (rawfilePSMmap.containsKey(psm.rawfile)) {
                     rawfilePSMmap.get(psm.rawfile).add(psm);
@@ -147,7 +149,9 @@ public class PSM_File {
         has_Y1,
         MBG_score,
         ionMobilityDiff,
-        intensity
+        intensity,
+        parent_glycan,
+        added_residual
     }
 
 
