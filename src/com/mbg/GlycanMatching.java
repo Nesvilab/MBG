@@ -102,37 +102,49 @@ public class GlycanMatching {
             }
         }
         ArrayList<PSM> qualifiedPSMs = new ArrayList<>();
+        List<Double> glycanMassList = new ArrayList<>();
         // if decoy list is empty or decoy or target list is too small to scoring, return all newPSMs
         if (Scoring.decoyData.isEmpty() || Scoring.decoyData.size() < 2 || Scoring.targetData.size() < 2) {
             for (PSM p: newPSMs) {
                 if (p.intensity <0.01) {
                     continue;  // remove unmatched PSMs
                 }
+                if (!glycanMassList.contains(p.glycan.mass)) {
+                    glycanMassList.add(p.glycan.mass);
+                }
                 qualifiedPSMs.add(p);
             }
-            return qualifiedPSMs;
-        }
-        // if TMT labeled sample, only keep PSMs with MS2
-        if (params.runTMT) {
+        } else {
+            // get threshold score and coefficient of score function
+            Scoring.getCutOffScore(params.fdr);
+            // get qualified PSMs
             for (PSM p: newPSMs) {
-                if (p.yIntensities > 0) {  // if detected Y1 ion
+                if (p.intensity <0.01) {
+                    continue;  // remove unmatched PSMs
+                }
+                // get updated score
+                double cScore = Scoring.getMBGScore(p, psmFile.PSMcolumns, params.noPASEF);
+                if (Scoring.overThreshold(cScore)) {
+                    if (!glycanMassList.contains(p.glycan.mass)) {
+                        glycanMassList.add(p.glycan.mass);
+                    }
                     qualifiedPSMs.add(p);
                 }
             }
-            return qualifiedPSMs;
         }
-        // get threshold score and coefficient of score function
-        Scoring.getCutOffScore(params.fdr);
-        // get qualified PSMs
-        for (PSM p: newPSMs) {
-            if (p.intensity <0.01) {
-                continue;  // remove unmatched PSMs
+        // write masses to a txt file
+        if (!glycanMassList.isEmpty()) {
+            PSM_File.massWriter(glycanMassList);
+        }
+        // if TMT labeled sample, only keep PSMs with MS2
+        if (params.runTMT) {
+            ArrayList<PSM> qualifiedPSMsTMT = new ArrayList<>();
+            for (PSM p: qualifiedPSMs) {
+                if (p.yIntensities > 0) {  // if detected Y1 ion
+                    qualifiedPSMsTMT.add(p);
+                }
             }
-            // get updated score
-            double cScore = Scoring.getMBGScore(p, psmFile.PSMcolumns, params.noPASEF);
-            if (Scoring.overThreshold(cScore)) {
-                qualifiedPSMs.add(p);
-            }
+            return qualifiedPSMsTMT;
         }
         return qualifiedPSMs;
     }

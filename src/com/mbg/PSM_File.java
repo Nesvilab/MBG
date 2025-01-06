@@ -127,6 +127,49 @@ public class PSM_File {
         success = newFileName.renameTo(this.file);
     }
 
+    public static void massWriter(List<Double> massesToWrite) throws IOException {
+        // The file path to create or write to
+        String filePath = "MBG_masses_list.txt";
+        // Content to write into the file
+        String content = "Hello, World!\nWelcome to Java file handling.";
+
+        // Using try-with-resources to ensure the writer is closed automatically
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(filePath))) {
+            // Writing masses to the file
+            for (Double mass: massesToWrite) {
+                writer.write(mass + "\n");
+            }
+            System.out.println("File written successfully!");
+        } catch (IOException e) {
+            System.out.println("An error occurred: " + e.getMessage());
+        }
+        appendMassesFileContents("modmasses_ionquant.txt", "MBG_masses_list.txt");
+    }
+
+    private static void appendMassesFileContents(String fileAppendTo, String fileAppendFrom) throws IOException {
+        BufferedReader appendFromReader = new BufferedReader(new FileReader(fileAppendFrom));
+        BufferedReader appendToReader = new BufferedReader(new FileReader(fileAppendTo));
+
+        BufferedWriter writer = new BufferedWriter(new FileWriter(fileAppendTo, true));
+
+        Set<Long> masses = new HashSet<>();
+        // read all masses in the file to append to so we can avoid duplicates while appending
+        String readline;
+        while ((readline = appendToReader.readLine()) != null) {
+            long mass = Math.round(Double.parseDouble(readline.trim()) * 100);
+            masses.add(mass);
+        }
+
+        // read new masses and append, checking for duplicates
+        while ((readline = appendFromReader.readLine()) != null) {
+            long mass = Math.round(Double.parseDouble(readline.trim()) * 100);
+            if (!masses.contains(mass)) {
+                writer.write(readline + "\n");
+            }
+        }
+        writer.close();
+    }
+
 
     public enum PSMattr {
         RT,
