@@ -144,7 +144,7 @@ public class PSM_File {
     }
 
     private static void appendMassesFileContents(String fileAppendTo, String fileAppendFrom) throws IOException {
-        File fileFrom = new File(fileAppendFrom);
+        File fileFrom = new File(fileAppendTo);
         if (!fileFrom.exists()) {
             return;
         }
