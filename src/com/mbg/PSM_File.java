@@ -130,16 +130,13 @@ public class PSM_File {
     public static void massWriter(List<Double> massesToWrite) throws IOException {
         // The file path to create or write to
         String filePath = "MBG_masses_list.txt";
-        // Content to write into the file
-        String content = "Hello, World!\nWelcome to Java file handling.";
-
         // Using try-with-resources to ensure the writer is closed automatically
         try (BufferedWriter writer = new BufferedWriter(new FileWriter(filePath))) {
             // Writing masses to the file
             for (Double mass: massesToWrite) {
                 writer.write(mass + "\n");
             }
-            System.out.println("File written successfully!");
+            System.out.println("Glycan mass written successfully!");
         } catch (IOException e) {
             System.out.println("An error occurred: " + e.getMessage());
         }
@@ -147,6 +144,10 @@ public class PSM_File {
     }
 
     private static void appendMassesFileContents(String fileAppendTo, String fileAppendFrom) throws IOException {
+        File fileFrom = new File(fileAppendFrom);
+        if (!fileFrom.exists()) {
+            return;
+        }
         BufferedReader appendFromReader = new BufferedReader(new FileReader(fileAppendFrom));
         BufferedReader appendToReader = new BufferedReader(new FileReader(fileAppendTo));
 
