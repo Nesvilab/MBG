@@ -478,9 +478,10 @@ public class PSM implements Comparable<PSM>{
             // gained
             saccharidesAdder(psm.glycan, cGlycan, dummy_glycans, true);
             addedResiduals.add(cGlycan.toString());
-            // loss
-            saccharidesAdder(psm.glycan, cGlycan, dummy_glycans, false);
-            addedResiduals.add(cGlycan.toString());
+            // loss, only add to addedResiduals when eligible
+            if (saccharidesAdder(psm.glycan, cGlycan, dummy_glycans, false)) {
+                addedResiduals.add(cGlycan.toString());
+            }
         }
         HashMap<Glycan, String> glycanMap = new HashMap<>();
         for (int i = 0; i < dummy_glycans.size(); i++) {
@@ -489,7 +490,7 @@ public class PSM implements Comparable<PSM>{
         return glycanMap;
     }
 
-    private static void saccharidesAdder(Glycan oldGlycan, Glycan glycanToAdd, ArrayList<Glycan> dummy_glycans, boolean ifAdd) {
+    private static boolean saccharidesAdder(Glycan oldGlycan, Glycan glycanToAdd, ArrayList<Glycan> dummy_glycans, boolean ifAdd) {
         HashMap<GlycanResidue, Integer> newCompositionAdd = new HashMap<>(oldGlycan.composition);
         if (ifAdd) {
             for (Map.Entry<GlycanResidue, Integer> residueIntegerEntry: glycanToAdd.composition.entrySet()) {
@@ -506,7 +507,7 @@ public class PSM implements Comparable<PSM>{
                 int lossN = residueIntegerEntry.getValue();
                 int oldN = oldGlycan.composition.getOrDefault(cResidual, 0);
                 if (oldN < lossN) {
-                    return;
+                    return false;
                 } else if (oldN == lossN) {
                     newCompositionAdd.remove(cResidual);
                 } else {
@@ -514,11 +515,12 @@ public class PSM implements Comparable<PSM>{
                 }
             }
         }
-        // if empty after subtraction, ignore this empty glycan
+        // if empty after subtraction, ignore this empty glycan and return False
         if (newCompositionAdd.isEmpty()) {
-            return;
+            return false;
         }
         dummy_glycans.add(new Glycan(newCompositionAdd));
+        return true;
     }
 
 

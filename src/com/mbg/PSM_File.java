@@ -35,7 +35,7 @@ public class PSM_File {
         columnNames.put(PSMattr.has_Y1, "Has Y1 ion?");
         columnNames.put(PSMattr.MBG_score, "MBG Score");
         columnNames.put(PSMattr.parent_glycan, "Parent Glycan");
-        columnNames.put(PSMattr.added_residual, "Added residual");
+        columnNames.put(PSMattr.added_residual, "Residual Difference");
         columnNames.put(PSMattr.spectrum_file, "Spectrum File");
         columnNames.put(PSMattr.intensity, "Intensity");
     }
