@@ -2,10 +2,7 @@ package com.mbg;
 
 import java.util.*;
 
-import org.apache.commons.math3.linear.Array2DRowRealMatrix;
-import org.apache.commons.math3.linear.RealMatrix;
-import org.apache.commons.math3.linear.LUDecomposition;
-import org.apache.commons.math3.linear.ArrayRealVector;
+import org.apache.commons.math3.linear.*;
 
 
 public class Scoring {
@@ -34,13 +31,10 @@ public class Scoring {
         RealMatrix pooledCov = calculatePooledCovariance(targetCov, decoyCov, decoyData.size(), targetData.size());
 
         // Check for singularity and handle it
-        LUDecomposition lu = new LUDecomposition(pooledCov);
-        if (lu.getDeterminant() == 0) {
-            System.err.println("Pooled covariance matrix is singular. Cannot calculate coefficients.");
-            // Handle the error appropriately (e.g., exit the program, use a different method)
-            return;
+        if (new LUDecomposition(pooledCov).getDeterminant() == 0) {
+            pooledCov = regularizeCovarianceMatrix(pooledCov, 0.001);
         }
-
+        LUDecomposition lu = new LUDecomposition(pooledCov);
         // Calculate inverse of pooled covariance matrix
         RealMatrix invPooledCov = lu.getSolver().getInverse();
 
@@ -67,6 +61,13 @@ public class Scoring {
     }
 
     // Helper functions
+    // Regularize covariance matrix to ensure it's invertible
+    private static RealMatrix regularizeCovarianceMatrix(RealMatrix covarianceMatrix, double alpha) {
+        int size = covarianceMatrix.getRowDimension();
+        RealMatrix identity = MatrixUtils.createRealIdentityMatrix(size);
+        return covarianceMatrix.scalarMultiply(1 - alpha).add(identity.scalarMultiply(alpha));
+    }
+
     private static double[] calculateMean(List<double[]> data) {
         double[] mean = new double[data.get(0).length];
         for (double[] row : data) {
