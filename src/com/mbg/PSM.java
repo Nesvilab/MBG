@@ -257,6 +257,9 @@ public class PSM implements Comparable<PSM>{
                 } else {
                     newAssignedMods.add(mod);
                 }
+            } else {
+                // include TMT to assigned mods
+                newAssignedMods.add(mod);
             }
         }
         newSplits[psmCols.get(PSM_File.PSMattr.assigned_mods)] = String.join(",", newAssignedMods);
