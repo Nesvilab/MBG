@@ -230,6 +230,21 @@ public class PSM implements Comparable<PSM>{
     }
 
     /**
+     * Update the PSM's (internal) rank and spectrum file column (psm table)
+     */
+    private void updateSplits(HashMap<PSM_File.PSMattr, Integer> psmCols, boolean noPASEF, boolean if_new_glycan) {
+        splits[psmCols.get(PSM_File.PSMattr.mass_error)] = String.valueOf(avePPM);
+        splits[psmCols.get(PSM_File.PSMattr.KL)] = String.valueOf(kl);
+        splits[psmCols.get(PSM_File.PSMattr.shift_frequency)] = String.valueOf(shiftFrequency);
+        splits[psmCols.get(PSM_File.PSMattr.rt_diff)] = String.valueOf(rtDiff);
+        if (!noPASEF) {
+            splits[psmCols.get(PSM_File.PSMattr.im_diff)] = String.valueOf(imDiff);
+        }
+        splits[psmCols.get(PSM_File.PSMattr.if_new_glycan)] = String.valueOf(if_new_glycan);
+    }
+
+
+    /**
      * Generate a 'dummy' PSM for a newly matched glycan from an existing base PSM. Edit the base PSM to
      * convert to the new glycan
      *
@@ -238,7 +253,7 @@ public class PSM implements Comparable<PSM>{
      * @param psmCols
      * @param params
      */
-    public static List<PSM> makeDummyPSM(PSM existingPSM, Glycan newGlycan, HashMap<PSM_File.PSMattr, Integer> psmCols, Params params, int rankCounter, RT_adjuster rtAdjuster, boolean ifdecoy, String parentGlycan, String addedResidual) {
+    public static List<PSM> makeDummyPSM(PSM existingPSM, Glycan newGlycan, HashMap<PSM_File.PSMattr, Integer> psmCols, Params params, int rankCounter, RT_adjuster rtAdjuster, boolean ifdecoy, String parentGlycan, String addedResidual, boolean if_new_glycan) {
         String[] newSplits = new String[existingPSM.splits.length];
         System.arraycopy(existingPSM.splits, 0, newSplits, 0, newSplits.length);
 
@@ -341,6 +356,8 @@ public class PSM implements Comparable<PSM>{
                 addedPSM.kl = peakMatcher.quantifiedEntry.kl;
                 addedPSM.shiftFrequency = shiftFrequency;
                 addedPSM.featureIntensity = featureIntensity;
+                // update MBG related columns (some columns already updated in generating new psm)
+                addedPSM.updateSplits(psmCols, params.noPASEF, if_new_glycan);
                 addedPSMs.add(addedPSM);
             }
 
@@ -354,6 +371,8 @@ public class PSM implements Comparable<PSM>{
             addedPSM.kl = peakMatcher.quantifiedEntry.kl;
             addedPSM.shiftFrequency = shiftFrequency;
             addedPSM.featureIntensity = featureIntensity;
+            // update MBG related columns (some columns already updated in generating new psm)
+            addedPSM.updateSplits(psmCols, params.noPASEF, if_new_glycan);
             addedPSMs.add(addedPSM);
         }
         // add intensity, rtDiff, imDiff, glycan shift frequency to decoys or targets for scoring

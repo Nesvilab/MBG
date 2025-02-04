@@ -44,10 +44,10 @@ public class GlycanMatching {
                 allObservedGlycans.put(psm.glycan.toString(), 1);
             }
         }
-        // filter to keep entries where the glycan psm counts >5
+        // filter to keep entries where the glycan psm counts >x
         qualifiedGlycans = allObservedGlycans.entrySet()
                 .stream()
-                .filter(entry -> entry.getValue() > 5)
+                .filter(entry -> entry.getValue() > 0)
                 .map(Map.Entry::getKey).toArray(String[]::new);
     }
 
@@ -58,7 +58,7 @@ public class GlycanMatching {
     public ArrayList<PSM> fillInGlycoSites(String rawFileName) throws Exception {
         ArrayList<PSM> newPSMs = new ArrayList<>();
         String msFilePath = matchMSfilename(rawFileName, params.msFilePathsMap);
-//        msFilePath = "Z:\\data\\CPTAC3\\GBM\\C_GBM_Glyco\\01CPTAC_C_GBM_G_JHU_202202012_B1S1\\08CPTAC_C_GBM_W_PNNL_20210830_B2S3_f01.raw";
+//        msFilePath = "Z:\\dpolasky\\data\\glyco\\pGlyco2\\yeast_PXD005565\\08CPTAC_C_GBM_W_PNNL_20210830_B2S3_f01.raw";
         Path msFileDir = Paths.get(msFilePath).getParent();
 
         // read msFile
@@ -115,6 +115,12 @@ public class GlycanMatching {
                 qualifiedPSMs.add(p);
             }
         } else {
+            if (params.noPASEF) {
+                System.out.println("Coefficients Items: " + "[Intensity, mass error, kl, Shift Frequency, Relative Intensity of Y0+Y1, RT Difference]");
+            }
+            else {
+                System.out.println("Coefficients Items: " + "[Intensity, mass error, kl, Shift Frequency, Relative Intensity of Y0+Y1, RT Difference, IM Difference]");
+            }
             // get threshold score and coefficient of score function
             Scoring.getCutOffScore(params.fdr);
             // get qualified PSMs
@@ -162,12 +168,11 @@ public class GlycanMatching {
                 // this glycan was observed for this site, no action required
                 continue;
             }
-            boolean expanded_glycan = false;
+            boolean if_new_glycan = false;
             if (!Arrays.asList(qualifiedGlycans).contains(new_glycan.toString())) {
+                if_new_glycan = true;
                 // this glycan not detected in psm.tsv ever, and do not expanding glycan database
-                if (params.expandDB > 0) {
-                    expanded_glycan = true;
-                } else {
+                if (params.expandDB <= 0) {
                     continue;
                 }
             }
@@ -176,9 +181,9 @@ public class GlycanMatching {
                 continue;
             }
             // glycan not observed. Make a PSM for it
-            List<PSM> addedPSMs = PSM.makeDummyPSM(base_PSM, new_glycan, psmFile.PSMcolumns, params, rankCounter, cRT_adjuster, false, base_PSM.glycan.toString(), addedResidual);
+            List<PSM> addedPSMs = PSM.makeDummyPSM(base_PSM, new_glycan, psmFile.PSMcolumns, params, rankCounter, cRT_adjuster, false, base_PSM.glycan.toString(), addedResidual, if_new_glycan);
             // decoy, not add into newPSMs
-            PSM.makeDummyPSM(base_PSM, new_glycan, psmFile.PSMcolumns, params, rankCounter, cRT_adjuster, true, base_PSM.glycan.toString(), addedResidual);
+            PSM.makeDummyPSM(base_PSM, new_glycan, psmFile.PSMcolumns, params, rankCounter, cRT_adjuster, true, base_PSM.glycan.toString(), addedResidual, if_new_glycan);
 
             newPSMs.addAll(addedPSMs);
             // update observed glycans

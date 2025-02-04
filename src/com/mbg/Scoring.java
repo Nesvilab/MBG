@@ -46,13 +46,13 @@ public class Scoring {
 
         // Print results
         System.out.println("Coefficients: " + java.util.Arrays.toString(coefficients));
-        System.out.println("Intercept: " + intercept);
+//        System.out.println("Intercept: " + intercept);
 
         // calculate scores for targets and decoys
         List<Double> targetScores = calculateScores(targetData, coefficients, intercept);
         List<Double> decoyScores = calculateScores(decoyData, coefficients, intercept);
         thresholdScore = getCutOff(fdrCurOff, targetScores, decoyScores);
-        System.out.println(thresholdScore);
+        System.out.println("Threshold Score:" + thresholdScore);
         // Classify a new data point (replace with your actual data)
 //        double[] newDataPoint = new double[]{3.5, 4.5, 5.5};
 //        double score = calculateScore(newDataPoint, coefficients, intercept);
@@ -207,6 +207,7 @@ public class Scoring {
             data = new double[]{psm.intensity, psm.avePPM, psm.kl, psm.shiftFrequency, psm.featureIntensity, (double) psm.rtDiff, (double) psm.imDiff};
         }
         double c_score = calculateScore(data, coefficients, intercept);
+
         // update MBG score
         psm.add_MBG_score(psmCols, c_score);
         return c_score;

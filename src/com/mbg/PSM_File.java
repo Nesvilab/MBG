@@ -34,6 +34,12 @@ public class PSM_File {
         columnNames.put(PSMattr.has_ms2_spec, "Has MS2 Spectrum?");
         columnNames.put(PSMattr.has_Y1, "Has Y1 ion?");
         columnNames.put(PSMattr.MBG_score, "MBG Score");
+        columnNames.put(PSMattr.mass_error, "Mass error(ppm)");
+        columnNames.put(PSMattr.KL, "KL (IonQuant Score)");
+        columnNames.put(PSMattr.shift_frequency, "Shift Frequency");
+        columnNames.put(PSMattr.rt_diff, "RT Difference");
+        columnNames.put(PSMattr.im_diff, "IM Difference");
+        columnNames.put(PSMattr.if_new_glycan, "New Glycan?");
         columnNames.put(PSMattr.parent_glycan, "Parent Glycan");
         columnNames.put(PSMattr.added_residual, "Residual Difference");
         columnNames.put(PSMattr.spectrum_file, "Spectrum File");
@@ -49,7 +55,7 @@ public class PSM_File {
 
         // handle inserting new header(s) if needed
         if (PSMcolumns.getOrDefault(PSMattr.inferred_glycoform, -1) == -1) {
-            addCols = 6;
+            addCols = 12;
             if (PSMcolumns.containsKey(PSMattr.glyco_q_val)) {
                 insertIndex = PSMcolumns.get(PSMattr.glyco_q_val)+1;
             } else {
@@ -62,6 +68,12 @@ public class PSM_File {
             newHeaders.add(insertIndex, columnNames.get(PSMattr.MBG_score));
             newHeaders.add(insertIndex, columnNames.get(PSMattr.parent_glycan));
             newHeaders.add(insertIndex, columnNames.get(PSMattr.added_residual));
+            newHeaders.add(insertIndex, columnNames.get(PSMattr.mass_error));
+            newHeaders.add(insertIndex, columnNames.get(PSMattr.KL));
+            newHeaders.add(insertIndex, columnNames.get(PSMattr.shift_frequency));
+            newHeaders.add(insertIndex, columnNames.get(PSMattr.rt_diff));
+            newHeaders.add(insertIndex, columnNames.get(PSMattr.im_diff));
+            newHeaders.add(insertIndex, columnNames.get(PSMattr.if_new_glycan));
             headers = newHeaders.toArray(new String[0]);
             this.PSMcolumns = initPSMcolumns();
         } else {
@@ -195,7 +207,13 @@ public class PSM_File {
         ionMobilityDiff,
         intensity,
         parent_glycan,
-        added_residual
+        added_residual,
+        mass_error,
+        KL,
+        shift_frequency,
+        rt_diff,
+        im_diff,
+        if_new_glycan
     }
 
 
