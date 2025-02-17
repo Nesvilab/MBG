@@ -58,7 +58,7 @@ public class GlycanMatching {
     public ArrayList<PSM> fillInGlycoSites(String rawFileName) throws Exception {
         ArrayList<PSM> newPSMs = new ArrayList<>();
         String msFilePath = matchMSfilename(rawFileName, params.msFilePathsMap);
-//        msFilePath = "Z:\\dpolasky\\data\\glyco\\pGlyco2\\yeast_PXD005565\\08CPTAC_C_GBM_W_PNNL_20210830_B2S3_f01.raw";
+//        msFilePath = "Z:\\dpolasky\\data\\glyco\\pGlyco2\\_all_raw\\08CPTAC_C_GBM_W_PNNL_20210830_B2S3_f01.raw";
         Path msFileDir = Paths.get(msFilePath).getParent();
 
         // read msFile
@@ -92,9 +92,9 @@ public class GlycanMatching {
 
         for (Map.Entry<String, GlycoSite> siteEntry: observedGlycoSites.entrySet()) {
             GlycoSite site = siteEntry.getValue();
-            if (Objects.equals(site.id, "TKPREEQYNSTYR")) {
-                System.out.println(1);
-            }
+//            if (Objects.equals(site.id, "TKPREEQYNSTYR")) {
+//                System.out.println(1);
+//            }
             if (site.psms.size() >= params.minPSMs && site.observedGlycans.size() >= params.minGlycans) {
                 for (PSM base_PSM : site.basePSMs) {
                     getInferredPSMs(base_PSM, params, site, cRT_adjuster, newPSMs, params.expandDB);

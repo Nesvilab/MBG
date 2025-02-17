@@ -40,6 +40,7 @@ public class PSM implements Comparable<PSM>{
     double avePPM;
     double kl; // isotope distribution score
     int shiftFrequency;
+    String confidenceLevel;
     double featureIntensity;
     public String rawfile;
 
@@ -66,16 +67,19 @@ public class PSM implements Comparable<PSM>{
             inferredGlycoform = isInferred;
             hasMS2Spectrum = hasMS2;
             yIntensities = hasY1;
+            confidenceLevel = String.valueOf(1);
         } else {
             if (!isInferred) {
                 // if this is a re-analysis (i.e., not adding new columns) and this is not an inferred PSM from this analysis, read its inferred status from the previous result
                 inferredGlycoform = Boolean.parseBoolean(splits[psmCols.get(PSM_File.PSMattr.inferred_glycoform)]);
                 hasMS2Spectrum = Boolean.parseBoolean(splits[psmCols.get(PSM_File.PSMattr.has_ms2_spec)]);
                 yIntensities = Double.parseDouble(splits[psmCols.get(PSM_File.PSMattr.has_Y1)]);
+                confidenceLevel = String.valueOf(4);
             } else {
                 inferredGlycoform = isInferred;
                 hasMS2Spectrum = hasMS2;
                 yIntensities = hasY1;
+                confidenceLevel = String.valueOf(1);
             }
         }
 
@@ -86,6 +90,7 @@ public class PSM implements Comparable<PSM>{
         splits[psmCols.get(PSM_File.PSMattr.MBG_score)] = String.valueOf(0);
         splits[psmCols.get(PSM_File.PSMattr.parent_glycan)] = parentGlycan;
         splits[psmCols.get(PSM_File.PSMattr.added_residual)] = addedResidual;
+        splits[psmCols.get(PSM_File.PSMattr.confidence_level)] = confidenceLevel;
         Matcher rankMatch = rankPattern.matcher(splits[psmCols.get(PSM_File.PSMattr.spectrum_file)]);
         if (rankMatch.find()) {
             rank = Integer.parseInt(rankMatch.group(1));
@@ -241,6 +246,14 @@ public class PSM implements Comparable<PSM>{
             splits[psmCols.get(PSM_File.PSMattr.im_diff)] = String.valueOf(imDiff);
         }
         splits[psmCols.get(PSM_File.PSMattr.if_new_glycan)] = String.valueOf(if_new_glycan);
+        if (featureIntensity > 0) {
+            confidenceLevel = "3";
+        } else if (hasMS2Spectrum) {
+            confidenceLevel = "2";
+        } else {
+            confidenceLevel = "1";
+        }
+        splits[psmCols.get(PSM_File.PSMattr.confidence_level)] = confidenceLevel;
     }
 
 
@@ -352,6 +365,8 @@ public class PSM implements Comparable<PSM>{
                 // generate new PSM
                 PSM addedPSM = new PSM(String.join("\t", newSplits), psmCols, params, true, true, yIntensities.get(i), parentGlycan, addedResidual, 0);
                 addedPSM.updateRank(existingPSM.rank + rankCounter, psmCols);
+                addedPSM.rtDiff = rtDiff;
+                addedPSM.imDiff = imDiff;
                 addedPSM.avePPM = c_avePPM;
                 addedPSM.kl = peakMatcher.quantifiedEntry.kl;
                 addedPSM.shiftFrequency = shiftFrequency;
@@ -367,6 +382,8 @@ public class PSM implements Comparable<PSM>{
             // generate new PSM
             PSM addedPSM = new PSM(String.join("\t", newSplits), psmCols, params, true, false, 0, parentGlycan, addedResidual,  0);
             addedPSM.updateRank(existingPSM.rank + rankCounter, psmCols);
+            addedPSM.rtDiff = rtDiff;
+            addedPSM.imDiff = imDiff;
             addedPSM.avePPM = c_avePPM;
             addedPSM.kl = peakMatcher.quantifiedEntry.kl;
             addedPSM.shiftFrequency = shiftFrequency;
