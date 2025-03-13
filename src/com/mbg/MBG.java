@@ -9,7 +9,7 @@ import static java.lang.System.out;
 public class MBG {
 
     private static final String name = "Glycoform Inference";
-    private static final String version = "0.2.18";
+    private static final String version = "0.2.19";
 
     public static void main(String[] args) {
         long time = System.nanoTime();
