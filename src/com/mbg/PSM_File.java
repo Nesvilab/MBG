@@ -26,8 +26,8 @@ public class PSM_File {
         columnNames.put(PSMattr.spectrum, "Spectrum");
         columnNames.put(PSMattr.delta_mass, "Delta Mass");
         columnNames.put(PSMattr.mod_peptide, "Modified Peptide");
-        columnNames.put(PSMattr.calc_pep_mass, "Calculated Peptide Mass");
-        columnNames.put(PSMattr.calc_pep_mz, "Calculated M/Z");
+        columnNames.put(PSMattr.calc_pep_mass, "Calibrated Observed Mass");
+        columnNames.put(PSMattr.calc_pep_mz, "Calibrated Observed M/Z");
         columnNames.put(PSMattr.charge, "Charge");
         columnNames.put(PSMattr.glyco_q_val, "Glycan q-value");
         columnNames.put(PSMattr.inferred_glycoform, "Inferred Glycoform?");
