@@ -18,12 +18,12 @@ public class RT_adjuster {
     static HashMap<String, Float> monosaccharideImShifts;
 
     public RT_adjuster(HashMap<String, GlycoSite> observedGlycoSites) {
-        allShiftedRTs = new HashMap<>();
+        allShiftedRTs = new HashMap<>(); // storage RT shifts from one glycan comp to another
         shiftedRTs = new HashMap<>();
-        allShiftedIMs = new HashMap<>();
+        allShiftedIMs = new HashMap<>(); // storage IM shifts from one glycan comp to another
         shiftedIMs = new HashMap<>();
-        allShiftedMonoRTs = new HashMap<>(); // storage monosaccharide difference RTs
-        allShiftedMonoIMs = new HashMap<>(); // storage monosaccharide difference IMs
+        allShiftedMonoRTs = new HashMap<>(); // storage (a set of) monosaccharide difference RTs
+        allShiftedMonoIMs = new HashMap<>(); // storage (a set of) monosaccharide difference IMs
         monosaccharideRtShifts = new HashMap<>();
         monosaccharideImShifts = new HashMap<>();
         matchMS1forPSMs(observedGlycoSites);
