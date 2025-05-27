@@ -10,64 +10,90 @@ import umich.ms.glyco.Glycan;
 import static com.mbg.Peak.findFirstPriorityFile;
 import static java.lang.System.out;
 
+/**
+ * GlycanMatching class handles the core functionality of matching and inferring glycans
+ * for peptide-spectrum matches (PSMs). It processes observed glycans and generates
+ * potential new glycopeptide matches based on known glycan modifications.
+ */
 public class GlycanMatching {
-    public PSM_File psmFile;
-    public ArrayList<PSM> psms;
-    private final Params params;
-    private HashMap<String, GlycoSite> observedGlycoSites;
-    private String[] qualifiedGlycans;  // glycans in psm.tsv with a specific minimum count
+    // Class fields
+    public PSM_File psmFile;                    // Reference to the PSM file being processed
+    public ArrayList<PSM> psms;                 // List of PSMs to process
+    private final Params params;                // Configuration parameters
+    private HashMap<String, GlycoSite> observedGlycoSites;  // Map of observed glycosylation sites
+    private String[] qualifiedGlycans;          // Glycans that meet minimum observation criteria
 
+    /**
+     * Constructor for GlycanMatching
+     * @param params Configuration parameters
+     * @param psmFile PSM file reference
+     * @param psms List of PSMs to process
+     */
     public GlycanMatching(Params params, PSM_File psmFile, ArrayList<PSM> psms) {
         this.psmFile = psmFile;
         this.psms = psms;
         this.params = params;
     }
 
+    /**
+     * Groups PSMs by their glycosylation sites and counts observed glycans.
+     * This method populates the observedGlycoSites map and identifies qualified glycans
+     * that meet the minimum observation criteria.
+     */
     public void groupGlycosites() {
         observedGlycoSites = new HashMap<>();
-        HashMap<String, Integer> allObservedGlycans = new HashMap<>();
+        HashMap<String, Integer> glycanObservationCounts = new HashMap<>();
 
+        // Process each PSM to group by glycosite and count glycan observations
         for (PSM psm: psms) {
             if (psm.glycan == null) {
                 continue;
             }
+            
+            // Group PSMs by peptide sequence
             if (observedGlycoSites.containsKey(psm.peptide)) {
                 observedGlycoSites.get(psm.peptide).addPSM(psm);
             } else {
-                // new site
                 observedGlycoSites.put(psm.peptide, new GlycoSite(psm, psm.peptide));
             }
-            // counts observed glycans
-            if (allObservedGlycans.containsKey(psm.glycan.toString())) {
-                allObservedGlycans.put(psm.glycan.toString(), allObservedGlycans.get(psm.glycan.toString()) + 1);
-            } else {
-                allObservedGlycans.put(psm.glycan.toString(), 1);
-            }
+            
+            // Count occurrences of each glycan
+            String glycanString = psm.glycan.toString();
+            glycanObservationCounts.merge(glycanString, 1, Integer::sum);
         }
-        // filter to keep entries where the glycan psm counts >x
-        qualifiedGlycans = allObservedGlycans.entrySet()
+
+        // Filter to keep only glycans that meet the minimum observation criteria
+        qualifiedGlycans = glycanObservationCounts.entrySet()
                 .stream()
                 .filter(entry -> entry.getValue() > 0)
-                .map(Map.Entry::getKey).toArray(String[]::new);
+                .map(Map.Entry::getKey)
+                .toArray(String[]::new);
     }
 
     /**
-     * Given a glycan database and rules from Params, fill in the unobserved glycans for each glycosite
-     * and generate dummy PSMs for them.
+     * Processes glycosites and generates new PSMs for unobserved glycans.
+     * This method:
+     * 1. Reads and processes MS/MS data
+     * 2. Generates dummy PSMs for potential glycans
+     * 3. Scores and filters the results
+     * 
+     * @param rawFileName Name of the raw file being processed
+     * @return List of qualified PSMs that passed filtering
+     * @throws Exception if there are issues processing the MS data
      */
     public ArrayList<PSM> fillInGlycoSites(String rawFileName) throws Exception {
-        ArrayList<PSM> newPSMs = new ArrayList<>();
+        ArrayList<PSM> inferredPSMs = new ArrayList<>();
         String msFilePath = matchMSfilename(rawFileName, params.msFilePathsMap);
-//        msFilePath = "Z:\\dpolasky\\data\\glyco\\pGlyco2\\_all_raw\\08CPTAC_C_GBM_W_PNNL_20210830_B2S3_f01.raw";
         Path msFileDir = Paths.get(msFilePath).getParent();
 
-        // read msFile
+        // Process MS/MS data
         out.printf("Reading spectrum file %s\n", rawFileName);
         MSMS ms2 = new MSMS(rawFileName, msFilePath);
         ms2.msFileReader(params.numThreads);
-        // if PASEF data, get im for each MS2
+
+        // Handle PASEF data if available
         if (!params.noPASEF) {
-            Path mzBinPath = msFileDir.resolve(rawFileName+".mzBIN");
+            Path mzBinPath = msFileDir.resolve(rawFileName + ".mzBIN");
             File mzBinFile = mzBinPath.toFile();
             if (!mzBinFile.exists()) {
                 System.out.printf("No mzBIN file found for %s\n", rawFileName);
@@ -75,74 +101,71 @@ public class GlycanMatching {
             }
             MSMS.getMS2IMs(mzBinFile, params.numThreads);
         }
-        // find file for IonQuant
-        String[] extensions = {".mzML", ".raw", ".d"};
-        String foundFile = findFirstPriorityFile(msFileDir.toString(), rawFileName, extensions);
+
+        // Prepare for IonQuant analysis
+        String[] supportedExtensions = {".mzML", ".raw", ".d"};
+        String foundFile = findFirstPriorityFile(msFileDir.toString(), rawFileName, supportedExtensions);
         if (foundFile != null) {
-            // build index for IonQuant
             Peak.indexBuilder(foundFile, params);
         } else {
             System.out.println("No file found with extension .mzML, .raw or .d.");
             System.exit(-1);
         }
-        // get apex rt for each psm and generate internal median RT shift database; get base PSMs
-        RT_adjuster cRT_adjuster = new RT_adjuster(this.observedGlycoSites);
-        // init decoys and targets
+
+        // Initialize RT adjustment and scoring
+        RT_adjuster rtAdjuster = new RT_adjuster(this.observedGlycoSites);
         Scoring.init();
 
+        // Process each glycosite
         for (Map.Entry<String, GlycoSite> siteEntry: observedGlycoSites.entrySet()) {
             GlycoSite site = siteEntry.getValue();
-//            if (Objects.equals(site.id, "TKPREEQYNSTYR")) {
-//                System.out.println(1);
-//            }
             if (site.psms.size() >= params.minPSMs && site.observedGlycans.size() >= params.minGlycans) {
-                for (PSM base_PSM : site.basePSMs) {
-                    getInferredPSMs(base_PSM, params, site, cRT_adjuster, newPSMs, params.expandDB);
+                for (PSM basePSM : site.basePSMs) {
+                    getInferredPSMs(basePSM, params, site, rtAdjuster, inferredPSMs, params.expandDB);
                 }
             }
         }
+
+        // Filter and score PSMs
         ArrayList<PSM> qualifiedPSMs = new ArrayList<>();
         List<Double> glycanMassList = new ArrayList<>();
-        // if decoy list is empty or decoy or target list is too small to scoring, return all newPSMs
+
         if (Scoring.decoyData.isEmpty() || Scoring.decoyData.size() < 2 || Scoring.targetData.size() < 2) {
-            for (PSM p: newPSMs) {
-                if (p.intensity <0.01) {
-                    continue;  // remove unmatched PSMs
+            // Simple filtering when scoring is not possible
+            for (PSM psm: inferredPSMs) {
+                if (psm.intensity < 0.01) continue;
+                if (!glycanMassList.contains(psm.glycan.mass)) {
+                    glycanMassList.add(psm.glycan.mass);
                 }
-                if (!glycanMassList.contains(p.glycan.mass)) {
-                    glycanMassList.add(p.glycan.mass);
-                }
-                qualifiedPSMs.add(p);
+                qualifiedPSMs.add(psm);
             }
         } else {
+            // Full scoring and filtering
             if (params.noPASEF) {
-                System.out.println("Coefficients Items: " + "[Intensity, mass error, kl, Shift Frequency, Relative Intensity of Y0+Y1, RT Difference]");
+                System.out.println("Coefficients Items: [Intensity, mass error, kl, Shift Frequency, Relative Intensity of Y0+Y1, RT Difference]");
+            } else {
+                System.out.println("Coefficients Items: [Intensity, mass error, kl, Shift Frequency, Relative Intensity of Y0+Y1, RT Difference, IM Difference]");
             }
-            else {
-                System.out.println("Coefficients Items: " + "[Intensity, mass error, kl, Shift Frequency, Relative Intensity of Y0+Y1, RT Difference, IM Difference]");
-            }
-            // get threshold score and coefficient of score function
+
             Scoring.getCutOffScore(params.fdr);
-            // get qualified PSMs
-            for (PSM p: newPSMs) {
-                if (p.intensity <0.01) {
-                    continue;  // remove unmatched PSMs
-                }
-                // get updated score
-                double cScore = Scoring.getMBGScore(p, psmFile.PSMcolumns, params.noPASEF);
-                if (Scoring.overThreshold(cScore)) {
-                    if (!glycanMassList.contains(p.glycan.mass)) {
-                        glycanMassList.add(p.glycan.mass);
+            for (PSM psm: inferredPSMs) {
+                if (psm.intensity < 0.01) continue;
+                double score = Scoring.getMBGScore(psm, psmFile.PSMcolumns, params.noPASEF);
+                if (Scoring.overThreshold(score)) {
+                    if (!glycanMassList.contains(psm.glycan.mass)) {
+                        glycanMassList.add(psm.glycan.mass);
                     }
-                    qualifiedPSMs.add(p);
+                    qualifiedPSMs.add(psm);
                 }
             }
         }
-        // write masses to a txt file
+
+        // Write glycan masses to file
         if (!glycanMassList.isEmpty()) {
             PSM_File.massWriter(glycanMassList);
         }
-        // if TMT labeled sample, only keep PSMs with MS2
+        
+        // Additional filtering for TMT-labeled samples
         if (params.runTMT) {
             ArrayList<PSM> qualifiedPSMsTMT = new ArrayList<>();
             for (PSM p: qualifiedPSMs) {
@@ -152,68 +175,96 @@ public class GlycanMatching {
             }
             return qualifiedPSMsTMT;
         }
+
         return qualifiedPSMs;
     }
 
-    private void getInferredPSMs(PSM base_PSM, Params params, GlycoSite site, RT_adjuster cRT_adjuster, ArrayList<PSM> newPSMs, Integer steps) {
-        if (steps < 0) {
-            return;
-        }
+    /**
+     * Recursively generates inferred PSMs for a given base PSM and glycosite.
+     * 
+     * @param basePSM The base PSM to start from
+     * @param params Configuration parameters
+     * @param site The glycosite being processed
+     * @param rtAdjuster RT adjustment calculator
+     * @param newPSMs List to store new PSMs
+     * @param steps Number of remaining expansion steps
+     */
+    private void getInferredPSMs(PSM basePSM, Params params, GlycoSite site, RT_adjuster rtAdjuster, 
+                               ArrayList<PSM> newPSMs, Integer steps) {
+        if (steps < 0) return;
+
         int rankCounter = 1;
-        HashMap<Glycan, String> dummy_glycans = PSM.getDummyGlycansV2(base_PSM, params.toAddGlycans);
-        for (Map.Entry<Glycan, String> glycanEntry: dummy_glycans.entrySet()) {
-            Glycan new_glycan = glycanEntry.getKey();
-            String addedResidual = glycanEntry.getValue();
-            if (site.observedGlycans.containsKey(new_glycan.toString()) || site.basePSM == null) {
-                // this glycan was observed for this site, no action required
+        HashMap<Glycan, String> potentialGlycans = PSM.getDummyGlycansV2(basePSM, params.toAddGlycans);
+
+        for (Map.Entry<Glycan, String> glycanEntry: potentialGlycans.entrySet()) {
+            Glycan newGlycan = glycanEntry.getKey();
+            String addedResidue = glycanEntry.getValue();
+
+            // Skip if glycan already observed or no base PSM
+            if (site.observedGlycans.containsKey(newGlycan.toString()) || site.basePSM == null) {
                 continue;
             }
-            boolean if_new_glycan = false;
-            if (!Arrays.asList(qualifiedGlycans).contains(new_glycan.toString())) {
-                if_new_glycan = true;
-                // this glycan not detected in psm.tsv ever, and do not expanding glycan database
-                if (params.expandDB <= 0) {
-                    continue;
-                }
-            }
-            // check if mass of dummy glycan is too close to glycans on current site
-            if (isWithinDistance(site.glycanMasses, new_glycan.mass, 1.5)) {
+
+            boolean isNewGlycan = !Arrays.asList(qualifiedGlycans).contains(newGlycan.toString());
+            if (isNewGlycan && params.expandDB <= 0) {
                 continue;
             }
-            // glycan not observed. Make a PSM for it
-            List<PSM> addedPSMs = PSM.makeDummyPSM(base_PSM, new_glycan, psmFile.PSMcolumns, params, rankCounter, cRT_adjuster, false, base_PSM.glycan.toString(), addedResidual, if_new_glycan);
-            // decoy, not add into newPSMs
-            PSM.makeDummyPSM(base_PSM, new_glycan, psmFile.PSMcolumns, params, rankCounter, cRT_adjuster, true, base_PSM.glycan.toString(), addedResidual, if_new_glycan);
+
+            // Skip if mass is too close to existing glycans
+            if (isWithinDistance(site.glycanMasses, newGlycan.mass, 1.5)) {
+                continue;
+            }
+
+            // Generate new PSMs
+            List<PSM> addedPSMs = PSM.makeDummyPSM(basePSM, newGlycan, psmFile.PSMcolumns, params, 
+                                                  rankCounter, rtAdjuster, false, basePSM.glycan.toString(), 
+                                                  addedResidue, isNewGlycan);
+            
+            // Generate decoy PSMs
+            PSM.makeDummyPSM(basePSM, newGlycan, psmFile.PSMcolumns, params, rankCounter, rtAdjuster, 
+                           true, basePSM.glycan.toString(), addedResidue, isNewGlycan);
 
             newPSMs.addAll(addedPSMs);
-            // update observed glycans
+
+            // Update observed glycans if match found
             if (addedPSMs.get(0).intensity > 0.01) {
-                site.observedGlycans.put(new_glycan.toString(), new ArrayList<>());
-                site.glycanMasses.add(new_glycan.mass);
+                site.observedGlycans.put(newGlycan.toString(), new ArrayList<>());
+                site.glycanMasses.add(newGlycan.mass);
             }
+
             rankCounter++;
-            // set current inferred PSMs as base PSM, if within path and has matched PSM
-            if (steps>0 & addedPSMs.get(0).intensity > 0.01) {
-                getInferredPSMs(addedPSMs.get(0), params, site, cRT_adjuster, newPSMs, steps-1);
+
+            // Recursively process if within expansion limit and match found
+            if (steps > 0 && addedPSMs.get(0).intensity > 0.01) {
+                getInferredPSMs(addedPSMs.get(0), params, site, rtAdjuster, newPSMs, steps - 1);
             }
         }
     }
 
+    /**
+     * Checks if a value is within a specified distance of any element in a list.
+     * 
+     * @param list List of values to check against
+     * @param inputValue Value to check
+     * @param distance Maximum allowed distance
+     * @return true if inputValue is within distance of any element in list
+     */
     private boolean isWithinDistance(List<Double> list, double inputValue, double distance) {
-        for (double element : list) {
-            if (Math.abs(element - inputValue) <= distance) {
-                return true;
-            }
-        }
-        return false;
+        return list.stream().anyMatch(element -> Math.abs(element - inputValue) <= distance);
     }
 
-    // Match the name in the psm.tsv (base filename without the extension) to the file path from the manifest
-    private String matchMSfilename(String rawfileName, HashMap<String, String> msFilePathsMap) {
-        if (msFilePathsMap.containsKey(rawfileName)) {
-            return msFilePathsMap.get(rawfileName);
+    /**
+     * Matches a raw file name to its corresponding MS file path from the manifest.
+     * 
+     * @param rawFileName Name of the raw file
+     * @param msFilePathsMap Map of raw file names to their paths
+     * @return The matched file path
+     */
+    private String matchMSfilename(String rawFileName, HashMap<String, String> msFilePathsMap) {
+        if (msFilePathsMap.containsKey(rawFileName)) {
+            return msFilePathsMap.get(rawFileName);
         } else {
-            out.printf("Error: Could not find MS spectrum file for rawfile %s from the psm.tsv. Please check the manifest file and psm.tsv\n", rawfileName);
+            out.printf("Error: Could not find MS spectrum file for rawfile %s from the psm.tsv. Please check the manifest file and psm.ts.\n", rawFileName);
             System.exit(1);
             return null;
         }

@@ -1,223 +1,536 @@
 package com.mbg;
 
 import java.io.*;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 import java.util.*;
 
+/**
+ * Represents and manages a Peptide Spectrum Match (PSM) file (typically .psm.tsv).
+ * Responsibilities include:
+ * - Reading the PSM file header and content.
+ * - Parsing each line into a PSM object.
+ * - Mapping column headers to standardized PSMattr enums.
+ * - Adding necessary MBG-specific columns if they don't exist.
+ * - Grouping PSMs by their source raw file name.
+ * - Writing the original and newly inferred PSMs back to the file system.
+ * - Providing utility methods for generating mass lists required by external tools (IonQuant).
+ */
 public class PSM_File {
 
+    /** The header line split into column names. */
     public String[] headers;
+    /** A map grouping PSMs by their source raw file name (key: raw file name without extension, value: list of PSMs). */
     public HashMap<String, ArrayList<PSM>> rawfilePSMmap;
+    /** A list containing all PSM objects read from the file. */
     public final ArrayList<PSM> allPSMs;
+    /** The File object representing the PSM file being processed. */
     public File file;
+    /** A map linking standardized PSM attributes (PSMattr enum) to their corresponding column index in the headers array. */
     public HashMap<PSMattr, Integer> PSMcolumns;
+    /** Static map defining the expected column header string for each PSMattr enum. Populated in the static initializer block. */
     private static final HashMap<PSMattr, String> columnNames;
+    /** The number of new columns added to the header/PSM data (0 if columns already existed). */
     public int addCols;
-    public static int insertIndex;
+    /** The index at which new MBG-specific columns should be inserted into the header and data rows. Determined during initialization. */
+    public static int insertIndex; // Static might be problematic if multiple PSM_Files are handled concurrently. TODO: Review if static is appropriate here.
 
+    // Static initializer block to populate the map of standard column names.
+    // This map defines the expected header string for each PSM attribute (enum).
     static {
         columnNames = new HashMap<>();
-        columnNames.put(PSMattr.RT, "Retention");
-        columnNames.put(PSMattr.peptide, "Peptide");
-        columnNames.put(PSMattr.protein, "Protein");
-        columnNames.put(PSMattr.IM, "Ion Mobility");
-        columnNames.put(PSMattr.protein_start, "Protein Start");
-        columnNames.put(PSMattr.assigned_mods, "Assigned Modifications");
-        columnNames.put(PSMattr.glycan, "Total Glycan Composition");
-        columnNames.put(PSMattr.spectrum, "Spectrum");
-        columnNames.put(PSMattr.delta_mass, "Delta Mass");
-        columnNames.put(PSMattr.mod_peptide, "Modified Peptide");
-        columnNames.put(PSMattr.calc_pep_mass, "Calibrated Observed Mass");
-        columnNames.put(PSMattr.calc_pep_mz, "Calibrated Observed M/Z");
-        columnNames.put(PSMattr.charge, "Charge");
-        columnNames.put(PSMattr.glyco_q_val, "Glycan q-value");
-        columnNames.put(PSMattr.inferred_glycoform, "Inferred Glycoform?");
-        columnNames.put(PSMattr.has_ms2_spec, "Has MS2 Spectrum?");
-        columnNames.put(PSMattr.has_Y1, "Has Y1 ion?");
-        columnNames.put(PSMattr.MBG_score, "MBG Score");
-        columnNames.put(PSMattr.mass_error, "Mass error(ppm)");
-        columnNames.put(PSMattr.KL, "KL (IonQuant Score)");
-        columnNames.put(PSMattr.shift_frequency, "Shift Frequency");
-        columnNames.put(PSMattr.rt_diff, "RT Difference");
-        columnNames.put(PSMattr.im_diff, "IM Difference");
-        columnNames.put(PSMattr.if_new_glycan, "New Glycan?");
-        columnNames.put(PSMattr.confidence_level, "Confidence Level");
-        columnNames.put(PSMattr.parent_glycan, "Parent Glycan");
-        columnNames.put(PSMattr.added_residual, "Residual Difference");
-        columnNames.put(PSMattr.spectrum_file, "Spectrum File");
-        columnNames.put(PSMattr.intensity, "Intensity");
+        // Mapping PSMattr enums to their expected header names in the PSM file
+        columnNames.put(PSMattr.RT, "Retention"); // Retention time
+        columnNames.put(PSMattr.peptide, "Peptide"); // Peptide sequence
+        columnNames.put(PSMattr.protein, "Protein"); // Protein accession
+        columnNames.put(PSMattr.IM, "Ion Mobility"); // Ion mobility value
+        columnNames.put(PSMattr.protein_start, "Protein Start"); // Start position in protein
+        columnNames.put(PSMattr.assigned_mods, "Assigned Modifications"); // Modifications from search engine
+        columnNames.put(PSMattr.glycan, "Total Glycan Composition"); // Glycan composition from PTM-Shepherd/search
+        columnNames.put(PSMattr.spectrum, "Spectrum"); // Spectrum identifier
+        columnNames.put(PSMattr.delta_mass, "Delta Mass"); // Mass difference (Obs - Theo)
+        columnNames.put(PSMattr.mod_peptide, "Modified Peptide"); // Peptide sequence with mods
+        columnNames.put(PSMattr.calc_pep_mass, "Calibrated Observed Mass"); // Observed precursor mass
+        columnNames.put(PSMattr.calc_pep_mz, "Calibrated Observed M/Z"); // Observed precursor m/z
+        columnNames.put(PSMattr.charge, "Charge"); // Precursor charge
+        columnNames.put(PSMattr.glyco_q_val, "Glycan q-value"); // Glycan assignment confidence
+        // MBG specific columns start here
+        columnNames.put(PSMattr.inferred_glycoform, "Inferred Glycoform?"); // Was this PSM inferred by MBG?
+        columnNames.put(PSMattr.has_ms2_spec, "Has MS2 Spectrum?"); // Did the original PSM have an MS2?
+        columnNames.put(PSMattr.has_Y1, "Has Y1 ion?"); // Was Y1 ion observed in MS2?
+        columnNames.put(PSMattr.MBG_score, "MBG Score"); // Score from MBG LDA model
+        columnNames.put(PSMattr.mass_error, "Mass error(ppm)"); // Mass error from IonQuant matching
+        columnNames.put(PSMattr.KL, "KL (IonQuant Score)"); // KL divergence score from IonQuant
+        columnNames.put(PSMattr.shift_frequency, "Shift Frequency"); // Frequency of the observed glycan shift
+        columnNames.put(PSMattr.rt_diff, "RT Difference"); // Predicted vs. Observed RT difference
+        columnNames.put(PSMattr.im_diff, "IM Difference"); // Predicted vs. Observed IM difference
+        columnNames.put(PSMattr.if_new_glycan, "New Glycan?"); // Was this glycan composition novel?
+        columnNames.put(PSMattr.confidence_level, "Confidence Level"); // Confidence category based on FDR
+        columnNames.put(PSMattr.parent_glycan, "Parent Glycan"); // Glycan used as basis for inference
+        columnNames.put(PSMattr.added_residual, "Residual Difference"); // Residue(s) added/removed for inference
+        columnNames.put(PSMattr.spectrum_file, "Spectrum File"); // Source raw file name
+        columnNames.put(PSMattr.intensity, "Intensity"); // Precursor intensity
     }
 
+    /**
+     * Constructor for PSM_File. Reads the PSM file, initializes column mappings,
+     * adds MBG-specific columns if needed, and parses all PSM entries.
+     *
+     * @param params The application parameters containing the PSM file path and other settings.
+     * @throws Exception If there's an error reading the file or parsing data.
+     */
     public PSM_File(Params params) throws Exception {
-        BufferedReader in = new BufferedReader(new FileReader(params.psmPath.toFile()), 1 << 22);
-        this.file = new File(String.valueOf(params.psmPath));
-        this.headers = in.readLine().split("\t");
-        this.PSMcolumns = initPSMcolumns();
-        allPSMs = new ArrayList<>();
+        BufferedReader psmReader = new BufferedReader(new FileReader(params.psmPath.toFile()), 1 << 22); // Use a large buffer
+        this.file = params.psmPath.toFile(); // Store the File object
+        this.headers = psmReader.readLine().split("\t"); // Read and split the header line
+        this.PSMcolumns = initPSMcolumns(); // Map header names to column indices
+        allPSMs = new ArrayList<>(); // Initialize the list to store all PSM objects
 
-        // handle inserting new header(s) if needed
+        // Check if MBG-specific columns already exist. If not, add them to the header.
         if (PSMcolumns.getOrDefault(PSMattr.inferred_glycoform, -1) == -1) {
-            addCols = 13;
+            System.out.println("MBG-specific columns not found in PSM file. Adding them...");
+            addCols = 13; // Number of MBG columns to add
+            // Determine the insertion point for new columns (typically after glycan q-value or glycan composition)
             if (PSMcolumns.containsKey(PSMattr.glyco_q_val)) {
-                insertIndex = PSMcolumns.get(PSMattr.glyco_q_val)+1;
+                insertIndex = PSMcolumns.get(PSMattr.glyco_q_val) + 1;
+            } else if (PSMcolumns.containsKey(PSMattr.glycan)) {
+                insertIndex = PSMcolumns.get(PSMattr.glycan) + 1;
             } else {
-                insertIndex = PSMcolumns.get(PSMattr.glycan)+1;
+                // Fallback: insert after peptide sequence if glycan columns are missing (less ideal)
+                insertIndex = PSMcolumns.getOrDefault(PSMattr.peptide, 0) + 1;
+                System.out.println("Warning: Glycan q-value and Glycan Composition columns not found. Inserting MBG columns after Peptide.");
             }
-            ArrayList<String> newHeaders = new ArrayList<>(Arrays.asList(this.headers));
-            newHeaders.add(insertIndex, columnNames.get(PSMattr.inferred_glycoform));
-            newHeaders.add(insertIndex, columnNames.get(PSMattr.has_ms2_spec));
-            newHeaders.add(insertIndex, columnNames.get(PSMattr.has_Y1));
-            newHeaders.add(insertIndex, columnNames.get(PSMattr.MBG_score));
-            newHeaders.add(insertIndex, columnNames.get(PSMattr.parent_glycan));
-            newHeaders.add(insertIndex, columnNames.get(PSMattr.added_residual));
-            newHeaders.add(insertIndex, columnNames.get(PSMattr.mass_error));
-            newHeaders.add(insertIndex, columnNames.get(PSMattr.KL));
-            newHeaders.add(insertIndex, columnNames.get(PSMattr.shift_frequency));
-            newHeaders.add(insertIndex, columnNames.get(PSMattr.rt_diff));
-            newHeaders.add(insertIndex, columnNames.get(PSMattr.im_diff));
-            newHeaders.add(insertIndex, columnNames.get(PSMattr.if_new_glycan));
-            newHeaders.add(insertIndex, columnNames.get(PSMattr.confidence_level));
-            headers = newHeaders.toArray(new String[0]);
-            this.PSMcolumns = initPSMcolumns();
+
+            // Create a new header list and insert the MBG column names at the determined index
+            ArrayList<String> newHeadersList = new ArrayList<>(Arrays.asList(this.headers));
+            // Insert in reverse order of definition to maintain desired final order
+            newHeadersList.add(insertIndex, columnNames.get(PSMattr.confidence_level));
+            newHeadersList.add(insertIndex, columnNames.get(PSMattr.if_new_glycan));
+            newHeadersList.add(insertIndex, columnNames.get(PSMattr.im_diff));
+            newHeadersList.add(insertIndex, columnNames.get(PSMattr.rt_diff));
+            newHeadersList.add(insertIndex, columnNames.get(PSMattr.shift_frequency));
+            newHeadersList.add(insertIndex, columnNames.get(PSMattr.KL));
+            newHeadersList.add(insertIndex, columnNames.get(PSMattr.mass_error));
+            newHeadersList.add(insertIndex, columnNames.get(PSMattr.added_residual));
+            newHeadersList.add(insertIndex, columnNames.get(PSMattr.parent_glycan));
+            newHeadersList.add(insertIndex, columnNames.get(PSMattr.MBG_score));
+            newHeadersList.add(insertIndex, columnNames.get(PSMattr.has_Y1));
+            newHeadersList.add(insertIndex, columnNames.get(PSMattr.has_ms2_spec));
+            newHeadersList.add(insertIndex, columnNames.get(PSMattr.inferred_glycoform));
+
+            headers = newHeadersList.toArray(new String[0]); // Update the main headers array
+            this.PSMcolumns = initPSMcolumns(); // Re-initialize column mappings with the new headers
+            System.out.printf("Added %d MBG columns starting at index %d.%n", addCols, insertIndex);
         } else {
-            addCols = 0;
+            addCols = 0; // No columns were added
+            System.out.println("Found existing MBG-specific columns in PSM file.");
         }
 
-        // read PSMs into Map by rawfile
+        // Read PSM data lines, create PSM objects, and group them by raw file
         rawfilePSMmap = new HashMap<>();
         String line;
-        while((line = in.readLine()) != null) {
-            if (line.length() > 0) {
-                PSM psm = new PSM(line, PSMcolumns, params, false, false, 0.0, "", "", addCols);
-                allPSMs.add(psm);
-                if (rawfilePSMmap.containsKey(psm.rawfile)) {
-                    rawfilePSMmap.get(psm.rawfile).add(psm);
-                } else {
-                    ArrayList<PSM> psms = new ArrayList<>();
-                    psms.add(psm);
-                    rawfilePSMmap.put(psm.rawfile, psms);
+        int lineNum = 1; // Start from 1 for header
+        while((line = psmReader.readLine()) != null) {
+            lineNum++;
+            if (line.trim().length() > 0) { // Skip empty lines
+                try {
+                    // Create a new PSM object, passing necessary context
+                    // The boolean flags indicate this is an original (not inferred) PSM
+                    PSM psm = new PSM(line, PSMcolumns, params, false, false, 0.0, "", "", addCols);
+                    allPSMs.add(psm); // Add to the master list
+
+                    // Add the PSM to the map grouped by raw file name
+                    if (psm.rawfile != null && !psm.rawfile.isEmpty()) {
+                        // computeIfAbsent gets the list if key exists, or creates a new ArrayList if not, then adds the psm
+                        rawfilePSMmap.computeIfAbsent(psm.rawfile, k -> new ArrayList<>()).add(psm);
+                    } else {
+                         System.out.printf("Warning: PSM at line %d has missing or empty Spectrum File information. Cannot group by raw file.%n", lineNum);
+                    }
+                } catch (Exception e) {
+                     System.out.printf("Error parsing PSM at line %d: %s%n", lineNum, e.getMessage());
+                     e.printStackTrace(); // Log the error but continue processing other lines if possible
                 }
             }
         }
-        in.close();
+        psmReader.close(); // Close the reader
+        System.out.printf("Read %d total PSMs from %d raw files.%n", allPSMs.size(), rawfilePSMmap.size());
     }
 
+    /**
+     * Initializes the PSMcolumns map by finding the index of each standard column
+     * defined in columnNames within the actual file headers.
+     * Issues warnings for missing standard columns (excluding MBG-specific ones initially).
+     *
+     * @return A HashMap mapping PSMattr enums to their column index. Returns an empty map if headers are null.
+     */
     private HashMap<PSMattr, Integer> initPSMcolumns() {
-        HashMap<PSMattr, Integer> psmColumns = new HashMap<>();
+        HashMap<PSMattr, Integer> psmColumnsMap = new HashMap<>();
+        if (this.headers == null) {
+            System.err.println("Error: Headers array is null in initPSMcolumns. Cannot map columns.");
+            return psmColumnsMap; // Return empty map
+        }
+
+        // Iterate through the standard column definitions (PSMattr enum mapped to expected header string)
         for (Map.Entry<PSMattr, String> nameEntry: columnNames.entrySet()) {
-            int index = getColumn(nameEntry.getValue());
-            if (index == -1) {
-                // todo: error checking
+            String expectedHeader = nameEntry.getValue();
+            PSMattr attribute = nameEntry.getKey();
+            int index = getColumnIndex(expectedHeader); // Find the index in the current file headers
+
+            if (index != -1) {
+                psmColumnsMap.put(attribute, index); // Store the mapping if the header is found
             } else {
-                psmColumns.put(nameEntry.getKey(), index);
+                // Only issue a warning if a non-MBG standard column is missing.
+                // MBG columns might be added later, so don't warn about them yet.
+                if (!isMbgSpecificColumn(attribute)) {
+                    // Example: Warn if "Peptide" or "Retention" is missing.
+                    // System.out.printf("Warning: Expected standard column '%s' not found in PSM file header.%n", expectedHeader);
+                    // Depending on strictness, could potentially throw an error for critical missing columns.
+                }
+                // If an MBG column is missing here, it's expected if 'addCols' > 0.
+                // If 'addCols' == 0, it means we expected MBG columns but didn't find one, which might indicate an issue.
+                // However, the check in the constructor handles the primary logic of adding them if needed.
             }
         }
-        return psmColumns;
+        // TODO: Add error checking here? E.g., ensure critical columns like 'Peptide', 'Spectrum File' are present.
+        if (!psmColumnsMap.containsKey(PSMattr.peptide)) {
+             System.err.println("CRITICAL WARNING: 'Peptide' column not found in PSM file. Processing may fail.");
+        }
+         if (!psmColumnsMap.containsKey(PSMattr.spectrum_file)) {
+             System.err.println("CRITICAL WARNING: 'Spectrum File' column not found in PSM file. Grouping by raw file will fail.");
+        }
+        return psmColumnsMap;
     }
 
-    public int getColumn(String head) {
-        for(int i = 0; i < headers.length; i++)
-            if(headers[i].equals(head))
+     /**
+     * Helper method to check if a PSMattr corresponds to an MBG-specific output column.
+     * Used to suppress warnings during initial column mapping before MBG columns might be added.
+     * @param attr The PSMattr to check.
+     * @return true if it's an MBG-specific column, false otherwise.
+     */
+    private boolean isMbgSpecificColumn(PSMattr attr) {
+        // Check against all MBG-specific enum values
+        return attr == PSMattr.inferred_glycoform || attr == PSMattr.has_ms2_spec ||
+               attr == PSMattr.has_Y1 || attr == PSMattr.MBG_score ||
+               attr == PSMattr.mass_error || attr == PSMattr.KL ||
+               attr == PSMattr.shift_frequency || attr == PSMattr.rt_diff ||
+               attr == PSMattr.im_diff || attr == PSMattr.if_new_glycan ||
+               attr == PSMattr.confidence_level || attr == PSMattr.parent_glycan ||
+               attr == PSMattr.added_residual;
+    }
+
+
+    /**
+     * Finds the index of a specific column name within the headers array.
+     * Performs a case-insensitive comparison.
+     *
+     * @param headerName The name of the column header to find.
+     * @return The 0-based index of the column, or -1 if not found.
+     */
+    public int getColumnIndex(String headerName) {
+        if (headers == null || headerName == null) {
+            return -1;
+        }
+        for(int i = 0; i < headers.length; i++) {
+            // Use equalsIgnoreCase for robustness against case variations in header names
+            if(headerName.equalsIgnoreCase(headers[i])) {
                 return i;
-        return -1;
-    }
-
-    public void printNewPSMs(ArrayList<PSM> newPSMs) throws IOException {
-        String tempName = this.file.getAbsolutePath() + ".mbg.tsv";
-        PrintWriter out = new PrintWriter(new FileWriter(tempName));
-
-        // write header
-        out.println(String.join("\t", this.headers));
-
-        // write original and new PSMs
-        newPSMs.addAll(allPSMs);
-        Collections.sort(newPSMs);
-        for (PSM newPSM: newPSMs) {
-            out.println(String.join("\t", newPSM.splits));
-        }
-        out.close();
-
-        boolean success = this.file.delete();
-        File newFileName = new File(tempName);
-        success = newFileName.renameTo(this.file);
-    }
-
-    public static void massWriter(List<Double> massesToWrite) throws IOException {
-        // The file path to create or write to
-        String filePath = "MBG_masses_list.txt";
-        // Using try-with-resources to ensure the writer is closed automatically
-        try (BufferedWriter writer = new BufferedWriter(new FileWriter(filePath))) {
-            // Writing masses to the file
-            for (Double mass: massesToWrite) {
-                writer.write(mass + "\n");
             }
-            System.out.println("Glycan mass written successfully!");
+        }
+        return -1; // Header not found
+    }
+
+    /**
+     * Writes the original PSMs and the newly inferred PSMs to a temporary file,
+     * sorts them (if possible), and then replaces the original PSM file with the updated content.
+     * Includes a basic backup mechanism (.mbg.bak) and uses safe file replacement via move/rename.
+     *
+     * @param inferredPSMs An ArrayList containing the newly inferred PSM objects generated by MBG.
+     * @throws IOException If there is an error writing to the file system during the process.
+     */
+    public void printNewPSMs(ArrayList<PSM> inferredPSMs) throws IOException {
+        // Define temporary and backup file names based on the original file path
+        File originalFile = this.file;
+        // Use a more specific temporary file extension
+        File tempFile = new File(originalFile.getAbsolutePath() + ".mbg.tmp");
+        File backupFile = new File(originalFile.getAbsolutePath() + ".mbg.bak");
+
+        System.out.printf("Writing updated PSM data to temporary file: %s%n", tempFile.getName());
+        try (PrintWriter psmWriter = new PrintWriter(new FileWriter(tempFile))) {
+
+            // Write the potentially updated header line
+            psmWriter.println(String.join("\t", this.headers));
+
+            // Combine the original PSMs with the newly inferred ones
+            ArrayList<PSM> combinedPSMs = new ArrayList<>(allPSMs); // Start with original PSMs
+            combinedPSMs.addAll(inferredPSMs); // Add the inferred PSMs
+            System.out.printf("Combined %d original and %d inferred PSMs for output.%n", allPSMs.size(), inferredPSMs.size());
+
+            // Sort the combined list. Assumes PSM implements Comparable (e.g., sorting by spectrum name or RT).
+            // Sorting helps maintain a consistent order in the output file.
+            try {
+                 Collections.sort(combinedPSMs);
+                 System.out.println("Sorted combined PSMs.");
+            } catch (Exception e) {
+                 // Log a warning if sorting fails, but continue writing in potentially unsorted order.
+                 System.out.println("Warning: Could not sort combined PSMs. Output order might be inconsistent. Error: " + e.getMessage());
+            }
+
+            // Write each PSM object's data line (which is stored in its 'splits' array)
+            for (PSM psm : combinedPSMs) {
+                // Ensure psm.splits is not null before joining
+                if (psm != null && psm.splits != null) {
+                    psmWriter.println(String.join("\t", psm.splits));
+                } else {
+                    System.out.println("Warning: Skipping null PSM or PSM with null splits during output writing.");
+                }
+            }
+        } // PrintWriter is automatically closed here (try-with-resources)
+
+        System.out.println("Finished writing to temporary file.");
+
+        // --- Safely replace the original file with the temporary file ---
+        try {
+            // 1. Create a backup of the original file (if it exists)
+            if (originalFile.exists()) {
+                // Use Files.move for atomic operation where possible, replacing existing backup
+                Files.move(originalFile.toPath(), backupFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+                System.out.printf("Created backup of original file: %s%n", backupFile.getName());
+            } else {
+                 System.out.println("Original file does not exist, no backup created.");
+            }
+
+            // 2. Move the temporary file to the original file name
+            // This is generally safer than delete + rename, especially on some OSes.
+            Files.move(tempFile.toPath(), originalFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+            System.out.printf("Successfully replaced original PSM file with updated version: %s%n", originalFile.getName());
+
+            // 3. Optional: Delete the backup file if the replacement was successful
+            // Commented out by default for safety - allows manual recovery from backup if needed.
+            // Files.deleteIfExists(backupFile.toPath());
+            // System.out.printf("Deleted backup file: %s%n", backupFile.getName());
+
         } catch (IOException e) {
-            System.out.println("An error occurred: " + e.getMessage());
+            // Log detailed error message if replacement fails
+            System.err.printf("Error replacing original PSM file '%s' with temporary file '%s'.%n", originalFile.getName(), tempFile.getName());
+            System.err.println("The updated data might be found in the temporary file: " + tempFile.getAbsolutePath());
+            if (backupFile.exists()) {
+                System.err.println("The original data might be found in the backup file: " + backupFile.getAbsolutePath());
+            }
+            e.printStackTrace();
+            // Rethrow the exception so the caller knows the operation failed
+            throw e;
+        } finally {
+             // 4. Ensure the temporary file is deleted if it still exists (e.g., if the move failed)
+             try {
+                 Files.deleteIfExists(tempFile.toPath());
+             } catch (IOException ignored) {
+                 // Ignore errors during cleanup deletion
+             }
         }
-        appendMassesFileContents("modmasses_ionquant.txt", "MBG_masses_list.txt");
     }
 
-    private static void appendMassesFileContents(String fileAppendTo, String fileAppendFrom) throws IOException {
-        File fileFrom = new File(fileAppendTo);
-        if (!fileFrom.exists()) {
-            return;
+    /**
+     * Writes a list of calculated masses to the 'MBG_masses_list.txt' file.
+     * This file is likely used as input for IonQuant or a similar tool for MS1 feature finding.
+     * It also triggers appending the unique masses from this list to 'modmasses_ionquant.txt'.
+     *
+     * @param massesToWrite A List of Double values representing the masses to write.
+     * @throws IOException If an error occurs during file writing.
+     */
+    public static void massWriter(List<Double> massesToWrite) throws IOException {
+        String mbgMassListPath = "MBG_masses_list.txt"; // File specifically for MBG masses
+        String ionQuantMassPath = "modmasses_ionquant.txt"; // File potentially used by IonQuant
+
+//        System.out.printf("Writing %d masses to %s%n", massesToWrite.size(), mbgMassListPath);
+        // Using try-with-resources to ensure the writer is closed automatically
+//        try (BufferedWriter massListWriter = new BufferedWriter(new FileWriter(mbgMassListPath))) {
+//            // Write each mass to the MBG-specific file
+//            for (Double mass : massesToWrite) {
+//                if (mass != null) { // Avoid writing null values
+//                    // Format mass to a fixed number of decimal places for consistency
+//                    massListWriter.write(String.format(Locale.US, "%.6f", mass) + "\n");
+//                }
+//            }
+//            System.out.printf("Finished writing masses to %s.%n", mbgMassListPath);
+//        } catch (IOException e) {
+//            System.err.printf("An error occurred while writing to %s: %s%n", mbgMassListPath, e.getMessage());
+//            throw e; // Rethrow the exception so the caller is aware
+//        }
+
+        // Append the unique masses from the MBG list to the IonQuant list
+        System.out.printf("Appending unique masses from %s to %s%n", mbgMassListPath, ionQuantMassPath);
+        try {
+            appendUniqueMasses(ionQuantMassPath, mbgMassListPath);
+            System.out.printf("Finished appending masses to %s.%n", ionQuantMassPath);
+        } catch (IOException e) {
+             System.err.printf("An error occurred while appending masses to %s: %s%n", ionQuantMassPath, e.getMessage());
+             // Decide if this error is critical or can be ignored. Currently just prints error.
+             // throw e; // Uncomment to make this error critical
         }
-        BufferedReader appendFromReader = new BufferedReader(new FileReader(fileAppendFrom));
-        BufferedReader appendToReader = new BufferedReader(new FileReader(fileAppendTo));
+    }
 
-        BufferedWriter writer = new BufferedWriter(new FileWriter(fileAppendTo, true));
+    /**
+     * Appends masses from a source file to a target file, ensuring no duplicate masses are added.
+     * Masses are compared after rounding to a fixed precision (e.g., 4 decimal places scaled by 10000)
+     * to handle potential floating-point inaccuracies.
+     * If the target file doesn't exist, the source file is copied to the target location.
+     *
+     * @param targetFilePath Path to the file to append masses to (e.g., "modmasses_ionquant.txt").
+     * @param sourceFilePath Path to the file containing masses to append (e.g., "MBG_masses_list.txt").
+     * @throws IOException If an error occurs during file reading or writing (except for file-not-found handled internally).
+     */
+    private static void appendUniqueMasses(String targetFilePath, String sourceFilePath) throws IOException {
+        File targetFile = new File(targetFilePath);
+        File sourceFile = new File(sourceFilePath);
 
-        Set<Long> masses = new HashSet<>();
-        // read all masses in the file to append to so we can avoid duplicates while appending
-        String readline;
-        while ((readline = appendToReader.readLine()) != null) {
-            long mass = Math.round(Double.parseDouble(readline.trim()) * 100);
-            masses.add(mass);
+        // --- Handle cases where files might not exist ---
+        if (!sourceFile.exists()) {
+             System.out.printf("Warning: Source file %s does not exist. Cannot append masses.%n", sourceFilePath);
+             return; // Nothing to append from
+        }
+        if (!targetFile.exists()) {
+             // If target doesn't exist, just copy the source file to the target path
+             Files.copy(sourceFile.toPath(), targetFile.toPath());
+             System.out.printf("Target file %s did not exist. Copied content from %s.%n", targetFilePath, sourceFilePath);
+            return; // Appending is done via copy
         }
 
-        // read new masses and append, checking for duplicates
-        while ((readline = appendFromReader.readLine()) != null) {
-            long mass = Math.round(Double.parseDouble(readline.trim()) * 100);
-            if (!masses.contains(mass)) {
-                writer.write(readline + "\n");
+        // --- Append unique masses if both files exist ---
+        Set<Long> existingMassesScaled = new HashSet<>();
+        // Scale factor for comparing masses (e.g., 10000 for 4 decimal places)
+        final long scaleFactor = 10000;
+
+        // 1. Read all masses currently in the target file into a Set for fast duplicate checking.
+        System.out.printf("Reading existing masses from target file: %s%n", targetFilePath);
+        try (BufferedReader targetReader = new BufferedReader(new FileReader(targetFile))) {
+            String line;
+            while ((line = targetReader.readLine()) != null) {
+                try {
+                    // Trim, parse, scale, and round the mass before adding to the set
+                    double mass = Double.parseDouble(line.trim());
+                    long scaledMass = Math.round(mass * scaleFactor);
+                    existingMassesScaled.add(scaledMass);
+                } catch (NumberFormatException e) {
+                    // Ignore lines in the target file that are not valid numbers
+                    // System.out.printf("Warning: Skipping non-numeric line in target file %s: '%s'%n", targetFilePath, line);
+                }
             }
         }
-        writer.close();
+        System.out.printf("Found %d unique existing masses (scaled by %d) in target file.%n", existingMassesScaled.size(), scaleFactor);
+
+
+        // 2. Read the source file and append masses to the target file only if they are not already present.
+        int appendedCount = 0;
+        System.out.printf("Reading source file %s and appending unique masses...%n", sourceFilePath);
+        // Use try-with-resources for both reader and writer (in append mode)
+        try (BufferedReader sourceReader = new BufferedReader(new FileReader(sourceFile));
+             BufferedWriter targetWriter = new BufferedWriter(new FileWriter(targetFile, true))) { // true for append mode
+
+            String line;
+            while ((line = sourceReader.readLine()) != null) {
+                 try {
+                    String trimmedLine = line.trim();
+                    if (trimmedLine.isEmpty()) continue; // Skip empty lines
+
+                    double mass = Double.parseDouble(trimmedLine);
+                    long scaledMass = Math.round(mass * scaleFactor);
+
+                    // Check if the scaled mass is already in the set of existing masses.
+                    // Set.add() returns true if the element was added (i.e., it was not already present).
+                    if (existingMassesScaled.add(scaledMass)) {
+                        // If the mass is new, write the original trimmed line to the target file
+                        targetWriter.write(trimmedLine + "\n");
+                        appendedCount++;
+                    }
+                 } catch (NumberFormatException e) {
+                     // Ignore lines in the source file that are not valid numbers
+                     // System.out.printf("Warning: Skipping non-numeric line in source file %s: '%s'%n", sourceFilePath, line);
+                 }
+            }
+        } // Readers and writers are automatically closed here
+         System.out.printf("Appended %d unique masses from %s to %s.%n", appendedCount, sourceFilePath, targetFilePath);
     }
 
 
+    /**
+     * Enum defining standardized attributes (columns) expected or used within a PSM file.
+     * This provides a type-safe way to refer to specific columns when parsing or writing.
+     * Each enum constant maps to a standard column header name.
+     */
     public enum PSMattr {
-        RT,
+        // --- Core PSM Identification Info ---
+        /** Peptide sequence without modifications. Header: "Peptide" */
         peptide,
-        glycan,
-        assigned_mods,
-        protein,
-        IM,
-        protein_start,
-        spectrum,
+        /** Peptide sequence with modification annotations (e.g., N(1)). Header: "Modified Peptide" */
         mod_peptide,
-        delta_mass,
-        calc_pep_mass,
-        calc_pep_mz,
-        charge,
-        glyco_q_val,
-        inferred_glycoform,
+        /** Spectrum identifier (e.g., scan number, index, or title). Header: "Spectrum" */
+        spectrum,
+        /** Base name of the raw data file where the spectrum originated. Header: "Spectrum File" */
         spectrum_file,
-        has_ms2_spec,
-        has_Y1,
-        MBG_score,
-        ionMobilityDiff,
+        /** Precursor charge state. Header: "Charge" */
+        charge,
+        /** Retention time (typically in minutes). Header: "Retention" */
+        RT,
+        /** Ion mobility value (units can vary, e.g., 1/K0 or V.s.cm-2). Header: "Ion Mobility" */
+        IM,
+        /** Intensity of the precursor ion or MS1 feature. Header: "Intensity" */
         intensity,
+
+        // --- Mass Information ---
+        /** Observed precursor mass, potentially calibrated by the search engine. Header: "Calibrated Observed Mass" */
+        calc_pep_mass,
+        /** Observed precursor m/z, potentially calibrated. Header: "Calibrated Observed M/Z" */
+        calc_pep_mz,
+        /** Mass difference between observed and theoretical peptide mass (Da). Header: "Delta Mass" */
+        delta_mass,
+
+        // --- Protein Information ---
+        /** Protein accession(s) the peptide maps to. Header: "Protein" */
+        protein,
+        /** Start position of the peptide sequence within the protein sequence(s). Header: "Protein Start" */
+        protein_start,
+
+        // --- Modification and Glycan Information ---
+        /** Modifications identified by the primary search engine (excluding the main glycan). Header: "Assigned Modifications" */
+        assigned_mods,
+        /** Glycan composition string identified by PTM-Shepherd or glycan search. Header: "Total Glycan Composition" */
+        glycan,
+        /** Confidence score (e.g., q-value or probability) for the glycan assignment. Header: "Glycan q-value" */
+        glyco_q_val,
+
+        // --- MBG Inference Output Columns (Added by this tool if not present) ---
+        /** Boolean flag (TRUE/FALSE) indicating if this PSM row represents an inferred glycoform. Header: "Inferred Glycoform?" */
+        inferred_glycoform,
+        /** Boolean flag indicating if the original identified PSM file contained an MS2 spectrum for this precursor. Header: "Has MS2 Spectrum?" */
+        has_ms2_spec,
+        /** Boolean flag indicating if a Y1 ion (peptide + core HexNAc) was observed in the MS2 spectrum (if available). Header: "Has Y1 ion?" */
+        has_Y1,
+        /** Score assigned by the MBG Linear Discriminant Analysis (LDA) model. Header: "MBG Score" */
+        MBG_score,
+        /** The glycan composition of the identified PSM that was used as the basis for inferring this glycoform. Header: "Parent Glycan" */
         parent_glycan,
+        /** The glycan residue(s) or composition difference between the parent and the inferred glycan. Header: "Residual Difference" */
         added_residual,
+        /** Mass error (ppm) observed by IonQuant when matching the inferred precursor m/z in MS1 data. Header: "Mass error(ppm)" */
         mass_error,
+        /** KL divergence score from IonQuant's MS1 feature matching for the inferred glycoform. Header: "KL (IonQuant Score)" */
         KL,
+        /** How often the specific glycan shift (parent -> inferred) was observed among confidently identified PSMs in the dataset. Header: "Shift Frequency" */
         shift_frequency,
+        /** Difference between the predicted retention time (based on parent + shift) and the observed RT from IonQuant. Header: "RT Difference" */
         rt_diff,
+        /** Difference between the predicted ion mobility (based on parent + shift) and the observed IM from IonQuant. Header: "IM Difference" */
         im_diff,
+        /** Boolean flag indicating if the inferred glycan composition was not present in the set of originally identified glycans. Header: "New Glycan?" */
         if_new_glycan,
-        confidence_level
+        /** Categorical confidence level (e.g., High, Medium) assigned based on the MBG score and FDR filtering. Header: "Confidence Level" */
+        confidence_level;
+
+        // --- Potentially Deprecated/Unused Enums ---
+        // ionMobilityDiff, // Seems redundant with im_diff? Check usage.
+
+        // Note: The mapping to actual column names is done in the static 'columnNames' HashMap.
+        // This enum provides the standardized internal representation.
     }
 
-
-}
+} // End of PSM_File class

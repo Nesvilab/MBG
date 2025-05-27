@@ -180,7 +180,7 @@ public class PSM implements Comparable<PSM>{
         splits[psmCols.get(PSM_File.PSMattr.inferred_glycoform)] = String.valueOf(inferredGlycoform);
         splits[psmCols.get(PSM_File.PSMattr.has_ms2_spec)] = String.valueOf(hasMS2Spectrum);
         splits[psmCols.get(PSM_File.PSMattr.has_Y1)] = String.valueOf(yIntensities);
-        splits[psmCols.get(PSM_File.PSMattr.ionMobilityDiff)] = String.valueOf(imDiff);
+        splits[psmCols.get(PSM_File.PSMattr.im_diff)] = String.valueOf(imDiff);
         Matcher rankMatch = rankPattern.matcher(splits[psmCols.get(PSM_File.PSMattr.spectrum_file)]);
         if (rankMatch.find()) {
             rank = Integer.parseInt(rankMatch.group(1));

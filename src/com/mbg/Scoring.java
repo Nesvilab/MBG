@@ -4,22 +4,47 @@ import java.util.*;
 
 import org.apache.commons.math3.linear.*;
 
-
+/**
+ * The Scoring class implements Linear Discriminant Analysis (LDA) to score and 
+ * filter inferred glycopeptides based on multiple features.
+ * 
+ * This class calculates discriminant functions to separate target PSMs from decoy PSMs,
+ * and applies an FDR-based threshold to filter glycopeptides.
+ */
 public class Scoring {
+    /** Collection of feature vectors for decoy PSMs */
     public static List<double[]> decoyData;
+    
+    /** Collection of feature vectors for target PSMs */
     public static List<double[]> targetData;
+    
+    /** Score threshold for accepting glycopeptides */
     public static double thresholdScore;
+    
+    /** Coefficients of the LDA discriminant function */
     private static double[] coefficients;
+    
+    /** Intercept term of the LDA discriminant function */
     private static double intercept;
 
-
+    /**
+     * Initializes the scoring system by creating new data collections.
+     * Must be called before any scoring operations are performed.
+     */
     public static void init() {
         decoyData = new ArrayList<>();
         targetData = new ArrayList<>();
     }
 
-    public static void getCutOffScore(double fdrCurOff) throws Exception {
-        // Calculate mean vectors
+    /**
+     * Calculates the LDA model and determines the score threshold based on the 
+     * specified false discovery rate (FDR).
+     * 
+     * @param fdrCutoff The maximum acceptable FDR
+     * @throws Exception If matrix operations fail
+     */
+    public static void getCutOffScore(double fdrCutoff) throws Exception {
+        // Calculate mean vectors for target and decoy datasets
         double[] decoyMean = calculateMean(decoyData);
         double[] targetMean = calculateMean(targetData);
 
@@ -28,144 +53,170 @@ public class Scoring {
         RealMatrix targetCov = calculateCovariance(targetData, targetMean);
 
         // Calculate pooled covariance matrix
-        RealMatrix pooledCov = calculatePooledCovariance(targetCov, decoyCov, decoyData.size(), targetData.size());
+        RealMatrix pooledCov = calculatePooledCovariance(targetCov, decoyCov, 
+                                                        targetData.size(), decoyData.size());
 
-        // Check for singularity and handle it
+        // Check for singularity and regularize if necessary
         if (new LUDecomposition(pooledCov).getDeterminant() == 0) {
             pooledCov = regularizeCovarianceMatrix(pooledCov, 0.001);
         }
+        
+        // Invert the covariance matrix
         LUDecomposition lu = new LUDecomposition(pooledCov);
-        // Calculate inverse of pooled covariance matrix
         RealMatrix invPooledCov = lu.getSolver().getInverse();
 
-        // Calculate coefficients of the discriminant function
+        // Calculate LDA model parameters
         coefficients = calculateCoefficients(targetMean, decoyMean, invPooledCov);
-
-        // Calculate intercept of the discriminant function
         intercept = calculateIntercept(targetMean, decoyMean, coefficients);
 
-        // Print results
+        // Output model coefficients
         System.out.println("Coefficients: " + java.util.Arrays.toString(coefficients));
-//        System.out.println("Intercept: " + intercept);
 
-        // calculate scores for targets and decoys
+        // Calculate scores and determine threshold
         List<Double> targetScores = calculateScores(targetData, coefficients, intercept);
         List<Double> decoyScores = calculateScores(decoyData, coefficients, intercept);
-        thresholdScore = getCutOff(fdrCurOff, targetScores, decoyScores);
-        System.out.println("Threshold Score:" + thresholdScore);
-        // Classify a new data point (replace with your actual data)
-//        double[] newDataPoint = new double[]{3.5, 4.5, 5.5};
-//        double score = calculateScore(newDataPoint, coefficients, intercept);
-//        System.out.println("Score: " + score);
-//        System.out.println("Classification: " + (score > 0 ? "Target" : "Decoy"));
+        thresholdScore = getCutOff(fdrCutoff, targetScores, decoyScores);
+        System.out.println("Threshold Score: " + thresholdScore);
     }
 
-    // Helper functions
-    // Regularize covariance matrix to ensure it's invertible
-    private static RealMatrix regularizeCovarianceMatrix(RealMatrix covarianceMatrix, double alpha) {
-        int size = covarianceMatrix.getRowDimension();
-        RealMatrix identity = MatrixUtils.createRealIdentityMatrix(size);
-        return covarianceMatrix.scalarMultiply(1 - alpha).add(identity.scalarMultiply(alpha));
+    /**
+     * Checks if a score exceeds the calculated threshold.
+     * 
+     * @param score The score to evaluate
+     * @return true if the score is above the threshold
+     */
+    public static boolean overThreshold(double score) {
+        return score > thresholdScore;
     }
 
-    private static double[] calculateMean(List<double[]> data) {
-        double[] mean = new double[data.get(0).length];
-        for (double[] row : data) {
-            for (int i = 0; i < row.length; i++) {
-                mean[i] += row[i];
-            }
+    /**
+     * Calculates the MBG score for a PSM and updates the PSM's score.
+     * 
+     * @param psm The PSM to score
+     * @param psmCols Column mapping for PSM fields
+     * @param noPASEF Whether to exclude ion mobility features
+     * @return The calculated MBG score
+     */
+    public static double getMBGScore(PSM psm, HashMap<PSM_File.PSMattr, Integer> psmCols, boolean noPASEF) {
+        // Create feature vector with or without ion mobility data
+        double[] featureVector;
+        if (noPASEF) {
+            featureVector = new double[]{
+                psm.intensity, 
+                psm.avePPM, 
+                psm.kl, 
+                psm.shiftFrequency, 
+                psm.featureIntensity, 
+                (double) psm.rtDiff
+            };
+        } else {
+            featureVector = new double[]{
+                psm.intensity, 
+                psm.avePPM, 
+                psm.kl, 
+                psm.shiftFrequency, 
+                psm.featureIntensity, 
+                (double) psm.rtDiff, 
+                (double) psm.imDiff
+            };
         }
-        for (int i = 0; i < mean.length; i++) {
-            mean[i] /= data.size();
-        }
-        return mean;
+        
+        // Calculate score using LDA model
+        double score = calculateScore(featureVector, coefficients, intercept);
+
+        // Update PSM with calculated score
+        psm.add_MBG_score(psmCols, score);
+        return score;
     }
 
-    private static RealMatrix calculateCovariance(List<double[]> data, double[] mean) {
-        int numFeatures = data.get(0).length;
-        RealMatrix covariance = new Array2DRowRealMatrix(numFeatures, numFeatures);
-        for (double[] row : data) {
-            for (int i = 0; i < numFeatures; i++) {
-                for (int j = 0; j < numFeatures; j++) {
-                    covariance.setEntry(i, j, covariance.getEntry(i, j) + (row[i] - mean[i]) * (row[j] - mean[j]));
-                }
-            }
-        }
-        for (int i = 0; i < numFeatures; i++) {
-            for (int j = 0; j < numFeatures; j++) {
-                covariance.setEntry(i, j, covariance.getEntry(i, j) / (data.size() - 1));
-            }
-        }
-        return covariance;
-    }
+    //--------------------------------
+    // SCORING CALCULATION METHODS
+    //--------------------------------
 
-    private static RealMatrix calculatePooledCovariance(RealMatrix cov1, RealMatrix cov2, int n1, int n2) {
-        return cov1.scalarMultiply((double) (n1 - 1) / (n1 + n2 - 2)).add(cov2.scalarMultiply((double) (n2 - 1) / (n1 + n2 - 2)));
-    }
-
-    private static double[] calculateCoefficients(double[] mean1, double[] mean2, RealMatrix invPooledCov) {
-        double[] coefficients = new double[mean1.length];
-        double[] difference = new double[mean1.length]; // Array to store element-wise difference
-        for (int i = 0; i < mean1.length; i++) {
-            difference[i] = mean1[i] - mean2[i]; // Calculate element-wise difference
-        }
-        ArrayRealVector diffRealVector = new ArrayRealVector(difference);
-        for (int i = 0; i < mean1.length; i++) {
-            coefficients[i] = invPooledCov.getRowVector(i).dotProduct(diffRealVector);
-        }
-        return coefficients;
-    }
-
-    private static double calculateIntercept(double[] mean1, double[] mean2, double[] coefficients) {
-        return -0.5 * (dotProduct(mean1, coefficients) + dotProduct(mean2, coefficients));
-    }
-
+    /**
+     * Calculates the LDA score for a data point.
+     * 
+     * @param dataPoint Feature vector to score
+     * @param coefficients LDA model coefficients
+     * @param intercept LDA model intercept
+     * @return The calculated score
+     */
     private static double calculateScore(double[] dataPoint, double[] coefficients, double intercept) {
         return dotProduct(dataPoint, coefficients) + intercept;
     }
 
-    private static double dotProduct(double[] a, double[] b) {
-        if (a.length != b.length) {
-            throw new IllegalArgumentException("Arrays must have the same length");
+    /**
+     * Calculates scores for a collection of data points.
+     * 
+     * @param data Collection of feature vectors
+     * @param coefficients LDA model coefficients
+     * @param intercept LDA model intercept
+     * @return List of calculated scores
+     */
+    public static List<Double> calculateScores(List<double[]> data, double[] coefficients, double intercept) {
+        List<Double> scores = new ArrayList<>();
+        for (double[] dataPoint : data) {
+            double score = calculateScore(dataPoint, coefficients, intercept);
+            scores.add(score);
         }
-        double result = 0;
-        for (int i = 0; i < a.length; i++) {
-            result += a[i] * b[i];
-        }
-        return result;
+        return scores;
     }
 
+    /**
+     * Determines the score threshold based on the specified FDR.
+     * 
+     * @param fdrCutOff Maximum acceptable FDR
+     * @param targetScores Scores for target PSMs
+     * @param decoyScores Scores for decoy PSMs
+     * @return The score threshold
+     */
     public static double getCutOff(double fdrCutOff, List<Double> targetScores, List<Double> decoyScores) {
+        // Sort target scores in descending order
         targetScores.sort(Comparator.reverseOrder());
+        
+        // Get decoy indices in the combined sorted list
         List<Integer> decoyIndexes = getDecoyIndexes(targetScores, decoyScores);
-        // calculate FDRs for each point
+        
+        // Calculate FDRs at each point
         List<Double> fdrs = new ArrayList<>();
         for (int i = 0; i < decoyIndexes.size(); i++) {
-            fdrs.add((double) (i+1)/ (decoyIndexes.get(i)+1));
+            fdrs.add((double) (i + 1) / (decoyIndexes.get(i) + 1));
         }
-        int iOfDecoy = getLastValueBelowThreshold(fdrs, fdrCutOff);
-        int n = decoyIndexes.get(iOfDecoy);
-        if (n-iOfDecoy<=0) {
+        
+        // Find the last index where FDR is below threshold
+        int decoyIndex = getLastValueBelowThreshold(fdrs, fdrCutOff);
+        int targetIndex = decoyIndexes.get(decoyIndex);
+        
+        // Handle edge case
+        if (targetIndex - decoyIndex <= 0) {
             return targetScores.get(0);
         }
-        return targetScores.get(n-iOfDecoy-1);
+        
+        return targetScores.get(targetIndex - decoyIndex - 1);
     }
 
+    //--------------------------------
+    // HELPER METHODS
+    //--------------------------------
+
+    /**
+     * Gets the indices of decoy scores in the combined sorted score list.
+     */
     private static List<Integer> getDecoyIndexes(List<Double> targetScores, List<Double> decoyScores) {
-        // Combine the two lists into a single list
+        // Combine scores
         List<Double> combinedScores = new ArrayList<>(targetScores);
         combinedScores.addAll(decoyScores);
 
-        // Create a list to store the original indexes of the scores
+        // Track original indices
         List<Integer> originalIndexes = new ArrayList<>();
         for (int i = 0; i < combinedScores.size(); i++) {
             originalIndexes.add(i);
         }
 
-        // Sort the combined scores in descending order, maintaining the original indexes
+        // Sort by score in descending order
         originalIndexes.sort(Comparator.comparingDouble(combinedScores::get).reversed());
 
-        // Extract the indexes of the decoy scores in the ranked list
+        // Extract decoy indices
         List<Integer> decoyIndexes = new ArrayList<>();
         for (int i = 0; i < originalIndexes.size(); i++) {
             if (originalIndexes.get(i) >= targetScores.size()) {
@@ -176,41 +227,129 @@ public class Scoring {
         return decoyIndexes;
     }
 
+    /**
+     * Finds the index of the last value in a list that is below a threshold.
+     */
     public static Integer getLastValueBelowThreshold(List<Double> list, double threshold) {
         for (int i = list.size() - 1; i >= 0; i--) {
             if (list.get(i) <= threshold) {
                 return i;
             }
         }
-        return 0; // No value found
+        return 0; // Default if no value found
     }
 
-    public static List<Double> calculateScores(List<double[]> data, double[] coefficients, double intercept) {
-        // Calculate scores for each data point
-        List<Double> scores = new ArrayList<>();
+    /**
+     * Calculates the mean vector for a dataset.
+     */
+    private static double[] calculateMean(List<double[]> data) {
+        int featureCount = data.get(0).length;
+        double[] mean = new double[featureCount];
+        
+        // Sum values for each feature
         for (double[] dataPoint : data) {
-            double score = calculateScore(dataPoint, coefficients, intercept);
-            scores.add(score);
+            for (int i = 0; i < featureCount; i++) {
+                mean[i] += dataPoint[i];
+            }
         }
-        return scores;
+        
+        // Divide by count to get mean
+        for (int i = 0; i < featureCount; i++) {
+            mean[i] /= data.size();
+        }
+        
+        return mean;
     }
 
-    public static boolean overThreshold(double c_score) {
-        return c_score > thresholdScore;
+    /**
+     * Calculates the covariance matrix for a dataset.
+     */
+    private static RealMatrix calculateCovariance(List<double[]> data, double[] mean) {
+        int featureCount = data.get(0).length;
+        RealMatrix covariance = new Array2DRowRealMatrix(featureCount, featureCount);
+        
+        // Calculate covariance sums
+        for (double[] dataPoint : data) {
+            for (int i = 0; i < featureCount; i++) {
+                for (int j = 0; j < featureCount; j++) {
+                    double currentValue = covariance.getEntry(i, j);
+                    double update = (dataPoint[i] - mean[i]) * (dataPoint[j] - mean[j]);
+                    covariance.setEntry(i, j, currentValue + update);
+                }
+            }
+        }
+        
+        // Normalize by degrees of freedom
+        for (int i = 0; i < featureCount; i++) {
+            for (int j = 0; j < featureCount; j++) {
+                double normalizedValue = covariance.getEntry(i, j) / (data.size() - 1);
+                covariance.setEntry(i, j, normalizedValue);
+            }
+        }
+        
+        return covariance;
     }
 
-    public static double getMBGScore(PSM psm, HashMap<PSM_File.PSMattr, Integer> psmCols, boolean noPASEF) {
-        double[] data;
-        if (noPASEF) {
-            data = new double[]{psm.intensity, psm.avePPM, psm.kl, psm.shiftFrequency, psm.featureIntensity, (double) psm.rtDiff};
-        } else {
-            data = new double[]{psm.intensity, psm.avePPM, psm.kl, psm.shiftFrequency, psm.featureIntensity, (double) psm.rtDiff, (double) psm.imDiff};
-        }
-        double c_score = calculateScore(data, coefficients, intercept);
+    /**
+     * Calculates the pooled covariance matrix from two class-specific matrices.
+     */
+    private static RealMatrix calculatePooledCovariance(RealMatrix cov1, RealMatrix cov2, int n1, int n2) {
+        double weight1 = (double) (n1 - 1) / (n1 + n2 - 2);
+        double weight2 = (double) (n2 - 1) / (n1 + n2 - 2);
+        return cov1.scalarMultiply(weight1).add(cov2.scalarMultiply(weight2));
+    }
 
-        // update MBG score
-        psm.add_MBG_score(psmCols, c_score);
-        return c_score;
+    /**
+     * Regularizes a covariance matrix to ensure it's invertible.
+     */
+    private static RealMatrix regularizeCovarianceMatrix(RealMatrix covarianceMatrix, double alpha) {
+        int size = covarianceMatrix.getRowDimension();
+        RealMatrix identity = MatrixUtils.createRealIdentityMatrix(size);
+        return covarianceMatrix.scalarMultiply(1 - alpha).add(identity.scalarMultiply(alpha));
+    }
+
+    /**
+     * Calculates the coefficients for the LDA discriminant function.
+     */
+    private static double[] calculateCoefficients(double[] mean1, double[] mean2, RealMatrix invPooledCov) {
+        double[] coefficients = new double[mean1.length];
+        double[] difference = new double[mean1.length]; 
+        
+        // Calculate mean difference vector
+        for (int i = 0; i < mean1.length; i++) {
+            difference[i] = mean1[i] - mean2[i]; 
+        }
+        
+        // Calculate coefficients using matrix operations
+        ArrayRealVector diffRealVector = new ArrayRealVector(difference);
+        for (int i = 0; i < mean1.length; i++) {
+            coefficients[i] = invPooledCov.getRowVector(i).dotProduct(diffRealVector);
+        }
+        
+        return coefficients;
+    }
+
+    /**
+     * Calculates the intercept term for the LDA discriminant function.
+     */
+    private static double calculateIntercept(double[] mean1, double[] mean2, double[] coefficients) {
+        return -0.5 * (dotProduct(mean1, coefficients) + dotProduct(mean2, coefficients));
+    }
+
+    /**
+     * Calculates the dot product of two vectors.
+     */
+    private static double dotProduct(double[] a, double[] b) {
+        if (a.length != b.length) {
+            throw new IllegalArgumentException("Arrays must have the same length");
+        }
+        
+        double result = 0;
+        for (int i = 0; i < a.length; i++) {
+            result += a[i] * b[i];
+        }
+        
+        return result;
     }
 }
 
