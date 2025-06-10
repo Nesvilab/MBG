@@ -193,7 +193,7 @@ public class GlycanMatching {
                                ArrayList<PSM> newPSMs, Integer steps) {
         if (steps < 0) return;
 
-        int rankCounter = 1;
+        int rankCounter = 5; // add rank to spectrum file to avoid bug in IonQuant and DDA+
         HashMap<Glycan, String> potentialGlycans = PSM.getDummyGlycansV2(basePSM, params.toAddGlycans);
 
         for (Map.Entry<Glycan, String> glycanEntry: potentialGlycans.entrySet()) {
@@ -230,9 +230,8 @@ public class GlycanMatching {
             if (addedPSMs.get(0).intensity > 0.01) {
                 site.observedGlycans.put(newGlycan.toString(), new ArrayList<>());
                 site.glycanMasses.add(newGlycan.mass);
+                rankCounter++; // increase rankCounter only when a peak is found
             }
-
-            rankCounter++;
 
             // Recursively process if within expansion limit and match found
             if (steps > 0 && addedPSMs.get(0).intensity > 0.01) {
