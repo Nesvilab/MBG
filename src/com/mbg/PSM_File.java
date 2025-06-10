@@ -50,8 +50,8 @@ public class PSM_File {
         columnNames.put(PSMattr.spectrum, "Spectrum"); // Spectrum identifier
         columnNames.put(PSMattr.delta_mass, "Delta Mass"); // Mass difference (Obs - Theo)
         columnNames.put(PSMattr.mod_peptide, "Modified Peptide"); // Peptide sequence with mods
-        columnNames.put(PSMattr.calc_pep_mass, "Calibrated Observed Mass"); // Observed precursor mass
-        columnNames.put(PSMattr.calc_pep_mz, "Calibrated Observed M/Z"); // Observed precursor m/z
+        columnNames.put(PSMattr.calc_pep_mass, "Calculated Peptide Mass"); // Observed precursor mass
+        columnNames.put(PSMattr.calc_pep_mz, "Calculated M/Z"); // Observed precursor m/z
         columnNames.put(PSMattr.charge, "Charge"); // Precursor charge
         columnNames.put(PSMattr.glyco_q_val, "Glycan q-value"); // Glycan assignment confidence
         // MBG specific columns start here ("Spectrum File" and "Intensity" will be modified in MBG PSMs)
