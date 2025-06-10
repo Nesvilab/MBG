@@ -54,20 +54,20 @@ public class PSM_File {
         columnNames.put(PSMattr.calc_pep_mz, "Calibrated Observed M/Z"); // Observed precursor m/z
         columnNames.put(PSMattr.charge, "Charge"); // Precursor charge
         columnNames.put(PSMattr.glyco_q_val, "Glycan q-value"); // Glycan assignment confidence
-        // MBG specific columns start here
-        columnNames.put(PSMattr.inferred_glycoform, "Inferred Glycoform?"); // Was this PSM inferred by MBG?
+        // MBG specific columns start here ("Spectrum File" and "Intensity" will be modified in MBG PSMs)
+//        columnNames.put(PSMattr.inferred_glycoform, "Inferred Glycoform?"); // Was this PSM inferred by MBG?
         columnNames.put(PSMattr.has_ms2_spec, "Has MS2 Spectrum?"); // Did the original PSM have an MS2?
         columnNames.put(PSMattr.has_Y1, "Has Y1 ion?"); // Was Y1 ion observed in MS2?
         columnNames.put(PSMattr.MBG_score, "MBG Score"); // Score from MBG LDA model
         columnNames.put(PSMattr.mass_error, "Mass error(ppm)"); // Mass error from IonQuant matching
-        columnNames.put(PSMattr.KL, "KL (IonQuant Score)"); // KL divergence score from IonQuant
+        columnNames.put(PSMattr.KL, "KL divergence"); // KL divergence score from IonQuant
         columnNames.put(PSMattr.shift_frequency, "Shift Frequency"); // Frequency of the observed glycan shift
         columnNames.put(PSMattr.rt_diff, "RT Difference"); // Predicted vs. Observed RT difference
         columnNames.put(PSMattr.im_diff, "IM Difference"); // Predicted vs. Observed IM difference
-        columnNames.put(PSMattr.if_new_glycan, "New Glycan?"); // Was this glycan composition novel?
-        columnNames.put(PSMattr.confidence_level, "Confidence Level"); // Confidence category based on FDR
+        columnNames.put(PSMattr.if_new_glycan, "MBG only composition"); // Was this glycan composition novel?
+        columnNames.put(PSMattr.confidence_level, "Confidence Level"); // Confidence category based on the existence of MS2 hit and Y1 ion
         columnNames.put(PSMattr.parent_glycan, "Parent Glycan"); // Glycan used as basis for inference
-        columnNames.put(PSMattr.added_residual, "Residual Difference"); // Residue(s) added/removed for inference
+        columnNames.put(PSMattr.added_residual, "Difference from parent"); // Residue(s) added/removed for inference
         columnNames.put(PSMattr.spectrum_file, "Spectrum File"); // Source raw file name
         columnNames.put(PSMattr.intensity, "Intensity"); // Precursor intensity
     }
