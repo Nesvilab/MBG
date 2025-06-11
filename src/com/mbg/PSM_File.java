@@ -34,6 +34,8 @@ public class PSM_File {
     public int addCols;
     /** The index at which new MBG-specific columns should be inserted into the header and data rows. Determined during initialization. */
     public static int insertIndex; // Static might be problematic if multiple PSM_Files are handled concurrently. TODO: Review if static is appropriate here.
+    // holds the maximum rank of spectra in the PSM file, used to determine the rank for adding MBG PSMs
+    public final HashMap<Integer, Integer> maxRankOfSpectra;
 
     // Static initializer block to populate the map of standard column names.
     // This map defines the expected header string for each PSM attribute (enum).
@@ -100,6 +102,7 @@ public class PSM_File {
         this.headers = psmReader.readLine().split("\t"); // Read and split the header line
         this.PSMcolumns = initPSMcolumns(); // Map header names to column indices
         allPSMs = new ArrayList<>(); // Initialize the list to store all PSM objects
+        maxRankOfSpectra = new HashMap<>();     // store max rank of all scans in the PSM file to know what rank to use when adding MBG PSMs
 
         // Check if MBG-specific columns already exist. If not, add them to the header.
         if (PSMcolumns.getOrDefault(PSMattr.MBG_score, -1) == -1) {
@@ -142,6 +145,7 @@ public class PSM_File {
                     // The boolean flags indicate this is an original (not inferred) PSM
                     PSM psm = new PSM(line, PSMcolumns, params, false, false, 0.0, "", "", addCols);
                     allPSMs.add(psm); // Add to the master list
+                    maxRankOfSpectra.put(psm.scanNum, Math.max(maxRankOfSpectra.getOrDefault(psm.scanNum, 1), psm.rank)); // Update max rank for this spectrum
 
                     // Add the PSM to the map grouped by raw file name
                     if (psm.rawfile != null && !psm.rawfile.isEmpty()) {
@@ -157,6 +161,10 @@ public class PSM_File {
             }
         }
         psmReader.close(); // Close the reader
+        // update the max rank of spectra in each PSM to know what rank to use when adding MBG PSMs
+        for (PSM psm: allPSMs) {
+            psm.maxRank = maxRankOfSpectra.getOrDefault(psm.scanNum, 1); // Default to 1 if not found
+        }
         System.out.printf("Read %d total PSMs from %d raw files.%n", allPSMs.size(), rawfilePSMmap.size());
     }
 

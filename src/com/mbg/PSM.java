@@ -42,6 +42,7 @@ public class PSM implements Comparable<PSM>{
     String confidenceLevel;
     double featureIntensity;
     public String rawfile;
+    public int maxRank;     // if there are multiple PSMs for a given scan (DDA+, DIA), the max rank found in the PSM table
 
     private static final Pattern modMassPattern = Pattern.compile("[\\d]+[A-Z]\\(([\\d.]+)\\)");
     private static final Pattern modSitePattern = Pattern.compile("([\\d]+)[A-Z]\\([\\d.]+\\)");
@@ -135,6 +136,7 @@ public class PSM implements Comparable<PSM>{
         charge = Integer.parseInt(splits[psmCols.get(PSM_File.PSMattr.charge)]);
         deltaMass = Double.parseDouble(splits[psmCols.get(PSM_File.PSMattr.delta_mass)]);
         intensity = Double.parseDouble(splits[psmCols.get(PSM_File.PSMattr.intensity)]);
+        maxRank = rank;
     }
 
     public PSM(String psmLine, HashMap<PSM_File.PSMattr, Integer> psmCols, Params params, boolean isInferred, boolean hasMS2, double hasY1, float massDifference, float imDifference, int addCols) {
@@ -214,6 +216,7 @@ public class PSM implements Comparable<PSM>{
         charge = Integer.parseInt(splits[psmCols.get(PSM_File.PSMattr.charge)]);
         deltaMass = Double.parseDouble(splits[psmCols.get(PSM_File.PSMattr.delta_mass)]);
         intensity = Double.parseDouble(splits[psmCols.get(PSM_File.PSMattr.intensity)]);
+        maxRank = rank;
     }
 
     /**
