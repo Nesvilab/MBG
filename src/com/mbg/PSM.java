@@ -66,7 +66,7 @@ public class PSM implements Comparable<PSM>{
             splits = newSplits.toArray(new String[0]);
             hasMS2Spectrum = hasMS2;
             yIntensities = hasY1;
-            confidenceLevel = String.valueOf(1);
+            confidenceLevel = "";
         } else {
             if (!isInferred) {
                 // if this is a re-analysis (i.e., not adding new columns) and this is not an inferred PSM from this analysis, read its inferred status from the previous result
@@ -76,7 +76,7 @@ public class PSM implements Comparable<PSM>{
             } else {
                 hasMS2Spectrum = hasMS2;
                 yIntensities = hasY1;
-                confidenceLevel = String.valueOf(1);
+                confidenceLevel = "";
             }
         }
 
@@ -364,7 +364,7 @@ public class PSM implements Comparable<PSM>{
                 addedPSM.avePPM = c_avePPM;
                 addedPSM.kl = peakMatcher.quantifiedEntry.kl;
                 addedPSM.shiftFrequency = shiftFrequency;
-                addedPSM.featureIntensity = featureIntensity;
+                addedPSM.featureIntensity = yIntensities.get(i);  // use real intensity not average all MS2 hits
                 // update MBG related columns (some columns already updated in generating new psm)
                 addedPSM.updateSplits(psmCols, params.noPASEF, if_new_glycan);
                 addedPSMs.add(addedPSM);
