@@ -55,7 +55,6 @@ public class PSM_File {
         columnNames.put(PSMattr.charge, "Charge"); // Precursor charge
         columnNames.put(PSMattr.glyco_q_val, "Glycan q-value"); // Glycan assignment confidence
         // MBG specific columns start here ("Spectrum File" and "Intensity" will be modified in MBG PSMs)
-//        columnNames.put(PSMattr.inferred_glycoform, "Inferred Glycoform?"); // Was this PSM inferred by MBG?
         columnNames.put(PSMattr.has_ms2_spec, "Has MS2 Spectrum?"); // Did the original PSM have an MS2?
         columnNames.put(PSMattr.has_Y1, "Has Y1 ion?"); // Was Y1 ion observed in MS2?
         columnNames.put(PSMattr.MBG_score, "MBG Score"); // Score from MBG LDA model
@@ -71,6 +70,22 @@ public class PSM_File {
         columnNames.put(PSMattr.spectrum_file, "Spectrum File"); // Source raw file name
         columnNames.put(PSMattr.intensity, "Intensity"); // Precursor intensity
     }
+    // PSM table headers to add to the PSM file if they do not already exist.
+    private static final String[] headersToAdd = new String[] {
+            // Insert in reverse order of definition to maintain desired final order
+            columnNames.get(PSMattr.added_residual),
+            columnNames.get(PSMattr.parent_glycan),
+            columnNames.get(PSMattr.confidence_level),
+            columnNames.get(PSMattr.if_new_glycan),
+            columnNames.get(PSMattr.im_diff),
+            columnNames.get(PSMattr.rt_diff),
+            columnNames.get(PSMattr.shift_frequency),
+            columnNames.get(PSMattr.KL),
+            columnNames.get(PSMattr.mass_error),
+            columnNames.get(PSMattr.MBG_score),
+            columnNames.get(PSMattr.has_Y1),
+            columnNames.get(PSMattr.has_ms2_spec)
+    };
 
     /**
      * Constructor for PSM_File. Reads the PSM file, initializes column mappings,
@@ -87,9 +102,8 @@ public class PSM_File {
         allPSMs = new ArrayList<>(); // Initialize the list to store all PSM objects
 
         // Check if MBG-specific columns already exist. If not, add them to the header.
-        if (PSMcolumns.getOrDefault(PSMattr.inferred_glycoform, -1) == -1) {
+        if (PSMcolumns.getOrDefault(PSMattr.MBG_score, -1) == -1) {
             System.out.println("MBG-specific columns not found in PSM file. Adding them...");
-            addCols = 13; // Number of MBG columns to add
             // Determine the insertion point for new columns (typically after glycan q-value or glycan composition)
             if (PSMcolumns.containsKey(PSMattr.glyco_q_val)) {
                 insertIndex = PSMcolumns.get(PSMattr.glyco_q_val) + 1;
@@ -103,20 +117,10 @@ public class PSM_File {
 
             // Create a new header list and insert the MBG column names at the determined index
             ArrayList<String> newHeadersList = new ArrayList<>(Arrays.asList(this.headers));
-            // Insert in reverse order of definition to maintain desired final order
-            newHeadersList.add(insertIndex, columnNames.get(PSMattr.confidence_level));
-            newHeadersList.add(insertIndex, columnNames.get(PSMattr.if_new_glycan));
-            newHeadersList.add(insertIndex, columnNames.get(PSMattr.im_diff));
-            newHeadersList.add(insertIndex, columnNames.get(PSMattr.rt_diff));
-            newHeadersList.add(insertIndex, columnNames.get(PSMattr.shift_frequency));
-            newHeadersList.add(insertIndex, columnNames.get(PSMattr.KL));
-            newHeadersList.add(insertIndex, columnNames.get(PSMattr.mass_error));
-            newHeadersList.add(insertIndex, columnNames.get(PSMattr.added_residual));
-            newHeadersList.add(insertIndex, columnNames.get(PSMattr.parent_glycan));
-            newHeadersList.add(insertIndex, columnNames.get(PSMattr.MBG_score));
-            newHeadersList.add(insertIndex, columnNames.get(PSMattr.has_Y1));
-            newHeadersList.add(insertIndex, columnNames.get(PSMattr.has_ms2_spec));
-            newHeadersList.add(insertIndex, columnNames.get(PSMattr.inferred_glycoform));
+            addCols = headersToAdd.length; // Number of MBG columns to add
+            for (String header : headersToAdd) {
+                newHeadersList.add(insertIndex, header);
+            }
 
             headers = newHeadersList.toArray(new String[0]); // Update the main headers array
             this.PSMcolumns = initPSMcolumns(); // Re-initialize column mappings with the new headers
@@ -132,7 +136,7 @@ public class PSM_File {
         int lineNum = 1; // Start from 1 for header
         while((line = psmReader.readLine()) != null) {
             lineNum++;
-            if (line.trim().length() > 0) { // Skip empty lines
+            if (!line.trim().isEmpty()) { // Skip empty lines
                 try {
                     // Create a new PSM object, passing necessary context
                     // The boolean flags indicate this is an original (not inferred) PSM
@@ -209,7 +213,7 @@ public class PSM_File {
      */
     private boolean isMbgSpecificColumn(PSMattr attr) {
         // Check against all MBG-specific enum values
-        return attr == PSMattr.inferred_glycoform || attr == PSMattr.has_ms2_spec ||
+        return attr == PSMattr.has_ms2_spec ||
                attr == PSMattr.has_Y1 || attr == PSMattr.MBG_score ||
                attr == PSMattr.mass_error || attr == PSMattr.KL ||
                attr == PSMattr.shift_frequency || attr == PSMattr.rt_diff ||
@@ -499,8 +503,6 @@ public class PSM_File {
         glyco_q_val,
 
         // --- MBG Inference Output Columns (Added by this tool if not present) ---
-        /** Boolean flag (TRUE/FALSE) indicating if this PSM row represents an inferred glycoform. Header: "Inferred Glycoform?" */
-        inferred_glycoform,
         /** Boolean flag indicating if the original identified PSM file contained an MS2 spectrum for this precursor. Header: "Has MS2 Spectrum?" */
         has_ms2_spec,
         /** Boolean flag indicating if a Y1 ion (peptide + core HexNAc) was observed in the MS2 spectrum (if available). Header: "Has Y1 ion?" */

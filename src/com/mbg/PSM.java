@@ -29,7 +29,6 @@ public class PSM implements Comparable<PSM>{
     int charge;
     double glycoQval;
     double deltaMass;
-    boolean inferredGlycoform;
     boolean hasMS2Spectrum;
     public double yIntensities;
     float aveMassDiff;
@@ -64,19 +63,16 @@ public class PSM implements Comparable<PSM>{
                 add--;
             }
             splits = newSplits.toArray(new String[0]);
-            inferredGlycoform = isInferred;
             hasMS2Spectrum = hasMS2;
             yIntensities = hasY1;
             confidenceLevel = String.valueOf(1);
         } else {
             if (!isInferred) {
                 // if this is a re-analysis (i.e., not adding new columns) and this is not an inferred PSM from this analysis, read its inferred status from the previous result
-                inferredGlycoform = Boolean.parseBoolean(splits[psmCols.get(PSM_File.PSMattr.inferred_glycoform)]);
                 hasMS2Spectrum = Boolean.parseBoolean(splits[psmCols.get(PSM_File.PSMattr.has_ms2_spec)]);
                 yIntensities = Double.parseDouble(splits[psmCols.get(PSM_File.PSMattr.has_Y1)]);
                 confidenceLevel = String.valueOf(4);
             } else {
-                inferredGlycoform = isInferred;
                 hasMS2Spectrum = hasMS2;
                 yIntensities = hasY1;
                 confidenceLevel = String.valueOf(1);
@@ -84,7 +80,6 @@ public class PSM implements Comparable<PSM>{
         }
 
         // update new fields and information that is needed for all PSMs (including non-glyco)
-        splits[psmCols.get(PSM_File.PSMattr.inferred_glycoform)] = String.valueOf(inferredGlycoform);
         splits[psmCols.get(PSM_File.PSMattr.has_ms2_spec)] = String.valueOf(hasMS2Spectrum);
         splits[psmCols.get(PSM_File.PSMattr.has_Y1)] = String.valueOf(yIntensities);
         splits[psmCols.get(PSM_File.PSMattr.MBG_score)] = String.valueOf(0);
@@ -154,7 +149,6 @@ public class PSM implements Comparable<PSM>{
                 add--;
             }
             splits = newSplits.toArray(new String[0]);
-            inferredGlycoform = isInferred;
             hasMS2Spectrum = hasMS2;
             yIntensities = hasY1;
             aveMassDiff = massDifference;
@@ -162,13 +156,11 @@ public class PSM implements Comparable<PSM>{
         } else {
             if (!isInferred) {
                 // if this is a re-analysis (i.e., not adding new columns) and this is not an inferred PSM from this analysis, read its inferred status from the previous result
-                inferredGlycoform = Boolean.parseBoolean(splits[psmCols.get(PSM_File.PSMattr.inferred_glycoform)]);
                 hasMS2Spectrum = Boolean.parseBoolean(splits[psmCols.get(PSM_File.PSMattr.has_ms2_spec)]);
                 yIntensities = Double.parseDouble(splits[psmCols.get(PSM_File.PSMattr.has_Y1)]);
                 aveMassDiff = massDifference;
                 imDiff = imDifference;
             } else {
-                inferredGlycoform = isInferred;
                 hasMS2Spectrum = hasMS2;
                 yIntensities = hasY1;
                 aveMassDiff = massDifference;
@@ -177,7 +169,6 @@ public class PSM implements Comparable<PSM>{
         }
 
         // update new fields and information that is needed for all PSMs (including non-glyco)
-        splits[psmCols.get(PSM_File.PSMattr.inferred_glycoform)] = String.valueOf(inferredGlycoform);
         splits[psmCols.get(PSM_File.PSMattr.has_ms2_spec)] = String.valueOf(hasMS2Spectrum);
         splits[psmCols.get(PSM_File.PSMattr.has_Y1)] = String.valueOf(yIntensities);
         splits[psmCols.get(PSM_File.PSMattr.im_diff)] = String.valueOf(imDiff);
