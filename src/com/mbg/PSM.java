@@ -131,8 +131,8 @@ public class PSM implements Comparable<PSM>{
         peptideGlycositeIndex = getGlycoSiteIndex(assignedMods);
         glycoSiteAA = peptide.charAt(peptideGlycositeIndex - 1);
         proteinGlycositeIndex = proteinStart + peptideGlycositeIndex;
-        calcMass = Double.parseDouble(splits[psmCols.get(PSM_File.PSMattr.calc_pep_mass)]);
-        calcMz = Double.parseDouble(splits[psmCols.get(PSM_File.PSMattr.calc_pep_mz)]);
+        calcMass = Double.parseDouble(splits[psmCols.get(PSM_File.PSMattr.CALIBRATED_OBSERVED_MASS)]);
+        calcMz = Double.parseDouble(splits[psmCols.get(PSM_File.PSMattr.CALIBRATED_OBSERVED_MZ)]);
         charge = Integer.parseInt(splits[psmCols.get(PSM_File.PSMattr.charge)]);
         deltaMass = Double.parseDouble(splits[psmCols.get(PSM_File.PSMattr.delta_mass)]);
         intensity = Double.parseDouble(splits[psmCols.get(PSM_File.PSMattr.intensity)]);
@@ -211,8 +211,8 @@ public class PSM implements Comparable<PSM>{
         peptideGlycositeIndex = getGlycoSiteIndex(assignedMods);
         glycoSiteAA = peptide.charAt(peptideGlycositeIndex - 1);
         proteinGlycositeIndex = proteinStart + peptideGlycositeIndex;
-        calcMass = Double.parseDouble(splits[psmCols.get(PSM_File.PSMattr.calc_pep_mass)]);
-        calcMz = Double.parseDouble(splits[psmCols.get(PSM_File.PSMattr.calc_pep_mz)]);
+        calcMass = Double.parseDouble(splits[psmCols.get(PSM_File.PSMattr.CALIBRATED_OBSERVED_MASS)]);
+        calcMz = Double.parseDouble(splits[psmCols.get(PSM_File.PSMattr.CALIBRATED_OBSERVED_MZ)]);
         charge = Integer.parseInt(splits[psmCols.get(PSM_File.PSMattr.charge)]);
         deltaMass = Double.parseDouble(splits[psmCols.get(PSM_File.PSMattr.delta_mass)]);
         intensity = Double.parseDouble(splits[psmCols.get(PSM_File.PSMattr.intensity)]);
@@ -265,7 +265,7 @@ public class PSM implements Comparable<PSM>{
         System.arraycopy(existingPSM.splits, 0, newSplits, 0, newSplits.length);
 
         // replace values with new glycan
-        newSplits[psmCols.get(PSM_File.PSMattr.glycan)] = newGlycan.toPSMString();
+        newSplits[psmCols.get(PSM_File.PSMattr.glycan)] = newGlycan.toString();
         // assigned mods
         String oldAssignedMods = existingPSM.splits[psmCols.get(PSM_File.PSMattr.assigned_mods)];
         ArrayList<String> newAssignedMods = new ArrayList<>();
@@ -293,17 +293,17 @@ public class PSM implements Comparable<PSM>{
         newSplits[psmCols.get(PSM_File.PSMattr.mod_peptide)] = newModPep;
 
         // update calculated masses and delta mass for new glycan
-        newSplits[psmCols.get(PSM_File.PSMattr.calc_pep_mass)] = String.format("%.4f", existingPSM.calcMass + newGlycan.mass - existingPSM.glycan.mass);
-        newSplits[psmCols.get(PSM_File.PSMattr.calc_pep_mz)] = String.format("%.4f", existingPSM.calcMz + ((newGlycan.mass - existingPSM.glycan.mass) / (double) existingPSM.charge));
+        newSplits[psmCols.get(PSM_File.PSMattr.CALIBRATED_OBSERVED_MASS)] = String.format("%.4f", existingPSM.calcMass + newGlycan.mass - existingPSM.glycan.mass);
+        newSplits[psmCols.get(PSM_File.PSMattr.CALIBRATED_OBSERVED_MZ)] = String.format("%.4f", existingPSM.calcMz + ((newGlycan.mass - existingPSM.glycan.mass) / (double) existingPSM.charge));
         if (ifdecoy) {
-            newSplits[psmCols.get(PSM_File.PSMattr.calc_pep_mz)] = String.format("%.4f", existingPSM.calcMz + ((newGlycan.mass - existingPSM.glycan.mass + 1.0005*11) / (double) existingPSM.charge));
+            newSplits[psmCols.get(PSM_File.PSMattr.CALIBRATED_OBSERVED_MZ)] = String.format("%.4f", existingPSM.calcMz + ((newGlycan.mass - existingPSM.glycan.mass + 1.0005*11) / (double) existingPSM.charge));
         }
         newSplits[psmCols.get(PSM_File.PSMattr.delta_mass)] = String.format("%.4f", existingPSM.deltaMass);
 
         // adjust RT and IM
         double newRT = rtAdjuster.getShiftedRT(existingPSM.glycan, newGlycan, existingPSM.apexRT);  // in minute
         double newIM = rtAdjuster.getShiftedIM(existingPSM.glycan, newGlycan, existingPSM.apexIM);
-        double newMZ = Double.parseDouble(newSplits[psmCols.get(PSM_File.PSMattr.calc_pep_mz)]);
+        double newMZ = Double.parseDouble(newSplits[psmCols.get(PSM_File.PSMattr.CALIBRATED_OBSERVED_MZ)]);
         newSplits[psmCols.get(PSM_File.PSMattr.RT)] = String.format("%.3f", newRT);
         if (!params.noPASEF) {
             newSplits[psmCols.get(PSM_File.PSMattr.IM)] = String.format("%.3f", newIM);

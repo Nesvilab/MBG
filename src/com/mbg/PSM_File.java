@@ -52,8 +52,8 @@ public class PSM_File {
         columnNames.put(PSMattr.spectrum, "Spectrum"); // Spectrum identifier
         columnNames.put(PSMattr.delta_mass, "Delta Mass"); // Mass difference (Obs - Theo)
         columnNames.put(PSMattr.mod_peptide, "Modified Peptide"); // Peptide sequence with mods
-        columnNames.put(PSMattr.calc_pep_mass, "Calculated Peptide Mass"); // Observed precursor mass
-        columnNames.put(PSMattr.calc_pep_mz, "Calculated M/Z"); // Observed precursor m/z
+        columnNames.put(PSMattr.CALIBRATED_OBSERVED_MASS, "Calibrated Observed Mass"); // Observed precursor mass
+        columnNames.put(PSMattr.CALIBRATED_OBSERVED_MZ, "Calibrated Observed M/Z"); // Observed precursor m/z
         columnNames.put(PSMattr.charge, "Charge"); // Precursor charge
         columnNames.put(PSMattr.glyco_q_val, "Glycan q-value"); // Glycan assignment confidence
         // MBG specific columns start here ("Spectrum File" and "Intensity" will be modified in MBG PSMs)
@@ -490,9 +490,9 @@ public class PSM_File {
 
         // --- Mass Information ---
         /** Observed precursor mass, potentially calibrated by the search engine. Header: "Calibrated Observed Mass" */
-        calc_pep_mass,
+        CALIBRATED_OBSERVED_MASS,
         /** Observed precursor m/z, potentially calibrated. Header: "Calibrated Observed M/Z" */
-        calc_pep_mz,
+        CALIBRATED_OBSERVED_MZ,
         /** Mass difference between observed and theoretical peptide mass (Da). Header: "Delta Mass" */
         delta_mass,
 
