@@ -443,7 +443,7 @@ public class PSM implements Comparable<PSM>{
         // determine RT shift
     }
 
-    private static int glycanComparator(HashMap <GlycanResidue, Integer> glycan1, HashMap <GlycanResidue, Integer> glycan2) {
+    private static int glycanComparator(Map <GlycanResidue, Integer> glycan1, Map <GlycanResidue, Integer> glycan2) {
         int difference = 0;
         for (GlycanResidue key : glycan1.keySet()) {
             difference += Math.abs(glycan1.getOrDefault(key, 0) - glycan2.getOrDefault(key, 0));
