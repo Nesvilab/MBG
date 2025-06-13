@@ -55,7 +55,6 @@ public class PSM_File {
         columnNames.put(PSMattr.CALIBRATED_OBSERVED_MASS, "Calibrated Observed Mass"); // Observed precursor mass
         columnNames.put(PSMattr.CALIBRATED_OBSERVED_MZ, "Calibrated Observed M/Z"); // Observed precursor m/z
         columnNames.put(PSMattr.charge, "Charge"); // Precursor charge
-        columnNames.put(PSMattr.glyco_q_val, "Glycan q-value"); // Glycan assignment confidence
         // MBG specific columns start here ("Spectrum File" and "Intensity" will be modified in MBG PSMs)
         columnNames.put(PSMattr.has_ms2_spec, "Has MS2 Spectrum?"); // Did the original PSM have an MS2?
         columnNames.put(PSMattr.has_Y1, "Has Y1 ion?"); // Was Y1 ion observed in MS2?
@@ -71,6 +70,29 @@ public class PSM_File {
         columnNames.put(PSMattr.added_residual, "Difference from parent"); // Residue(s) added/removed for inference
         columnNames.put(PSMattr.spectrum_file, "Spectrum File"); // Source raw file name
         columnNames.put(PSMattr.intensity, "Intensity"); // Precursor intensity
+        // columns that need to leave blank for MBG PSMs
+        columnNames.put(PSMattr.BestPositions, "Best Positions");
+        columnNames.put(PSMattr.expectation, "expectation");
+        columnNames.put(PSMattr.glyco_q_val, "Glycan q-value"); // Glycan assignment confidence
+        columnNames.put(PSMattr.Glycanscore, "Glycan score");
+        columnNames.put(PSMattr.hyperscore, "hyperscore");
+        columnNames.put(PSMattr.IonsAllUnshifted, "Ions All Unshifted");
+        columnNames.put(PSMattr.IonsBestPosition, "Ions Best Position");
+        columnNames.put(PSMattr.IonsSecondBestPosition, "Ions Second Best Position");
+        columnNames.put(PSMattr.IonsShiftedAllPositions, "Ions Shifted All Positions");
+        columnNames.put(PSMattr.MSFraggerLocalization, "MSFragger Localization");
+        columnNames.put(PSMattr.IonsShiftedBestPosition, "Ions Shifted Best Position");
+        columnNames.put(PSMattr.nextscore, "nextscore");
+        columnNames.put(PSMattr.NumberBestPositions, "Number Best Positions");
+        columnNames.put(PSMattr.PositionScores, "Position Scores");
+        columnNames.put(PSMattr.probability, "probability");
+        columnNames.put(PSMattr.ScoreAllUnshifted, "Score All Unshifted");
+        columnNames.put(PSMattr.ScoreBestPosition, "Score Best Position");
+        columnNames.put(PSMattr.ScoreSecondBestPosition, "Score Second Best Position");
+        columnNames.put(PSMattr.ScoreShiftedAllPositions, "Score Shifted All Positions");
+        columnNames.put(PSMattr.ScoreShiftedBestPosition, "Score Shifted Best Position");
+        columnNames.put(PSMattr.ShiftedOnlyPositionIons, "Shifted Only Position Ions");
+        columnNames.put(PSMattr.ShiftedOnlyPositionScores, "Shifted Only Position Scores");
     }
     // PSM table headers to add to the PSM file if they do not already exist.
     private static final String[] headersToAdd = new String[] {
@@ -143,7 +165,7 @@ public class PSM_File {
                 try {
                     // Create a new PSM object, passing necessary context
                     // The boolean flags indicate this is an original (not inferred) PSM
-                    PSM psm = new PSM(line, PSMcolumns, params, false, false, 0.0, "", "", addCols);
+                    PSM psm = new PSM(line, PSMcolumns, params, addCols);
                     allPSMs.add(psm); // Add to the master list
                     maxRankOfSpectra.put(psm.scanNum, Math.max(maxRankOfSpectra.getOrDefault(psm.scanNum, 1), psm.rank)); // Update max rank for this spectrum
 
@@ -534,7 +556,30 @@ public class PSM_File {
         /** Boolean flag indicating if the inferred glycan composition was not present in the set of originally identified glycans. Header: "New Glycan?" */
         if_new_glycan,
         /** Categorical confidence level (e.g., High, Medium) assigned based on the MBG score and FDR filtering. Header: "Confidence Level" */
-        confidence_level;
+        confidence_level,
+
+        // columns to ignore
+        hyperscore,
+        nextscore,
+        probability,
+        expectation,
+        MSFraggerLocalization,
+        PositionScores,
+        BestPositions,
+        NumberBestPositions,
+        ShiftedOnlyPositionScores,
+        ShiftedOnlyPositionIons,
+        ScoreBestPosition,
+        IonsBestPosition,
+        ScoreSecondBestPosition,
+        IonsSecondBestPosition,
+        ScoreAllUnshifted,
+        IonsAllUnshifted,
+        ScoreShiftedBestPosition,
+        IonsShiftedBestPosition,
+        ScoreShiftedAllPositions,
+        IonsShiftedAllPositions,
+        Glycanscore;
 
         // --- Potentially Deprecated/Unused Enums ---
         // ionMobilityDiff, // Seems redundant with im_diff? Check usage.
@@ -542,5 +587,30 @@ public class PSM_File {
         // Note: The mapping to actual column names is done in the static 'columnNames' HashMap.
         // This enum provides the standardized internal representation.
     }
+
+    public static final EnumSet<PSMattr> PSMattr_blank = EnumSet.of(
+            PSMattr.hyperscore,
+            PSMattr.nextscore,
+            PSMattr.probability,
+            PSMattr.expectation,
+            PSMattr.MSFraggerLocalization,
+            PSMattr.PositionScores,
+            PSMattr.BestPositions,
+            PSMattr.NumberBestPositions,
+            PSMattr.ShiftedOnlyPositionScores,
+            PSMattr.ShiftedOnlyPositionIons,
+            PSMattr.ScoreBestPosition,
+            PSMattr.IonsBestPosition,
+            PSMattr.ScoreSecondBestPosition,
+            PSMattr.IonsSecondBestPosition,
+            PSMattr.ScoreAllUnshifted,
+            PSMattr.IonsAllUnshifted,
+            PSMattr.ScoreShiftedBestPosition,
+            PSMattr.IonsShiftedBestPosition,
+            PSMattr.ScoreShiftedAllPositions,
+            PSMattr.IonsShiftedAllPositions,
+            PSMattr.Glycanscore
+//            PSMattr.glyco_q_val
+    );
 
 } // End of PSM_File class
