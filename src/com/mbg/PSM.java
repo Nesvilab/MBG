@@ -430,6 +430,10 @@ public class PSM implements Comparable<PSM>{
     private static void setBlankColumns(String[] splits, HashMap<PSM_File.PSMattr, Integer> psmCols){
         for (PSM_File.PSMattr attr : PSM_File.PSMattr_blank)
             splits[psmCols.get(attr)] = "";
+        splits[psmCols.get(PSM_File.PSMattr.hyperscore)] = String.valueOf(0);
+        splits[psmCols.get(PSM_File.PSMattr.nextscore)] = String.valueOf(0);
+        splits[psmCols.get(PSM_File.PSMattr.probability)] = String.valueOf(0);
+        splits[psmCols.get(PSM_File.PSMattr.expectation)] = String.valueOf(1);
     }
 
     private static double getShiftedRT(Glycan oldGlycan, Glycan newGlycan, double oldRT, RT_adjuster rtAdjuster) {

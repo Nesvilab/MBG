@@ -566,10 +566,10 @@ public class PSM_File {
     }
 
     public static final EnumSet<PSMattr> PSMattr_blank = EnumSet.of(
-            PSMattr.hyperscore,
-            PSMattr.nextscore,
-            PSMattr.probability,
-            PSMattr.expectation,
+//            PSMattr.hyperscore,
+//            PSMattr.nextscore,
+//            PSMattr.probability,
+//            PSMattr.expectation,
             PSMattr.MSFraggerLocalization,
             PSMattr.PositionScores,
             PSMattr.BestPositions,
