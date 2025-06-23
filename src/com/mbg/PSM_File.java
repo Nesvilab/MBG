@@ -54,6 +54,10 @@ public class PSM_File {
         columnNames.put(PSMattr.mod_peptide, "Modified Peptide"); // Peptide sequence with mods
         columnNames.put(PSMattr.CALIBRATED_OBSERVED_MASS, "Calibrated Observed Mass"); // Observed precursor mass
         columnNames.put(PSMattr.CALIBRATED_OBSERVED_MZ, "Calibrated Observed M/Z"); // Observed precursor m/z
+        columnNames.put(PSMattr.Calculated_MASS, "Calculated Peptide Mass"); // Observed precursor mass
+        columnNames.put(PSMattr.Calculated_MZ, "Calculated M/Z"); // Observed precursor m/z
+        columnNames.put(PSMattr.Observed_MASS, "Observed Mass"); // Observed precursor mass
+        columnNames.put(PSMattr.Observed_Mz, "Observed M/Z"); // Observed precursor m/z
         columnNames.put(PSMattr.charge, "Charge"); // Precursor charge
         // MBG specific columns start here ("Spectrum File" and "Intensity" will be modified in MBG PSMs)
         columnNames.put(PSMattr.has_ms2_spec, "Has MS2 Spectrum?"); // Did the original PSM have an MS2?
@@ -492,6 +496,10 @@ public class PSM_File {
         CALIBRATED_OBSERVED_MASS,
         /** Observed precursor m/z, potentially calibrated. Header: "Calibrated Observed M/Z" */
         CALIBRATED_OBSERVED_MZ,
+        Calculated_MASS,
+        Calculated_MZ,
+        Observed_MASS,
+        Observed_Mz,
         /** Mass difference between observed and theoretical peptide mass (Da). Header: "Delta Mass" */
         delta_mass,
 
