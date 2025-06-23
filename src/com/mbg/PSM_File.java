@@ -372,11 +372,11 @@ public class PSM_File {
      * @throws IOException If an error occurs during file writing.
      */
     public static void massWriter(List<Double> massesToWrite) throws IOException {
-        String mbgMassListPath = "MBG_masses_list.txt"; // File specifically for MBG masses
+//        String mbgMassListPath = "MBG_masses_list.txt"; // File specifically for MBG masses
         String ionQuantMassPath = "modmasses_ionquant.txt"; // File potentially used by IonQuant
-
+//
 //        System.out.printf("Writing %d masses to %s%n", massesToWrite.size(), mbgMassListPath);
-        // Using try-with-resources to ensure the writer is closed automatically
+////         Using try-with-resources to ensure the writer is closed automatically
 //        try (BufferedWriter massListWriter = new BufferedWriter(new FileWriter(mbgMassListPath))) {
 //            // Write each mass to the MBG-specific file
 //            for (Double mass : massesToWrite) {
@@ -392,9 +392,9 @@ public class PSM_File {
 //        }
 
         // Append the unique masses from the MBG list to the IonQuant list
-        System.out.printf("Appending unique masses from %s to %s%n", mbgMassListPath, ionQuantMassPath);
+//        System.out.printf("Appending unique masses from %s to %s%n", mbgMassListPath, ionQuantMassPath);
         try {
-            appendUniqueMasses(ionQuantMassPath, mbgMassListPath);
+            appendUniqueMasses(ionQuantMassPath, massesToWrite);
             System.out.printf("Finished appending masses to %s.%n", ionQuantMassPath);
         } catch (IOException e) {
              System.err.printf("An error occurred while appending masses to %s: %s%n", ionQuantMassPath, e.getMessage());
@@ -404,86 +404,63 @@ public class PSM_File {
     }
 
     /**
-     * Appends masses from a source file to a target file, ensuring no duplicate masses are added.
-     * Masses are compared after rounding to a fixed precision (e.g., 4 decimal places scaled by 10000)
-     * to handle potential floating-point inaccuracies.
-     * If the target file doesn't exist, the source file is copied to the target location.
+     * Appends unique masses from a given list to a target file, ensuring no duplicate masses are added.
+     * Existing masses in the target file are compared using a scaled integer representation (e.g., multiplied by 10,000)
+     * to account for floating-point precision issues. This allows matching masses up to a fixed decimal precision.
+     *
+     * If the target file does not exist, a new file is created and all valid, unique masses are written to it.
      *
      * @param targetFilePath Path to the file to append masses to (e.g., "modmasses_ionquant.txt").
-     * @param sourceFilePath Path to the file containing masses to append (e.g., "MBG_masses_list.txt").
-     * @throws IOException If an error occurs during file reading or writing (except for file-not-found handled internally).
+     * @param massesToWrite List of masses to be appended if not already present in the target file.
+     * @throws IOException If an error occurs during file reading or writing.
      */
-    private static void appendUniqueMasses(String targetFilePath, String sourceFilePath) throws IOException {
+
+    private static void appendUniqueMasses(String targetFilePath, List<Double> massesToWrite) throws IOException {
         File targetFile = new File(targetFilePath);
-        File sourceFile = new File(sourceFilePath);
 
-        // --- Handle cases where files might not exist ---
-        if (!sourceFile.exists()) {
-             System.out.printf("Warning: Source file %s does not exist. Cannot append masses.%n", sourceFilePath);
-             return; // Nothing to append from
-        }
+        // --- Create target file if it does not exist ---
         if (!targetFile.exists()) {
-             // If target doesn't exist, just copy the source file to the target path
-             Files.copy(sourceFile.toPath(), targetFile.toPath());
-             System.out.printf("Target file %s did not exist. Copied content from %s.%n", targetFilePath, sourceFilePath);
-            return; // Appending is done via copy
+            System.out.printf("Target file %s does not exist. Creating a new file.%n", targetFilePath);
+            targetFile.createNewFile(); // Empty file created
         }
 
-        // --- Append unique masses if both files exist ---
+        // --- Prepare to detect duplicates in the target file ---
         Set<Long> existingMassesScaled = new HashSet<>();
-        // Scale factor for comparing masses (e.g., 10000 for 4 decimal places)
-        final long scaleFactor = 10000;
+        final long scaleFactor = 10000; // e.g., for 4 decimal places
 
-        // 1. Read all masses currently in the target file into a Set for fast duplicate checking.
+        // 1. Read existing masses from the target file
         System.out.printf("Reading existing masses from target file: %s%n", targetFilePath);
         try (BufferedReader targetReader = new BufferedReader(new FileReader(targetFile))) {
             String line;
             while ((line = targetReader.readLine()) != null) {
                 try {
-                    // Trim, parse, scale, and round the mass before adding to the set
                     double mass = Double.parseDouble(line.trim());
                     long scaledMass = Math.round(mass * scaleFactor);
                     existingMassesScaled.add(scaledMass);
                 } catch (NumberFormatException e) {
-                    // Ignore lines in the target file that are not valid numbers
-                    // System.out.printf("Warning: Skipping non-numeric line in target file %s: '%s'%n", targetFilePath, line);
+                    // Skip invalid lines
                 }
             }
         }
         System.out.printf("Found %d unique existing masses (scaled by %d) in target file.%n", existingMassesScaled.size(), scaleFactor);
 
-
-        // 2. Read the source file and append masses to the target file only if they are not already present.
+        // 2. Append only new, unique masses from the list
         int appendedCount = 0;
-        System.out.printf("Reading source file %s and appending unique masses...%n", sourceFilePath);
-        // Use try-with-resources for both reader and writer (in append mode)
-        try (BufferedReader sourceReader = new BufferedReader(new FileReader(sourceFile));
-             BufferedWriter targetWriter = new BufferedWriter(new FileWriter(targetFile, true))) { // true for append mode
-
-            String line;
-            while ((line = sourceReader.readLine()) != null) {
-                 try {
-                    String trimmedLine = line.trim();
-                    if (trimmedLine.isEmpty()) continue; // Skip empty lines
-
-                    double mass = Double.parseDouble(trimmedLine);
-                    long scaledMass = Math.round(mass * scaleFactor);
-
-                    // Check if the scaled mass is already in the set of existing masses.
-                    // Set.add() returns true if the element was added (i.e., it was not already present).
-                    if (existingMassesScaled.add(scaledMass)) {
-                        // If the mass is new, write the original trimmed line to the target file
-                        targetWriter.write(trimmedLine + "\n");
-                        appendedCount++;
-                    }
-                 } catch (NumberFormatException e) {
-                     // Ignore lines in the source file that are not valid numbers
-                     // System.out.printf("Warning: Skipping non-numeric line in source file %s: '%s'%n", sourceFilePath, line);
-                 }
+        System.out.println("Appending unique masses from provided list...");
+        try (BufferedWriter targetWriter = new BufferedWriter(new FileWriter(targetFile, true))) { // append mode
+            for (Double mass : massesToWrite) {
+                if (mass == null || Double.isNaN(mass) || Double.isInfinite(mass)) continue; // skip invalid values
+                long scaledMass = Math.round(mass * scaleFactor);
+                if (existingMassesScaled.add(scaledMass)) {
+                    targetWriter.write(mass.toString());
+                    targetWriter.newLine();
+                    appendedCount++;
+                }
             }
-        } // Readers and writers are automatically closed here
-         System.out.printf("Appended %d unique masses from %s to %s.%n", appendedCount, sourceFilePath, targetFilePath);
+        }
+        System.out.printf("Appended %d unique masses to %s.%n", appendedCount, targetFilePath);
     }
+
 
 
     /**

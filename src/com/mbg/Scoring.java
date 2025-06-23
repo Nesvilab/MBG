@@ -57,9 +57,14 @@ public class Scoring {
                                                         targetData.size(), decoyData.size());
 
         // Check for singularity and regularize if necessary
-        if (new LUDecomposition(pooledCov).getDeterminant() == 0) {
+        double det = new LUDecomposition(pooledCov).getDeterminant();
+        if (Double.isNaN(det) || det == 0) {
+            System.out.println("Warning: Pooled covariance matrix is singular or invalid. Regularizing...");
             pooledCov = regularizeCovarianceMatrix(pooledCov, 0.001);
         }
+//        if (new LUDecomposition(pooledCov).getDeterminant() == 0) {
+//            pooledCov = regularizeCovarianceMatrix(pooledCov, 0.001);
+//        }
         
         // Invert the covariance matrix
         LUDecomposition lu = new LUDecomposition(pooledCov);

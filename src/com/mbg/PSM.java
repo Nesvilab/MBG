@@ -1,6 +1,7 @@
 package com.mbg;
 
 import edu.umich.andykong.ptmshepherd.core.Spectrum;
+import ionquant.api.Entry;
 import umich.ms.glyco.Glycan;
 import umich.ms.glyco.GlycanParser;
 import umich.ms.glyco.GlycanResidue;
@@ -323,7 +324,7 @@ public class PSM implements Comparable<PSM>{
         rtDiff = Math.abs((float) (peakMatcher.quantifiedEntry.apexRt - newRT));
         imDiff = Math.abs((float) (peakMatcher.quantifiedEntry.apexIm - newIM));
         // get average mass error in ppm for scoring
-        double c_avePPM = (double) (Math.abs(peakMatcher.quantifiedEntry.ppm0) + Math.abs(peakMatcher.quantifiedEntry.ppm1) + Math.abs(peakMatcher.quantifiedEntry.ppm2)) / 3;
+        double c_avePPM = getAvePPM(peakMatcher.quantifiedEntry);
 
         // todo update spectra information if ms2 candidates found
         int shiftFrequency = rtAdjuster.getShiftFrequency(existingPSM.glycan, newGlycan);
@@ -392,6 +393,28 @@ public class PSM implements Comparable<PSM>{
             }
         }
         return addedPSMs;
+    }
+
+    private static double getAvePPM(Entry quantifiedEntry) {
+        double avePPM = 0;
+        int nMatchedIsotope = 0;
+        if (!Double.isNaN(quantifiedEntry.ppm0)) {
+            avePPM += Math.abs(quantifiedEntry.ppm0);
+            nMatchedIsotope += 1;
+        }
+        if (!Double.isNaN(quantifiedEntry.ppm1)) {
+            avePPM += Math.abs(quantifiedEntry.ppm1);
+            nMatchedIsotope += 1;
+        }
+        if (!Double.isNaN(quantifiedEntry.ppm2)) {
+            avePPM += Math.abs(quantifiedEntry.ppm2);
+            nMatchedIsotope += 1;
+        }
+        if (nMatchedIsotope == 0) {
+            return 0;
+        } else {
+            return avePPM / nMatchedIsotope;
+        }
     }
 
     static Map<String, Map<String, Float>> glycanMassShift = new HashMap<>();

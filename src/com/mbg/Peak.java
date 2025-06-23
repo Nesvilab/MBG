@@ -71,7 +71,7 @@ public final class Peak {
         Entry isotopePlus1 = api.quantXIC((float) (mz + 1.002), rt, im, charge, cv);
         Entry isotopePlus2 = api.quantXIC((float) (mz + 2.004), rt, im, charge, cv);
         
-        if (isotopeMinus1 == null) {
+        if (isotopeMinus1 == null || isotopeMinus1.intensity < 1) {
             // No M-1 peak detected, use regular quantification
             quantifiedEntry = api.quantXIC123(mz, rt, im, charge, cv);
         }
@@ -137,11 +137,12 @@ public final class Peak {
     }
 
     public static void main(String[] args) {
-        IonQuantAPI api = new IonQuantAPI("C:\\Users\\jishen\\Downloads\\cwq_mix2-1_726.raw", 11, 10, 0.4f, 0.05f, 2, 3, true);
+        IonQuantAPI api = new IonQuantAPI("Z:\\dpolasky\\data\\glyco\\pGlyco2\\yeast_PXD005565\\cwq_mix2-1_726.mzML", 11, 10, 0.4f, 0.05f, 2, 3, true);
 //        IonQuantAPI api = new IonQuantAPI("Z:\\dpolasky\\data\\glyco\\pGlyco2\\brain_PXD005411\\MouseBrain-Z-T-1.mzML", 11, 10, 0.4f, 0.05f, 2, 3, true);
 
         api.buildIndex();
-        Entry quantifiedEntry123 = api.quantXIC123(410.7354f, 1636.7035f / 60, 0, 2, 0);
+        Entry quantifiedEntry123 = api.quantXIC123(971.1565f, 129.3765f, 0, 4, 0);
+        System.out.println("1");
 //        Entry quantifiedEntry = api.quantXIC(410.7354f, 1636.7035f / 60, 0, 2, 0);
 //        String directoryPath = "Z:\\jishen\\MBG\\data";
 //        String filePrefix = "cwq_mix2-1_726";
