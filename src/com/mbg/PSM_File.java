@@ -5,6 +5,8 @@ import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.util.*;
 
+import static java.nio.file.Files.createTempFile;
+
 /**
  * Represents and manages a Peptide Spectrum Match (PSM) file (typically .psm.tsv).
  * Responsibilities include:
@@ -361,6 +363,7 @@ public class PSM_File {
              // 4. Ensure the temporary file is deleted if it still exists (e.g., if the move failed)
              try {
                  Files.deleteIfExists(tempFile.toPath());
+                 Files.deleteIfExists(backupFile.toPath());
              } catch (IOException ignored) {
                  // Ignore errors during cleanup deletion
              }
