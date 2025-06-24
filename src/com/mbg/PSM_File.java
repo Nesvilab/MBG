@@ -459,7 +459,7 @@ public class PSM_File {
                 if (mass == null || Double.isNaN(mass) || Double.isInfinite(mass)) continue; // skip invalid values
                 long scaledMass = Math.round(mass * scaleFactor);
                 if (existingMassesScaled.add(scaledMass)) {
-                    targetWriter.write(mass.toString());
+                    targetWriter.write(String.format("%.4f", mass));
                     targetWriter.newLine();
                     appendedCount++;
                 }
