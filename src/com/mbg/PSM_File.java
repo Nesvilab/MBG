@@ -63,7 +63,7 @@ public class PSM_File {
         columnNames.put(PSMattr.charge, "Charge"); // Precursor charge
         // MBG specific columns start here ("Spectrum File" and "Intensity" will be modified in MBG PSMs)
         columnNames.put(PSMattr.has_ms2_spec, "Has MS2 Spectrum?"); // Did the original PSM have an MS2?
-        columnNames.put(PSMattr.has_Y1, "Has Y1 ion?"); // Was Y1 ion observed in MS2?
+        columnNames.put(PSMattr.has_Y1, "Y1 ion intensity"); // Was Y1 ion observed in MS2?
         columnNames.put(PSMattr.MBG_score, "MBG Score"); // Score from MBG LDA model
         columnNames.put(PSMattr.mass_error, "Mass error(ppm)"); // Mass error from IonQuant matching
         columnNames.put(PSMattr.KL, "KL divergence"); // KL divergence score from IonQuant
