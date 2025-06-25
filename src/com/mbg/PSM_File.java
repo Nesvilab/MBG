@@ -38,6 +38,7 @@ public class PSM_File {
     public static int insertIndex; // Static might be problematic if multiple PSM_Files are handled concurrently. TODO: Review if static is appropriate here.
     // holds the maximum rank of spectra in the PSM file, used to determine the rank for adding MBG PSMs
     public final HashMap<Integer, Integer> maxRankOfSpectra;
+    private final Params params;
 
     // Static initializer block to populate the map of standard column names.
     // This map defines the expected header string for each PSM attribute (enum).
@@ -126,6 +127,7 @@ public class PSM_File {
      */
     public PSM_File(Params params) throws Exception {
         BufferedReader psmReader = new BufferedReader(new FileReader(params.psmPath.toFile()), 1 << 22); // Use a large buffer
+        this.params = params;
         this.file = params.psmPath.toFile(); // Store the File object
         this.headers = psmReader.readLine().split("\t"); // Read and split the header line
         this.PSMcolumns = initPSMcolumns(); // Map header names to column indices
@@ -222,21 +224,26 @@ public class PSM_File {
                 // Only issue a warning if a non-MBG standard column is missing.
                 // MBG columns might be added later, so don't warn about them yet.
                 if (!isMbgSpecificColumn(attribute)) {
-                    // Example: Warn if "Peptide" or "Retention" is missing.
-                    // System.out.printf("Warning: Expected standard column '%s' not found in PSM file header.%n", expectedHeader);
-                    // Depending on strictness, could potentially throw an error for critical missing columns.
+                    if (attribute == PSMattr.IM && params.noPASEF) {
+                        continue;
+                    }
+                    System.err.println("Warning: Could not find column '" + expectedHeader + "' in PSM file. " +
+                            "Processing may fail. Please check the formatting of the PSM file.");
                 }
-                // If an MBG column is missing here, it's expected if 'addCols' > 0.
-                // If 'addCols' == 0, it means we expected MBG columns but didn't find one, which might indicate an issue.
-                // However, the check in the constructor handles the primary logic of adding them if needed.
             }
         }
-        // TODO: Add error checking here? E.g., ensure critical columns like 'Peptide', 'Spectrum File' are present.
         if (!psmColumnsMap.containsKey(PSMattr.peptide)) {
-             System.err.println("CRITICAL WARNING: 'Peptide' column not found in PSM file. Processing may fail.");
+            System.err.println("WARNING: 'Peptide' column not found in PSM file. Processing may fail.");
         }
-         if (!psmColumnsMap.containsKey(PSMattr.spectrum_file)) {
-             System.err.println("CRITICAL WARNING: 'Spectrum File' column not found in PSM file. Grouping by raw file will fail.");
+        if (!psmColumnsMap.containsKey(PSMattr.spectrum_file)) {
+            System.err.println("WARNING: 'Spectrum File' column not found in PSM file. Grouping by raw file will fail.");
+        }
+        if (!params.noPASEF) {
+            // make sure IM column is present if data is set to IM type to avoid a crash later
+            if (!psmColumnsMap.containsKey(PSMattr.IM)) {
+                MBG.exit("Error: 'Ion Mobility' column not found in PSM file but IM-based processing was requested." +
+                        " Please check that the input data type (MS or IM-MS) matches the data", 1);
+            }
         }
         return psmColumnsMap;
     }

@@ -92,4 +92,16 @@ public class MBG {
                 " --clean: alternate mode that removes inferred glycans from the PSM table if no intensity is found\n" +
                 "      --psm: psm table to clean (string)\n");
     }
+
+    /**
+     * Exits the application with a message and an exit code. Exiting here ensures the exit/error message is printed
+     * last for better visibility.
+     *
+     * @param message The message to print before exiting.
+     * @param exitCode The exit code to return to the operating system.
+     */
+    public static void exit(String message, int exitCode) {
+        out.println(message);
+        System.exit(exitCode);
+    }
 }
