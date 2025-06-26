@@ -71,10 +71,7 @@ public final class Peak {
         Entry isotopePlus1 = api.quantXIC((float) (mz + 1.002), rt, im, charge, cv);
         Entry isotopePlus2 = api.quantXIC((float) (mz + 2.004), rt, im, charge, cv);
         
-        if (isotopeMinus1 == null || isotopeMinus1.intensity < 1) {
-            // No M-1 peak detected, use regular quantification
-            quantifiedEntry = api.quantXIC123(mz, rt, im, charge, cv);
-        }
+        quantifiedEntry = api.quantXIC123(mz, rt, im, charge, cv);
         
         // Calculate average mass if isotope pattern is complete
         if (monoisotopicPeak == null || isotopePlus1 == null || isotopePlus2 == null) {
