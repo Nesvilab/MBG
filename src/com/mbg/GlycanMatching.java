@@ -121,7 +121,7 @@ public class GlycanMatching {
             GlycoSite site = siteEntry.getValue();
             if (site.psms.size() >= params.minPSMs && site.observedGlycans.size() >= params.minGlycans) {
                 for (PSM basePSM : site.basePSMs) {
-                    getInferredPSMs(basePSM, params, site, rtAdjuster, inferredPSMs, params.expandDB);
+                    getInferredPSMs(basePSM, params, site, rtAdjuster, inferredPSMs, params.expandDB, params.maxSkips);
                 }
             }
         }
@@ -190,13 +190,13 @@ public class GlycanMatching {
      * @param steps Number of remaining expansion steps
      */
     private void getInferredPSMs(PSM basePSM, Params params, GlycoSite site, RT_adjuster rtAdjuster, 
-                               ArrayList<PSM> newPSMs, Integer steps) {
+                               ArrayList<PSM> newPSMs, Integer steps, Integer remainMissingSteps) {
         if (steps < 0) return;
 
         int rankCounter = basePSM.maxRank; // add rank to spectrum file to avoid bug in IonQuant and DDA+ (if >1 PSM per spectrum)
         HashMap<Glycan, String> potentialGlycans = PSM.getDummyGlycansV2(basePSM, params.toAddGlycans);
 
-        for (Map.Entry<Glycan, String> glycanEntry: potentialGlycans.entrySet()) {
+        for (Map.Entry<Glycan, String> glycanEntry : potentialGlycans.entrySet()) {
             Glycan newGlycan = glycanEntry.getKey();
             String addedResidue = glycanEntry.getValue();
 
@@ -214,15 +214,18 @@ public class GlycanMatching {
             if (isWithinDistance(site.glycanMasses, newGlycan.mass, 1.5)) {
                 continue;
             }
+            if (Objects.equals(basePSM.splits[0], "cwq_mix2-1_726.27798.27798.4") && newGlycan.name.equals("HexNAc(3)Hex(10)")) {
+                System.out.println(1);
+            }
 
             // Generate new PSMs
-            List<PSM> addedPSMs = PSM.makeDummyPSM(basePSM, newGlycan, psmFile.PSMcolumns, params, 
-                                                  rankCounter, rtAdjuster, false, basePSM.glycan.toString(), 
-                                                  addedResidue, isNewGlycan);
-            
+            List<PSM> addedPSMs = PSM.makeDummyPSM(basePSM, newGlycan, psmFile.PSMcolumns, params,
+                    rankCounter, rtAdjuster, false, basePSM.glycan.toString(),
+                    addedResidue, isNewGlycan);
+
             // Generate decoy PSMs
-            PSM.makeDummyPSM(basePSM, newGlycan, psmFile.PSMcolumns, params, rankCounter, rtAdjuster, 
-                           true, basePSM.glycan.toString(), addedResidue, isNewGlycan);
+            PSM.makeDummyPSM(basePSM, newGlycan, psmFile.PSMcolumns, params, rankCounter, rtAdjuster,
+                    true, basePSM.glycan.toString(), addedResidue, isNewGlycan);
 
             newPSMs.addAll(addedPSMs);
 
@@ -235,8 +238,13 @@ public class GlycanMatching {
             }
 
             // Recursively process if within expansion limit and match found
-            if (steps > 0 && addedPSMs.get(0).intensity > 0.01) {
-                getInferredPSMs(addedPSMs.get(0), params, site, rtAdjuster, newPSMs, steps - 1);
+            if (steps > 0) {
+                if (addedPSMs.get(0).intensity < 0.001) {
+                    if (remainMissingSteps > 0) {
+                        getInferredPSMs(addedPSMs.get(0), params, site, rtAdjuster, newPSMs, steps - 1, remainMissingSteps - 1);
+                    }
+                }
+                getInferredPSMs(addedPSMs.get(0), params, site, rtAdjuster, newPSMs, steps - 1, remainMissingSteps);
             }
         }
     }

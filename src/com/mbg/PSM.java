@@ -115,7 +115,7 @@ public class PSM implements Comparable<PSM>{
                 glycoQval = 1;
             }
         }
-        if (glycoQval > params.maxGlycanQval) {
+        if (glycoQval > params.maxGlycanQval && addCols > 0) {
             this.glycan = null;
             return;
         }
@@ -300,7 +300,7 @@ public class PSM implements Comparable<PSM>{
         double newRT = rtAdjuster.getShiftedRT(existingPSM.glycan, newGlycan, existingPSM.apexRT);  // in minute
         double newIM = rtAdjuster.getShiftedIM(existingPSM.glycan, newGlycan, existingPSM.apexIM);
         double newMZ = Double.parseDouble(newSplits[psmCols.get(PSM_File.PSMattr.Calculated_MZ)]);
-        newSplits[psmCols.get(PSM_File.PSMattr.RT)] = String.format("%.3f", newRT);
+        newSplits[psmCols.get(PSM_File.PSMattr.RT)] = String.format("%.3f", newRT * 60);
         if (!params.noPASEF) {
             newSplits[psmCols.get(PSM_File.PSMattr.IM)] = String.format("%.3f", newIM);
         }
@@ -353,8 +353,6 @@ public class PSM implements Comparable<PSM>{
             for (int i = 0; i < ms2Candidates.size(); i++) {
                 newSplits[psmCols.get(PSM_File.PSMattr.spectrum)] = String.join(".", new String[]{existingPSM.rawfile, String.format("%0" + MSMS.maxScanNumLength + "d", ms2Candidates.get(i).scanNum),
                         String.format("%0" + MSMS.maxScanNumLength + "d", ms2Candidates.get(i).scanNum), String.valueOf(ms2Candidates.get(i).charge)});
-                // update rt,im with real MS2 rt (in consistent with the quant result of subsequent IonQuant result)
-                newSplits[psmCols.get(PSM_File.PSMattr.RT)] = String.format("%.3f", newRT*60);
                 // generate new PSM
                 PSM addedPSM = new PSM(String.join("\t", newSplits), psmCols, params, true, true, yIntensities.get(i), parentGlycan, addedResidual, 0);
                 addedPSM.updateRank(existingPSM.rank + rankCounter, psmCols);
@@ -370,8 +368,6 @@ public class PSM implements Comparable<PSM>{
             }
 
         } else {
-            // update rt,im to find apex rt
-            newSplits[psmCols.get(PSM_File.PSMattr.RT)] = String.format("%.3f", newRT*60);
             // generate new PSM
             PSM addedPSM = new PSM(String.join("\t", newSplits), psmCols, params, true, false, 0, parentGlycan, addedResidual,  0);
             addedPSM.updateRank(existingPSM.rank + rankCounter, psmCols);

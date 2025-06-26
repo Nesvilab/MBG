@@ -69,6 +69,7 @@ public class Params {
     /** Level of database expansion for dummy glycopeptides (0: none, 1: +/- one residue, 2: +/- combinations?). Default: 0. (--expanddb) */
     public int expandDB = 0; // TODO: Clarify exact meaning of levels 1 and 2
     /** Minimum isotopes required for a feature in IonQuant. Default: 2. (--minisotopes) */
+    public int maxSkips = 2;
     public int minIsotopesIonQuant = 2;
     /** Minimum scans required for a feature in IonQuant. Default: 3. (--minscans) */
     public int minScansIonQuant = 3;
@@ -185,6 +186,14 @@ public class Params {
                         expandDB = Integer.parseInt(value);
                     } catch (NumberFormatException numberFormatException) { // More specific catch
                         out.printf("Error parsing --expanddb argument '%s': not a valid integer%n", value);
+                        System.exit(1);
+                    }
+                    break;
+                case "--maxskips": // Database expansion level
+                    try {
+                        maxSkips = Integer.parseInt(value);
+                    } catch (NumberFormatException numberFormatException) { // More specific catch
+                        out.printf("Error parsing --maxskips argument '%s': not a valid integer%n", value);
                         System.exit(1);
                     }
                     break;
