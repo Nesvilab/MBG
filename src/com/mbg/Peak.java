@@ -16,6 +16,8 @@ import java.util.Objects;
  * 4. Find MS data files with prioritized extensions
  */
 public final class Peak {
+    private static final double ISOTOPE_MASS_DIFF = 1.00235;    // Mass difference between isotopes (averagine)
+
     /** IonQuant API instance for MS1 feature matching */
     public static IonQuantAPI api;
     
@@ -66,10 +68,10 @@ public final class Peak {
         quantifiedEntry = null;
         
         // Check for M-1 isotope to filter out potential interferences
-        Entry isotopeMinus1 = api.quantXIC((float) (mz - 1.002), rt, im, charge, cv);
+        Entry isotopeMinus1 = api.quantXIC((float) (mz - ISOTOPE_MASS_DIFF), rt, im, charge, cv);
         Entry monoisotopicPeak = api.quantXIC(mz, rt, im, charge, cv);
-        Entry isotopePlus1 = api.quantXIC((float) (mz + 1.002), rt, im, charge, cv);
-        Entry isotopePlus2 = api.quantXIC((float) (mz + 2.004), rt, im, charge, cv);
+        Entry isotopePlus1 = api.quantXIC((float) (mz + ISOTOPE_MASS_DIFF), rt, im, charge, cv);
+        Entry isotopePlus2 = api.quantXIC((float) (mz + 2 * ISOTOPE_MASS_DIFF), rt, im, charge, cv);
         
         quantifiedEntry = api.quantXIC123(mz, rt, im, charge, cv);
         
@@ -95,8 +97,8 @@ public final class Peak {
         // Calculate weighted average mass
         averageMass = (float) (
             (monoisotopicPeak.intensity * baseMz) + 
-            (isotopePlus1.intensity * (baseMz + 1.002)) + 
-            (isotopePlus2.intensity * (baseMz + 2.004))
+            (isotopePlus1.intensity * (baseMz + ISOTOPE_MASS_DIFF)) +
+            (isotopePlus2.intensity * (baseMz + 2 * ISOTOPE_MASS_DIFF))
         ) / intensitySum;
     }
 
