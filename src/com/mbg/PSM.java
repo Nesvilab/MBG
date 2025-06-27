@@ -253,7 +253,7 @@ public class PSM implements Comparable<PSM>{
         System.arraycopy(existingPSM.splits, 0, newSplits, 0, newSplits.length);
 
         // replace values with new glycan
-        newSplits[psmCols.get(PSM_File.PSMattr.glycan)] = newGlycan.toString();
+        newSplits[psmCols.get(PSM_File.PSMattr.glycan)] = newGlycan.toPSMString();
         // assigned mods
         String oldAssignedMods = existingPSM.splits[psmCols.get(PSM_File.PSMattr.assigned_mods)];
         ArrayList<String> newAssignedMods = new ArrayList<>();
