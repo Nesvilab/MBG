@@ -241,10 +241,13 @@ public class GlycanMatching {
             if (steps > 0) {
                 if (addedPSMs.get(0).intensity < 0.001) {
                     if (remainMissingSteps > 0) {
+                        // continue inferring even if missing iff remainMissingSteps > 0
                         getInferredPSMs(addedPSMs.get(0), params, site, rtAdjuster, newPSMs, steps - 1, remainMissingSteps - 1);
                     }
+                } else {
+                    // continue inferring if a peak is found
+                    getInferredPSMs(addedPSMs.get(0), params, site, rtAdjuster, newPSMs, steps - 1, remainMissingSteps);
                 }
-                getInferredPSMs(addedPSMs.get(0), params, site, rtAdjuster, newPSMs, steps - 1, remainMissingSteps);
             }
         }
     }
