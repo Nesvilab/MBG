@@ -539,7 +539,13 @@ public class PSM implements Comparable<PSM>{
             addedResiduals.add(cGlycan.toString());
             // loss, only add to addedResiduals when eligible
             if (saccharidesAdder(psm.glycan, cGlycan, dummy_glycans, false)) {
-                addedResiduals.add(cGlycan.toString());
+                // make the composition counts negative to get the loss residual
+                TreeMap<GlycanResidue, Integer> lossComposition = new TreeMap<>(cGlycan.composition);
+                for (Map.Entry<GlycanResidue, Integer> entry: lossComposition.entrySet()) {
+                    entry.setValue(entry.getValue() * -1);
+                }
+                Glycan lossResidualGlycan = new Glycan(lossComposition);
+                addedResiduals.add(lossResidualGlycan.toString());
             }
         }
         HashMap<Glycan, String> glycanMap = new HashMap<>();
