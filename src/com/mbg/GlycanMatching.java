@@ -214,9 +214,6 @@ public class GlycanMatching {
             if (isWithinDistance(site.glycanMasses, newGlycan.mass, 1.5)) {
                 continue;
             }
-            if (Objects.equals(basePSM.splits[0], "cwq_mix2-1_726.27798.27798.4") && newGlycan.name.equals("HexNAc(3)Hex(10)")) {
-                System.out.println(1);
-            }
 
             // Generate new PSMs
             List<PSM> addedPSMs = PSM.makeDummyPSM(basePSM, newGlycan, psmFile.PSMcolumns, params,

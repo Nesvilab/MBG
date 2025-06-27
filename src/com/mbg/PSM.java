@@ -253,7 +253,7 @@ public class PSM implements Comparable<PSM>{
         System.arraycopy(existingPSM.splits, 0, newSplits, 0, newSplits.length);
 
         // replace values with new glycan
-        newSplits[psmCols.get(PSM_File.PSMattr.glycan)] = newGlycan.toPSMString();
+        newSplits[psmCols.get(PSM_File.PSMattr.glycan)] = newGlycan.toString();
         // assigned mods
         String oldAssignedMods = existingPSM.splits[psmCols.get(PSM_File.PSMattr.assigned_mods)];
         ArrayList<String> newAssignedMods = new ArrayList<>();
@@ -315,7 +315,11 @@ public class PSM implements Comparable<PSM>{
         peakMatcher.matchMS1((float) newMZ, (float) newRT, (float) newIM, existingPSM.charge, 0);
         if (peakMatcher.quantifiedEntry == null) {
             newSplits[psmCols.get(PSM_File.PSMattr.intensity)] = String.valueOf(0);
-            addedPSMs.add(new PSM(String.join("\t", newSplits), psmCols, params, true, false, 0, parentGlycan, addedResidual, 0));
+            PSM addedPSM = new PSM(String.join("\t", newSplits), psmCols, params, true, false, 0, parentGlycan, addedResidual, 0);
+            // update apex RT IM for iteration
+            addedPSM.apexRT = newRT;
+            addedPSM.apexIM = newIM;
+            addedPSMs.add(addedPSM);
             return addedPSMs;
         }
         // to find MS2
@@ -364,6 +368,9 @@ public class PSM implements Comparable<PSM>{
                 addedPSM.featureIntensity = yIntensities.get(i);  // use real intensity not average all MS2 hits
                 // update MBG related columns (some columns already updated in generating new psm)
                 addedPSM.updateSplits(psmCols, params.noPASEF, if_new_glycan);
+                // update apex RT IM for iteration
+                addedPSM.apexRT = newRT;
+                addedPSM.apexIM = newIM;
                 addedPSMs.add(addedPSM);
             }
 
@@ -379,6 +386,9 @@ public class PSM implements Comparable<PSM>{
             addedPSM.featureIntensity = featureIntensity;
             // update MBG related columns (some columns already updated in generating new psm)
             addedPSM.updateSplits(psmCols, params.noPASEF, if_new_glycan);
+            // update apex RT IM for iteration
+            addedPSM.apexRT = newRT;
+            addedPSM.apexIM = newIM;
             addedPSMs.add(addedPSM);
         }
         // add intensity, rtDiff, imDiff, glycan shift frequency to decoys or targets for scoring

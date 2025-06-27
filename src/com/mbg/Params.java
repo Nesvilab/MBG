@@ -69,7 +69,7 @@ public class Params {
     /** Maximum difference (rounds of inference) between parent and inferred glycans. Continue rounds of inference on found peaks up to this many times */
     public int expandDB = 0;
     /** Number of missing glycoforms to allow while expanding database. I.e., skips=1 allows one round of continued inference on a missed peak */
-    public int maxSkips = 0;
+    public int maxSkips = 1;
     /** Minimum isotopes required for a feature in IonQuant. Default: 2. (--minisotopes) */
     public int minIsotopesIonQuant = 2;
     /** Minimum scans required for a feature in IonQuant. Default: 3. (--minscans) */
