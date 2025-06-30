@@ -185,7 +185,10 @@ public class Scoring {
         // Calculate FDRs at each point
         List<Double> fdrs = new ArrayList<>();
         for (int i = 0; i < decoyIndexes.size(); i++) {
-            fdrs.add((double) (i + 1) / (decoyIndexes.get(i) + 1));
+            double targetCount = decoyIndexes.get(i) - i;   // Number of total PSMs before this decoy minus number of decoys
+            double decoyCount = i + 1;      // Number of decoys up to this point
+            double fdr = decoyCount / targetCount;
+            fdrs.add(fdr);
         }
         
         // Find the last index where FDR is below threshold
