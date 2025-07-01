@@ -1,6 +1,6 @@
 package com.mbg;
 
-import edu.umich.andykong.ptmshepherd.core.Spectrum;
+import com.mbg.msreader.Spectrum;
 import ionquant.api.Entry;
 import umich.ms.glyco.Glycan;
 import umich.ms.glyco.GlycanParser;

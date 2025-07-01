@@ -1,8 +1,8 @@
 package com.mbg;
 
 import com.google.common.base.Joiner;
-import edu.umich.andykong.ptmshepherd.core.MXMLReader;
-import edu.umich.andykong.ptmshepherd.core.Spectrum;
+import com.mbg.msreader.MXMLReader;
+import com.mbg.msreader.Spectrum;
 import umich.ms.fileio.filetypes.bruker.FrameInfo;
 import umich.ms.fileio.filetypes.mzbin.MZBINFile;
 
