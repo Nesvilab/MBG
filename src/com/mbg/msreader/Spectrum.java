@@ -18,6 +18,8 @@ public class Spectrum {
     public double rt;
     double monoMass;
     double targetMass;
+    public double mzRangeStart;
+    public double mzRangeEnd;
     public float[] peakMZ;
     public float[] peakInt;
     double norm;
@@ -61,6 +63,8 @@ public class Spectrum {
         this.peakInt = s.peakInt;
         this.basePeakInt = this.findBasePeakInt();
         this.norm = -1.0;
+        this.mzRangeEnd = 0;
+        this.mzRangeStart = 0;
     }
 
 

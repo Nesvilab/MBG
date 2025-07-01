@@ -159,6 +159,10 @@ public class MXMLReader {
                 ns.monoMass = scan.getPrecursor().getMzTargetMono();
             if (scan.getPrecursor().getMzTarget() != null)
                 ns.targetMass = scan.getPrecursor().getMzTarget();
+            if (scan.getPrecursor().getMzRangeStart() != null & scan.getPrecursor().getMzRangeEnd() != null) {
+                ns.mzRangeStart = scan.getPrecursor().getMzRangeStart();
+                ns.mzRangeEnd = scan.getPrecursor().getMzRangeEnd();
+            }
             if (scan.getMsLevel() != null)
                 ns.msLevel = scan.getMsLevel();
             for(int i = 0; i < clen; i++) {

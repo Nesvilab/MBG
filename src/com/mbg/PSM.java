@@ -325,9 +325,9 @@ public class PSM implements Comparable<PSM>{
         // to find MS2
         List<Spectrum> ms2Candidates;
         if (params.noPASEF) {
-            ms2Candidates = MSMS.spectraSearcher(peakMatcher.quantifiedEntry.rtStart, peakMatcher.quantifiedEntry.rtEnd, (float) (newMZ-1), (float) (newMZ+1));
+            ms2Candidates = MSMS.spectraSearcher(peakMatcher.quantifiedEntry.rtStart, peakMatcher.quantifiedEntry.rtEnd, newMZ);
         } else {
-            ms2Candidates = MSMS.spectraSearcher(peakMatcher.quantifiedEntry.rtStart, peakMatcher.quantifiedEntry.rtEnd, (float) (newMZ-1), (float) (newMZ+1), peakMatcher.quantifiedEntry.imStart, peakMatcher.quantifiedEntry.imEnd);
+            ms2Candidates = MSMS.spectraSearcher(peakMatcher.quantifiedEntry.rtStart, peakMatcher.quantifiedEntry.rtEnd, newMZ, peakMatcher.quantifiedEntry.imStart, peakMatcher.quantifiedEntry.imEnd);
         }
         // update intensity
         newSplits[psmCols.get(PSM_File.PSMattr.intensity)] = String.valueOf(peakMatcher.quantifiedEntry.intensity);

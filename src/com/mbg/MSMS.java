@@ -36,6 +36,8 @@ public class MSMS {
     /** Maximum length of scan numbers for formatting */
     public static int maxScanNumLength;
 
+    public static boolean ifMzBin;
+
     /**
      * Creates a new MSMS instance for the specified run.
      * 
@@ -61,8 +63,18 @@ public class MSMS {
                 runName, basePath.getParent())
             );
         }
-        
+        getIfMzBin(filePath);
         msDataFile = new File(filePath);
+    }
+
+    public static void getIfMzBin(String path) {
+        ifMzBin = false;
+        int lastDot = path.lastIndexOf('.');
+        if (lastDot != -1 && lastDot != path.length() - 1) {
+            if (path.substring(lastDot + 1).equals("mzBIN")) {
+                ifMzBin = true;
+            }
+        }
     }
 
     /**
@@ -84,15 +96,21 @@ public class MSMS {
      * 
      * @param minRT Minimum retention time
      * @param maxRT Maximum retention time
-     * @param minMZ Minimum m/z
-     * @param maxMZ Maximum m/z
+     * @param tMZ target precursor m/z
      * @return List of spectra matching the criteria
      */
-    public static List<Spectrum> spectraSearcher(double minRT, double maxRT, float minMZ, float maxMZ) {
-        return Arrays.stream(mReader.specs)
-                .filter(spectrum -> spectrum.rt >= minRT && spectrum.rt <= maxRT)
-                .filter(spectrum -> spectrum.precursorMass >= minMZ && spectrum.precursorMass <= maxMZ)
-                .collect(Collectors.toList());
+    public static List<Spectrum> spectraSearcher(double minRT, double maxRT, double tMZ) {
+        if (ifMzBin) {
+            return Arrays.stream(mReader.specs)
+                    .filter(spectrum -> spectrum.rt >= minRT && spectrum.rt <= maxRT)
+                    .filter(spectrum -> spectrum.precursorMass >= (tMZ-1) && spectrum.precursorMass <= (tMZ+1))
+                    .collect(Collectors.toList());
+        } else {
+            return Arrays.stream(mReader.specs)
+                    .filter(spectrum -> spectrum.rt >= minRT && spectrum.rt <= maxRT)
+                    .filter(spectrum -> spectrum.mzRangeEnd >= tMZ && spectrum.mzRangeStart <= tMZ)
+                    .collect(Collectors.toList());
+        }
     }
 
     /**
@@ -100,14 +118,12 @@ public class MSMS {
      * 
      * @param minRT Minimum retention time
      * @param maxRT Maximum retention time
-     * @param minMZ Minimum m/z
-     * @param maxMZ Maximum m/z
+     * @param tMZ target precursor m/z
      * @param minIM Minimum ion mobility
      * @param maxIM Maximum ion mobility
      * @return List of spectra matching the criteria
      */
-    public static List<Spectrum> spectraSearcher(double minRT, double maxRT, float minMZ, float maxMZ, 
-                                                float minIM, float maxIM) {
+    public static List<Spectrum> spectraSearcher(double minRT, double maxRT, double tMZ, float minIM, float maxIM) {
         // First filter by ion mobility
         Set<Integer> qualifiedScanNumbers = MSMS.ms2IMs.entrySet().stream()
                 .filter(entry -> entry.getValue() >= minIM && entry.getValue() <= maxIM)
@@ -115,11 +131,19 @@ public class MSMS {
                 .collect(Collectors.toSet());
 
         // Then filter by RT, m/z, and scan numbers
-        return Arrays.stream(mReader.specs)
-                .filter(spectrum -> spectrum.rt >= minRT && spectrum.rt <= maxRT)
-                .filter(spectrum -> spectrum.precursorMass >= minMZ && spectrum.precursorMass <= maxMZ)
-                .filter(spectrum -> qualifiedScanNumbers.contains(spectrum.scanNum))
-                .collect(Collectors.toList());
+        if (ifMzBin) {
+            return Arrays.stream(mReader.specs)
+                    .filter(spectrum -> spectrum.rt >= minRT && spectrum.rt <= maxRT)
+                    .filter(spectrum -> spectrum.precursorMass >= (tMZ - 1) && spectrum.precursorMass <= (tMZ + 1))
+                    .filter(spectrum -> qualifiedScanNumbers.contains(spectrum.scanNum))
+                    .collect(Collectors.toList());
+        } else {
+            return Arrays.stream(mReader.specs)
+                    .filter(spectrum -> spectrum.rt >= minRT && spectrum.rt <= maxRT)
+                    .filter(spectrum -> spectrum.mzRangeEnd >= tMZ && spectrum.mzRangeStart <= tMZ)
+                    .filter(spectrum -> qualifiedScanNumbers.contains(spectrum.scanNum))
+                    .collect(Collectors.toList());
+        }
     }
 
     /**
