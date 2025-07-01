@@ -187,7 +187,7 @@ public class Scoring {
         for (int i = 0; i < decoyIndexes.size(); i++) {
             double targetCount = decoyIndexes.get(i) - i;   // Number of total PSMs before this decoy minus number of decoys
             double decoyCount = i + 1;      // Number of decoys up to this point
-            double fdr = decoyCount / targetCount;
+            double fdr = (decoyCount + 1) / targetCount;        // q = (d+1)/t recommended per 10.1021/acs.jproteome.6b00144
             fdrs.add(fdr);
         }
         
