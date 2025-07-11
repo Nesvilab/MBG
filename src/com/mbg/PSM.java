@@ -447,6 +447,7 @@ public class PSM implements Comparable<PSM>{
         splits[psmCols.get(PSM_File.PSMattr.hyperscore)] = String.valueOf(0);
         splits[psmCols.get(PSM_File.PSMattr.nextscore)] = String.valueOf(0);
         splits[psmCols.get(PSM_File.PSMattr.probability)] = String.valueOf(0);
+        splits[psmCols.get(PSM_File.PSMattr.glyco_q_val)] = String.valueOf(0);
         splits[psmCols.get(PSM_File.PSMattr.expectation)] = String.valueOf(1);
     }
 
