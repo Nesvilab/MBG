@@ -106,9 +106,15 @@ public class MSMS {
                     .filter(spectrum -> spectrum.precursorMass >= (tMZ-1) && spectrum.precursorMass <= (tMZ+1))
                     .collect(Collectors.toList());
         } else {
+//            return Arrays.stream(mReader.specs)
+//                    .filter(spectrum -> spectrum.rt >= minRT && spectrum.rt <= maxRT)
+//                    .filter(spectrum -> spectrum.mzRangeEnd >= tMZ && spectrum.mzRangeStart <= tMZ)
+//                    .collect(Collectors.toList());
+            // matched spectrum must within isolation window and 1 mz range
             return Arrays.stream(mReader.specs)
                     .filter(spectrum -> spectrum.rt >= minRT && spectrum.rt <= maxRT)
                     .filter(spectrum -> spectrum.mzRangeEnd >= tMZ && spectrum.mzRangeStart <= tMZ)
+                    .filter(spectrum -> spectrum.precursorMass >= (tMZ-1) && spectrum.precursorMass <= (tMZ+1))
                     .collect(Collectors.toList());
         }
     }
@@ -138,9 +144,11 @@ public class MSMS {
                     .filter(spectrum -> qualifiedScanNumbers.contains(spectrum.scanNum))
                     .collect(Collectors.toList());
         } else {
+            // matched spectrum must within isolation window and 1 mz range
             return Arrays.stream(mReader.specs)
                     .filter(spectrum -> spectrum.rt >= minRT && spectrum.rt <= maxRT)
                     .filter(spectrum -> spectrum.mzRangeEnd >= tMZ && spectrum.mzRangeStart <= tMZ)
+                    .filter(spectrum -> spectrum.precursorMass >= (tMZ-1) && spectrum.precursorMass <= (tMZ+1))
                     .filter(spectrum -> qualifiedScanNumbers.contains(spectrum.scanNum))
                     .collect(Collectors.toList());
         }
