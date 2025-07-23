@@ -173,6 +173,7 @@ public class GlycanMatching {
                     qualifiedPSMsTMT.add(p);
                 }
             }
+            System.out.printf("Filtered %d PSMs without MS2 hit, remained %d PSMs %n", qualifiedPSMs.size() - qualifiedPSMsTMT.size(), qualifiedPSMsTMT.size());
             return qualifiedPSMsTMT;
         }
 
