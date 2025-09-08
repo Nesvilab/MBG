@@ -100,22 +100,35 @@ public class MSMS {
      * @return List of spectra matching the criteria
      */
     public static List<Spectrum> spectraSearcher(double minRT, double maxRT, double tMZ) {
+        // Step 1: Get the initial list of spectra based on RT and mass/mz range
+        List<Spectrum> matchedSpectra;
         if (ifMzBin) {
-            return Arrays.stream(mReader.specs)
+            matchedSpectra = Arrays.stream(mReader.specs)
                     .filter(spectrum -> spectrum.rt >= minRT && spectrum.rt <= maxRT)
                     .filter(spectrum -> spectrum.precursorMass >= (tMZ-1) && spectrum.precursorMass <= (tMZ+1))
                     .collect(Collectors.toList());
         } else {
-//            return Arrays.stream(mReader.specs)
-//                    .filter(spectrum -> spectrum.rt >= minRT && spectrum.rt <= maxRT)
-//                    .filter(spectrum -> spectrum.mzRangeEnd >= tMZ && spectrum.mzRangeStart <= tMZ)
-//                    .collect(Collectors.toList());
-            // matched spectrum must within isolation window and 1 mz range
-            return Arrays.stream(mReader.specs)
+            matchedSpectra = Arrays.stream(mReader.specs)
                     .filter(spectrum -> spectrum.rt >= minRT && spectrum.rt <= maxRT)
                     .filter(spectrum -> spectrum.mzRangeEnd >= tMZ && spectrum.mzRangeStart <= tMZ)
                     .filter(spectrum -> spectrum.precursorMass >= (tMZ-1) && spectrum.precursorMass <= (tMZ+1))
                     .collect(Collectors.toList());
+        }
+
+        // Step 2: Check for the presence of specific scan types in the matched list
+        boolean hasHCD = matchedSpectra.stream()
+                .anyMatch(spectrum -> Objects.equals(spectrum.scanType, "hcd"));
+
+        boolean hasETDOrETHCD = matchedSpectra.stream()
+                .anyMatch(spectrum -> Objects.equals(spectrum.scanType, "etd") || Objects.equals(spectrum.scanType, "ethcd"));
+
+        // Step 3: Apply the conditional filter
+        if (hasHCD && hasETDOrETHCD) {
+            return matchedSpectra.stream()
+                    .filter(spectrum -> Objects.equals(spectrum.scanType, "hcd"))
+                    .collect(Collectors.toList());
+        } else {
+            return matchedSpectra;
         }
     }
 
@@ -137,20 +150,36 @@ public class MSMS {
                 .collect(Collectors.toSet());
 
         // Then filter by RT, m/z, and scan numbers
+        List<Spectrum> matchedSpectra;
         if (ifMzBin) {
-            return Arrays.stream(mReader.specs)
+            matchedSpectra = Arrays.stream(mReader.specs)
                     .filter(spectrum -> spectrum.rt >= minRT && spectrum.rt <= maxRT)
                     .filter(spectrum -> spectrum.precursorMass >= (tMZ - 1) && spectrum.precursorMass <= (tMZ + 1))
                     .filter(spectrum -> qualifiedScanNumbers.contains(spectrum.scanNum))
                     .collect(Collectors.toList());
         } else {
             // matched spectrum must within isolation window and 1 mz range
-            return Arrays.stream(mReader.specs)
+            matchedSpectra = Arrays.stream(mReader.specs)
                     .filter(spectrum -> spectrum.rt >= minRT && spectrum.rt <= maxRT)
                     .filter(spectrum -> spectrum.mzRangeEnd >= tMZ && spectrum.mzRangeStart <= tMZ)
                     .filter(spectrum -> spectrum.precursorMass >= (tMZ-1) && spectrum.precursorMass <= (tMZ+1))
                     .filter(spectrum -> qualifiedScanNumbers.contains(spectrum.scanNum))
                     .collect(Collectors.toList());
+        }
+        // Step 2: Check for the presence of specific scan types in the matched list
+        boolean hasHCD = matchedSpectra.stream()
+                .anyMatch(spectrum -> Objects.equals(spectrum.scanType, "hcd"));
+
+        boolean hasETDOrETHCD = matchedSpectra.stream()
+                .anyMatch(spectrum -> Objects.equals(spectrum.scanType, "etd") || Objects.equals(spectrum.scanType, "ethcd"));
+
+        // Step 3: Apply the conditional filter
+        if (hasHCD && hasETDOrETHCD) {
+            return matchedSpectra.stream()
+                    .filter(spectrum -> Objects.equals(spectrum.scanType, "hcd"))
+                    .collect(Collectors.toList());
+        } else {
+            return matchedSpectra;
         }
     }
 

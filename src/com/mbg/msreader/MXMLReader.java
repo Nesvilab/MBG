@@ -8,6 +8,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.ExecutorService;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import com.mbg.msreader.Spectrum;
 import com.mbg.msreader.MSFMGFFile;
@@ -162,6 +164,14 @@ public class MXMLReader {
             if (scan.getPrecursor().getMzRangeStart() != null & scan.getPrecursor().getMzRangeEnd() != null) {
                 ns.mzRangeStart = scan.getPrecursor().getMzRangeStart();
                 ns.mzRangeEnd = scan.getPrecursor().getMzRangeEnd();
+            }
+            if (scan.getFilterString() != null) {
+                Pattern pattern = Pattern.compile("@([a-zA-Z]+)(?=\\d)");
+                String filterString = scan.getFilterString();
+                Matcher matcher = pattern.matcher(filterString);
+                if (matcher.find()) {
+                    ns.scanType = matcher.group().substring(1);
+                }
             }
             if (scan.getMsLevel() != null)
                 ns.msLevel = scan.getMsLevel();

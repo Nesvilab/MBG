@@ -20,6 +20,7 @@ public class Spectrum {
     double targetMass;
     public double mzRangeStart;
     public double mzRangeEnd;
+    public String scanType;
     public float[] peakMZ;
     public float[] peakInt;
     double norm;
@@ -65,6 +66,7 @@ public class Spectrum {
         this.norm = -1.0;
         this.mzRangeEnd = 0;
         this.mzRangeStart = 0;
+        this.scanType = "";
     }
 
 
