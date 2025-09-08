@@ -239,7 +239,7 @@ public class RT_adjuster {
      */
     private static String getShiftedSaccharides(Glycan g1, Glycan g2) {
         // Create a map to store the composition difference
-        HashMap<GlycanResidue, Integer> compositionDiff = new HashMap<>();
+        TreeMap<GlycanResidue, Integer> compositionDiff = new TreeMap<>();
         
         // Calculate the difference for each monosaccharide
         for (Map.Entry<GlycanResidue, Integer> compEntry2: g2.composition.entrySet()) {

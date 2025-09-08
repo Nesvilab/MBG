@@ -11,6 +11,7 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.TreeMap;
 
 import static java.lang.System.out;
 
@@ -382,7 +383,7 @@ public class Params {
                     // Treat as a single residue name (e.g., "HexNAc")
                     GlycanResidue residue = allResidues.get(compString);
                     if (residue != null) {
-                        HashMap<GlycanResidue, Integer> compositionMap = new HashMap<>();
+                        TreeMap<GlycanResidue, Integer> compositionMap = new TreeMap<>();
                         compositionMap.put(residue, 1);
                         parsedGlycans.add(new Glycan(compositionMap));
                     } else {
