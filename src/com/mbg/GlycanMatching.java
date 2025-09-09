@@ -113,13 +113,13 @@ public class GlycanMatching {
         }
 
         // Initialize RT adjustment and scoring
-        RT_adjuster rtAdjuster = new RT_adjuster(this.observedGlycoSites);
+        RT_adjuster rtAdjuster = new RT_adjuster(this.observedGlycoSites, params.minPSMs);
         Scoring.init();
 
         // Process each glycosite
         for (Map.Entry<String, GlycoSite> siteEntry: observedGlycoSites.entrySet()) {
             GlycoSite site = siteEntry.getValue();
-            if (site.psms.size() >= params.minPSMs && site.observedGlycans.size() >= params.minGlycans) {
+            if (site.observedGlycans.size() >= params.minGlycans) {
                 for (PSM basePSM : site.basePSMs) {
                     getInferredPSMs(basePSM, params, site, rtAdjuster, inferredPSMs, params.expandDB, params.maxSkips);
                 }

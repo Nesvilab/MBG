@@ -29,8 +29,8 @@ public class Params {
     private Path manifestPath;
     /** Maximum Glycan q-value allowed for a PSM to be considered as confidently identified input. Default: 0.01. (--maxq) */
     public double maxGlycanQval = 0.01;
-    /** Minimum number of observed PSMs required for a specific glycan across all peptides to be used for RT/IM shift calculation. Default: 5. (--minpsms) */
-    public int minPSMs = 5;
+    /** Minimum number of observed PSMs required for a specific glycan+peptide combination across all combinations to be used for RT/IM shift calculation and inference. Default: 2. (--minpsms) */
+    public int minPSMs = 2;
     /** Minimum number of *different* glycans observed for a specific peptide sequence to consider it for inference. Default: 2. (--minglycans) */
     public int minGlycans = 2;
 
@@ -119,7 +119,7 @@ public class Params {
                         System.exit(1);
                     }
                     break;
-                case "--minpsms": // Minimum PSMs per glycan
+                case "--minpsms": // Minimum PSMs per parent glycopeptide (glycan + peptide combination)
                     try {
                         minPSMs = Integer.parseInt(value);
                     } catch (NumberFormatException numberFormatException) {

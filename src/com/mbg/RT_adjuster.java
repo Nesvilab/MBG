@@ -45,7 +45,7 @@ public class RT_adjuster {
      * 
      * @param observedGlycoSites Map of peptide sequences to observed glycosites
      */
-    public RT_adjuster(HashMap<String, GlycoSite> observedGlycoSites) {
+    public RT_adjuster(HashMap<String, GlycoSite> observedGlycoSites, Integer minPSMs) {
         // Initialize data structures
         allShiftedRTs = new HashMap<>();
         shiftedRTs = new HashMap<>();
@@ -57,7 +57,7 @@ public class RT_adjuster {
         monosaccharideImShifts = new HashMap<>();
         
         // Process observed glycosites to extract RT and IM shifts
-        matchMS1forPSMs(observedGlycoSites);
+        matchMS1forPSMs(observedGlycoSites, minPSMs);
         
         // Calculate median shifts for use in predictions
         calculateMedians();
@@ -68,7 +68,7 @@ public class RT_adjuster {
      * 
      * @param observedGlycoSites Map of peptide sequences to observed glycosites
      */
-    public void matchMS1forPSMs(HashMap<String, GlycoSite> observedGlycoSites) {
+    public void matchMS1forPSMs(HashMap<String, GlycoSite> observedGlycoSites, Integer minPSMs) {
         Peak peakMatcher = new Peak();
         
         // Process each glycosite
@@ -80,8 +80,10 @@ public class RT_adjuster {
             // For each glycan observed at this site
             for (Map.Entry<String, ArrayList<PSM>> glycanEntry: site.observedGlycans.entrySet()) {
                 ArrayList<PSM> glycanPsms = glycanEntry.getValue();
+                if (glycanPsms.size() < minPSMs) {
+                    continue;
+                }
                 Glycan currentGlycan = glycanPsms.get(0).glycan;
-
                 // Find the PSM with the highest intensity for this glycan
                 float topApexRT = 0;
                 float topIntensity = 0;
