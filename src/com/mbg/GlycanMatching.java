@@ -192,7 +192,7 @@ public class GlycanMatching {
      */
     private void getInferredPSMs(PSM basePSM, Params params, GlycoSite site, RT_adjuster rtAdjuster, 
                                ArrayList<PSM> newPSMs, Integer steps, Integer remainMissingSteps) {
-        if (steps < 0) return;
+        if (steps < 1) return;
 
         int rankCounter = basePSM.maxRank; // add rank to spectrum file to avoid bug in IonQuant and DDA+ (if >1 PSM per spectrum)
         HashMap<Glycan, String> potentialGlycans = PSM.getDummyGlycansV2(basePSM, params.toAddGlycans);
@@ -236,16 +236,14 @@ public class GlycanMatching {
             }
 
             // Recursively process if within expansion limit and match found
-            if (steps > 0) {
-                if (addedPSMs.get(0).intensity < 0.001) {
-                    if (remainMissingSteps > 0) {
-                        // continue inferring even if missing iff remainMissingSteps > 0
-                        getInferredPSMs(addedPSMs.get(0), params, site, rtAdjuster, newPSMs, steps - 1, remainMissingSteps - 1);
-                    }
-                } else {
-                    // continue inferring if a peak is found
-                    getInferredPSMs(addedPSMs.get(0), params, site, rtAdjuster, newPSMs, steps - 1, remainMissingSteps);
+            if (addedPSMs.get(0).intensity < 0.001) {
+                if (remainMissingSteps > 0) {
+                    // continue inferring even if missing iff remainMissingSteps > 0
+                    getInferredPSMs(addedPSMs.get(0), params, site, rtAdjuster, newPSMs, steps - 1, remainMissingSteps - 1);
                 }
+            } else {
+                // continue inferring if a peak is found
+                getInferredPSMs(addedPSMs.get(0), params, site, rtAdjuster, newPSMs, steps - 1, remainMissingSteps);
             }
         }
     }
