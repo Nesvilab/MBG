@@ -1,6 +1,9 @@
 package com.mbg;
 
+import umich.ms.glyco.Glycan;
+
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Objects;
 
@@ -50,15 +53,18 @@ public class MBG {
                 
                 // Process PSMs for each raw file
                 ArrayList<PSM> inferredPSMs = new ArrayList<>();
+                HashSet<Glycan> newGlycans = new HashSet<>();
                 for (Map.Entry<String, ArrayList<PSM>> rawFileEntry: psmFile.rawfilePSMmap.entrySet()) {
                     // Perform glycan matching and inference for each raw file
                     GlycanMatching matcher = new GlycanMatching(params, psmFile, rawFileEntry.getValue());
                     matcher.groupGlycosites();
                     inferredPSMs.addAll(matcher.fillInGlycoSites(rawFileEntry.getKey()));
+                    newGlycans.addAll(matcher.newGlycans);
                 }
                 
                 // Output the results
                 psmFile.printNewPSMs(inferredPSMs);
+                Utils.writeSkylineMods(newGlycans);
 
             } else {
                 // Display usage information for invalid commands
