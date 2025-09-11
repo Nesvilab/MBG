@@ -247,8 +247,9 @@ public class PSM implements Comparable<PSM>{
      * @param newGlycan
      * @param psmCols
      * @param params
+     * @param excludeScanNumbers
      */
-    public static List<PSM> makeDummyPSM(PSM existingPSM, Glycan newGlycan, HashMap<PSM_File.PSMattr, Integer> psmCols, Params params, int rankCounter, RT_adjuster rtAdjuster, boolean ifdecoy, String parentGlycan, String addedResidual, boolean if_new_glycan) {
+    public static List<PSM> makeDummyPSM(PSM existingPSM, Glycan newGlycan, HashMap<PSM_File.PSMattr, Integer> psmCols, Params params, int rankCounter, RT_adjuster rtAdjuster, boolean ifdecoy, String parentGlycan, String addedResidual, boolean if_new_glycan, HashSet<Integer> excludeScanNumbers) {
         String[] newSplits = new String[existingPSM.splits.length];
         System.arraycopy(existingPSM.splits, 0, newSplits, 0, newSplits.length);
 
@@ -325,9 +326,9 @@ public class PSM implements Comparable<PSM>{
         // to find MS2
         List<Spectrum> ms2Candidates;
         if (params.noPASEF) {
-            ms2Candidates = MSMS.spectraSearcher(peakMatcher.quantifiedEntry.rtStart, peakMatcher.quantifiedEntry.rtEnd, newMZ);
+            ms2Candidates = MSMS.spectraSearcher(peakMatcher.quantifiedEntry.rtStart, peakMatcher.quantifiedEntry.rtEnd, newMZ, excludeScanNumbers);
         } else {
-            ms2Candidates = MSMS.spectraSearcher(peakMatcher.quantifiedEntry.rtStart, peakMatcher.quantifiedEntry.rtEnd, newMZ, peakMatcher.quantifiedEntry.imStart, peakMatcher.quantifiedEntry.imEnd);
+            ms2Candidates = MSMS.spectraSearcher(peakMatcher.quantifiedEntry.rtStart, peakMatcher.quantifiedEntry.rtEnd, newMZ, peakMatcher.quantifiedEntry.imStart, peakMatcher.quantifiedEntry.imEnd, excludeScanNumbers);
         }
         // update intensity
         newSplits[psmCols.get(PSM_File.PSMattr.intensity)] = String.valueOf(peakMatcher.quantifiedEntry.intensity);

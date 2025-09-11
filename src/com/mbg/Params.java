@@ -8,10 +8,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.TreeMap;
+import java.util.*;
 
 import static java.lang.System.out;
 
@@ -77,8 +74,11 @@ public class Params {
     public int minScansIonQuant = 3;
     /** Number of threads to use for parallel processing steps. Default: 4. (--numthreads) */
     public int numThreads = 4;
-
+    /** Flag to indicate if allowing chimeric spectra when MBG trying to find MS2 hits */
+    public boolean allowChimeric = true;
     // --- Internal State ---
+    /** ArrayList storing the matched scan numbers, if allowChimeric is false, then MBP will not find MS2 in this list. */
+    public HashMap<String, HashSet<Integer>> excludeScanNumbersMAp = new HashMap<>();
     /** Map storing the mapping from base raw file name (e.g., "file1") to its full path from the manifest. */
     public HashMap<String, String> msFilePathsMap;
     /** Map storing residues specified by --toaddresiduals. Currently seems unused after refactoring to toAddGlycans. */
@@ -229,6 +229,14 @@ public class Params {
                     } catch (Exception e) { // Catch potential issues during split
                         out.printf("Error parsing --toaddresiduals argument '%s'%n", value);
                         e.printStackTrace(); // Print stack trace for more details
+                        System.exit(1);
+                    }
+                    break;
+                case "--allowchimeric": // Comma-separated list of residues/glycans to add
+                    try {
+                        allowChimeric = Boolean.parseBoolean(value);
+                    } catch (Exception e) { // Catch potential issues during split
+                        out.printf("Error parsing --allowchimeric argument '%s': must be 'true' or 'false'%n", value);
                         System.exit(1);
                     }
                     break;
