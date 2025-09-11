@@ -99,19 +99,21 @@ public class MSMS {
      * @param tMZ target precursor m/z
      * @return List of spectra matching the criteria
      */
-    public static List<Spectrum> spectraSearcher(double minRT, double maxRT, double tMZ) {
+    public static List<Spectrum> spectraSearcher(double minRT, double maxRT, double tMZ, HashSet<Integer> excludeScans) {
         // Step 1: Get the initial list of spectra based on RT and mass/mz range
         List<Spectrum> matchedSpectra;
         if (ifMzBin) {
             matchedSpectra = Arrays.stream(mReader.specs)
                     .filter(spectrum -> spectrum.rt >= minRT && spectrum.rt <= maxRT)
                     .filter(spectrum -> spectrum.precursorMass >= (tMZ-1) && spectrum.precursorMass <= (tMZ+1))
+                    .filter(spectrum -> !excludeScans.contains(spectrum.scanNum))
                     .collect(Collectors.toList());
         } else {
             matchedSpectra = Arrays.stream(mReader.specs)
                     .filter(spectrum -> spectrum.rt >= minRT && spectrum.rt <= maxRT)
                     .filter(spectrum -> spectrum.mzRangeEnd >= tMZ && spectrum.mzRangeStart <= tMZ)
                     .filter(spectrum -> spectrum.precursorMass >= (tMZ-1) && spectrum.precursorMass <= (tMZ+1))
+                    .filter(spectrum -> !excludeScans.contains(spectrum.scanNum))
                     .collect(Collectors.toList());
         }
 
@@ -142,7 +144,7 @@ public class MSMS {
      * @param maxIM Maximum ion mobility
      * @return List of spectra matching the criteria
      */
-    public static List<Spectrum> spectraSearcher(double minRT, double maxRT, double tMZ, float minIM, float maxIM) {
+    public static List<Spectrum> spectraSearcher(double minRT, double maxRT, double tMZ, float minIM, float maxIM, HashSet<Integer> excludeScans) {
         // First filter by ion mobility
         Set<Integer> qualifiedScanNumbers = MSMS.ms2IMs.entrySet().stream()
                 .filter(entry -> entry.getValue() >= minIM && entry.getValue() <= maxIM)
@@ -156,6 +158,7 @@ public class MSMS {
                     .filter(spectrum -> spectrum.rt >= minRT && spectrum.rt <= maxRT)
                     .filter(spectrum -> spectrum.precursorMass >= (tMZ - 1) && spectrum.precursorMass <= (tMZ + 1))
                     .filter(spectrum -> qualifiedScanNumbers.contains(spectrum.scanNum))
+                    .filter(spectrum -> !excludeScans.contains(spectrum.scanNum))
                     .collect(Collectors.toList());
         } else {
             // matched spectrum must within isolation window and 1 mz range
@@ -164,6 +167,7 @@ public class MSMS {
                     .filter(spectrum -> spectrum.mzRangeEnd >= tMZ && spectrum.mzRangeStart <= tMZ)
                     .filter(spectrum -> spectrum.precursorMass >= (tMZ-1) && spectrum.precursorMass <= (tMZ+1))
                     .filter(spectrum -> qualifiedScanNumbers.contains(spectrum.scanNum))
+                    .filter(spectrum -> !excludeScans.contains(spectrum.scanNum))
                     .collect(Collectors.toList());
         }
         // Step 2: Check for the presence of specific scan types in the matched list

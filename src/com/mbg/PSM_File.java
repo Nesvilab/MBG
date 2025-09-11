@@ -181,6 +181,10 @@ public class PSM_File {
                     if (psm.rawfile != null && !psm.rawfile.isEmpty()) {
                         // computeIfAbsent gets the list if key exists, or creates a new ArrayList if not, then adds the psm
                         rawfilePSMmap.computeIfAbsent(psm.rawfile, k -> new ArrayList<>()).add(psm);
+                        // only include those that with glycan identified
+                        if (psm.glycan != null) {
+                            params.excludeScanNumbersMAp.computeIfAbsent(psm.rawfile, k -> new HashSet<>()).add(psm.scanNum);
+                        }
                     } else {
                          System.out.printf("Warning: PSM at line %d has missing or empty Spectrum File information. Cannot group by raw file.%n", lineNum);
                     }

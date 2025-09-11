@@ -23,6 +23,7 @@ public class GlycanMatching {
     private HashMap<String, GlycoSite> observedGlycoSites;  // Map of observed glycosylation sites
     private String[] qualifiedGlycans;          // Glycans that meet minimum observation criteria
     public HashSet<Glycan> newGlycans = new HashSet<>();    // List of new inferred glycans (not in the input database)
+    public HashSet<Integer> excludeScanNumbers;
 
     /**
      * Constructor for GlycanMatching
@@ -30,10 +31,16 @@ public class GlycanMatching {
      * @param psmFile PSM file reference
      * @param psms List of PSMs to process
      */
-    public GlycanMatching(Params params, PSM_File psmFile, ArrayList<PSM> psms) {
+    public GlycanMatching(Params params, PSM_File psmFile, ArrayList<PSM> psms, String fileName) {
         this.psmFile = psmFile;
         this.psms = psms;
         this.params = params;
+        // if not allow chimeric spectra
+        if (!this.params.allowChimeric) {
+            this.excludeScanNumbers = params.excludeScanNumbersMAp.get(fileName);
+        } else {
+            this.excludeScanNumbers = new HashSet<>();
+        }
     }
 
     /**
@@ -220,11 +227,11 @@ public class GlycanMatching {
             // Generate new PSMs
             List<PSM> addedPSMs = PSM.makeDummyPSM(basePSM, newGlycan, psmFile.PSMcolumns, params,
                     rankCounter, rtAdjuster, false, basePSM.glycan.toString(),
-                    addedResidue, isNewGlycan);
+                    addedResidue, isNewGlycan, excludeScanNumbers);
 
             // Generate decoy PSMs
             PSM.makeDummyPSM(basePSM, newGlycan, psmFile.PSMcolumns, params, rankCounter, rtAdjuster,
-                    true, basePSM.glycan.toString(), addedResidue, isNewGlycan);
+                    true, basePSM.glycan.toString(), addedResidue, isNewGlycan, excludeScanNumbers);
 
             newPSMs.addAll(addedPSMs);
 

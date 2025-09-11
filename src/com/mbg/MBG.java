@@ -56,7 +56,7 @@ public class MBG {
                 HashSet<Glycan> newGlycans = new HashSet<>();
                 for (Map.Entry<String, ArrayList<PSM>> rawFileEntry: psmFile.rawfilePSMmap.entrySet()) {
                     // Perform glycan matching and inference for each raw file
-                    GlycanMatching matcher = new GlycanMatching(params, psmFile, rawFileEntry.getValue());
+                    GlycanMatching matcher = new GlycanMatching(params, psmFile, rawFileEntry.getValue(), rawFileEntry.getKey());
                     matcher.groupGlycosites();
                     inferredPSMs.addAll(matcher.fillInGlycoSites(rawFileEntry.getKey()));
                     newGlycans.addAll(matcher.newGlycans);
