@@ -14,11 +14,11 @@ public class Utils {
     public static final String ionQuantMassPath = "modmasses_ionquant.txt"; // File potentially used by IonQuant
     public static final String newGlycanPath = "mbg_added_glycans.txt"; // File potentially used by IonQuant
 
-    public static void writeSkylineMods(HashSet<Glycan> addedGlycans) {
+    public static void writeSkylineMods(HashSet<String> addedGlycans) {
         if (addedGlycans.isEmpty()) {
             return;
         }
-        String output = addedGlycans.stream().map(Glycan::toString).collect(Collectors.joining(","));
+        String output = String.join(",", addedGlycans);
         try (BufferedWriter writer = new BufferedWriter(new FileWriter(newGlycanPath))) {
             writer.write(output);
             System.out.printf("Wrote %d new glycans to %s%n", addedGlycans.size(), newGlycanPath);

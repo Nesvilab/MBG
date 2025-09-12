@@ -22,7 +22,7 @@ public class GlycanMatching {
     private final Params params;                // Configuration parameters
     private HashMap<String, GlycoSite> observedGlycoSites;  // Map of observed glycosylation sites
     private String[] qualifiedGlycans;          // Glycans that meet minimum observation criteria
-    public HashSet<Glycan> newGlycans = new HashSet<>();    // List of new inferred glycans (not in the input database)
+    public HashSet<String> newGlycans = new HashSet<>();    // List of new inferred glycans (not in the input database)
     public HashSet<Integer> excludeScanNumbers;
 
     /**
@@ -243,7 +243,7 @@ public class GlycanMatching {
                 basePSM.maxRank++; // increment max rank for the next PSM
                 if (isNewGlycan) {
                     // found new glycan: add to list for printing to downstream tools
-                    newGlycans.add(newGlycan);
+                    newGlycans.add(newGlycan.toString());
                 }
             }
 
