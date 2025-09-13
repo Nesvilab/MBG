@@ -265,9 +265,6 @@ public class PSM implements Comparable<PSM>{
             Matcher siteMatch = modSitePattern.matcher(mod);
             if (siteMatch.find()) {
                 int site = Integer.parseInt(siteMatch.group(1));
-                if (site != 1) {
-                    System.out.println(1);
-                }
                 if (existingPSM.peptideGlycositeIndexes.contains(site)) {
                     // edit this mod to have the mass of the new glycan
                     if (site == existingPSM.peptideGlycositeIndex) {
