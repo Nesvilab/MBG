@@ -23,6 +23,7 @@ public class PSM implements Comparable<PSM>{
     String protein;
     int proteinGlycositeIndex;
     int peptideGlycositeIndex;
+    ArrayList<Integer> peptideGlycositeIndexes;
     String[] splits;
     char glycoSiteAA;
     double calcMass;
@@ -129,7 +130,8 @@ public class PSM implements Comparable<PSM>{
         rt = Double.parseDouble(splits[psmCols.get(PSM_File.PSMattr.RT)]);
         int proteinStart = Integer.parseInt(splits[psmCols.get(PSM_File.PSMattr.protein_start)]);
         String assignedMods = splits[psmCols.get(PSM_File.PSMattr.assigned_mods)];
-        peptideGlycositeIndex = getGlycoSiteIndex(assignedMods);
+        peptideGlycositeIndexes = getGlycoSiteIndices(assignedMods);
+        peptideGlycositeIndex = peptideGlycositeIndexes.get(0);
         glycoSiteAA = peptide.charAt(peptideGlycositeIndex - 1);
         proteinGlycositeIndex = proteinStart + peptideGlycositeIndex;
         calcMass = Double.parseDouble(splits[psmCols.get(PSM_File.PSMattr.Calculated_MASS)]);
@@ -195,7 +197,8 @@ public class PSM implements Comparable<PSM>{
         rt = Double.parseDouble(splits[psmCols.get(PSM_File.PSMattr.RT)]);
         int proteinStart = Integer.parseInt(splits[psmCols.get(PSM_File.PSMattr.protein_start)]);
         String assignedMods = splits[psmCols.get(PSM_File.PSMattr.assigned_mods)];
-        peptideGlycositeIndex = getGlycoSiteIndex(assignedMods);
+        peptideGlycositeIndexes = getGlycoSiteIndices(assignedMods);
+        peptideGlycositeIndex = peptideGlycositeIndexes.get(0);
         glycoSiteAA = peptide.charAt(peptideGlycositeIndex - 1);
         proteinGlycositeIndex = proteinStart + peptideGlycositeIndex;
         calcMass = Double.parseDouble(splits[psmCols.get(PSM_File.PSMattr.Calculated_MASS)]);
@@ -262,9 +265,14 @@ public class PSM implements Comparable<PSM>{
             Matcher siteMatch = modSitePattern.matcher(mod);
             if (siteMatch.find()) {
                 int site = Integer.parseInt(siteMatch.group(1));
-                if (site == existingPSM.peptideGlycositeIndex) {
+                if (site != 1) {
+                    System.out.println(1);
+                }
+                if (existingPSM.peptideGlycositeIndexes.contains(site)) {
                     // edit this mod to have the mass of the new glycan
-                    newAssignedMods.add(String.format("%d%s(%.4f)", site, existingPSM.peptide.charAt(site - 1), newGlycan.mass));
+                    if (site == existingPSM.peptideGlycositeIndex) {
+                        newAssignedMods.add(String.format("%d%s(%.4f)", site, existingPSM.peptide.charAt(site - 1), newGlycan.mass));
+                    }
                 } else {
                     newAssignedMods.add(mod);
                 }
@@ -273,6 +281,7 @@ public class PSM implements Comparable<PSM>{
                 newAssignedMods.add(mod);
             }
         }
+        // todo: fix the assigned_mod
         newSplits[psmCols.get(PSM_File.PSMattr.assigned_mods)] = String.join(",", newAssignedMods);
 
         // mod peptide
@@ -627,6 +636,99 @@ public class PSM implements Comparable<PSM>{
         }
         // todo return correct glycosite Index when there is multiple glycan on peptide
         return 1;
+    }
+
+    private ArrayList<Integer> getGlycoSiteIndices(String assignedMods) {
+        // Step 1: Parse the string to get a list of (mass, position) pairs.
+        List<MassSitePair> allMods = new ArrayList<>();
+        String[] mods = assignedMods.split(",");
+
+        for (String mod : mods) {
+            Matcher massMatch = modMassPattern.matcher(mod);
+            Matcher siteMatch = modSitePattern.matcher(mod);
+
+            if (massMatch.find() && siteMatch.find()) {
+                double mass = Double.parseDouble(massMatch.group(1));
+                int position = Integer.parseInt(siteMatch.group(1));
+                allMods.add(new MassSitePair(mass, position));
+            }
+        }
+
+        // Step 2: Use a recursive helper function to find the first valid combination.
+        return findFirstValidCombination(
+                glycan.mass,
+                allMods,
+                0,
+                0.0,
+                new ArrayList<>()
+        );
+    }
+
+    // A helper class to group mass and its corresponding position.
+    private class MassSitePair {
+        double mass;
+        int position;
+
+        MassSitePair(double mass, int position) {
+            this.mass = mass;
+            this.position = position;
+        }
+    }
+
+    // Recursive backtracking method to find the first combination that sums to the target mass.
+    private ArrayList<Integer> findFirstValidCombination(
+            double targetMass,
+            List<MassSitePair> allMods,
+            int startIndex,
+            double currentSum,
+            List<MassSitePair> currentCombination) {
+
+        // Base case: Success
+        // If the current sum is very close to the target, we've found a valid combination.
+        if (Math.abs(currentSum - targetMass) < 0.001) {
+            // Collect and return the positions from this first valid combination.
+            ArrayList<Integer> result = new ArrayList<>();
+            for (MassSitePair pair : currentCombination) {
+                result.add(pair.position);
+            }
+            return result;
+        }
+
+        // Base case: Failure
+        // If we've exceeded the target or run out of masses to check, stop this path.
+        if (currentSum > targetMass || startIndex >= allMods.size()) {
+            return null; // Return null to signal that this path didn't lead to a solution.
+        }
+
+        // Recursive step: explore all possibilities.
+        for (int i = startIndex; i < allMods.size(); i++) {
+            MassSitePair nextMod = allMods.get(i);
+
+            // Include the current modification in the combination.
+            currentCombination.add(nextMod);
+
+            // Recurse with the new sum and the next index.
+            ArrayList<Integer> result = findFirstValidCombination(
+                    targetMass,
+                    allMods,
+                    i + 1,
+                    currentSum + nextMod.mass,
+                    currentCombination
+            );
+
+            // If a result was found in a deeper call, pass it up immediately.
+            if (result != null) {
+                return result;
+            }
+
+            // Backtrack: remove the modification to explore other combinations.
+            currentCombination.remove(currentCombination.size() - 1);
+        }
+
+        // If no combination was found in any path, return araylist[1].
+        ArrayList<Integer> result = new ArrayList<>();
+        result.add(1);
+        return result;
     }
 
     public String getGlycoSiteID() {
