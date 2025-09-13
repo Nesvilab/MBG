@@ -39,6 +39,7 @@ public class PSM_File {
     // holds the maximum rank of spectra in the PSM file, used to determine the rank for adding MBG PSMs
     public final HashMap<Integer, Integer> maxRankOfSpectra;
     private final Params params;
+    public static boolean runOPair;
 
     // Static initializer block to populate the map of standard column names.
     // This map defines the expected header string for each PSM attribute (enum).
@@ -72,7 +73,7 @@ public class PSM_File {
         columnNames.put(PSMattr.rt_diff, "RT Difference"); // Predicted vs. Observed RT difference
         columnNames.put(PSMattr.im_diff, "IM Difference"); // Predicted vs. Observed IM difference
         columnNames.put(PSMattr.if_new_glycan, "MBG only composition"); // Was this glycan composition novel?
-        columnNames.put(PSMattr.confidence_level, "Confidence Level"); // Confidence category based on the existence of MS2 hit and Y1 ion
+        columnNames.put(PSMattr.MBG_confidence_level, "MBG Confidence Level"); // Confidence category based on the existence of MS2 hit and Y1 ion
         columnNames.put(PSMattr.parent_glycan, "Parent Glycan"); // Glycan used as basis for inference
         columnNames.put(PSMattr.added_residual, "Difference from parent"); // Residue(s) added/removed for inference
         columnNames.put(PSMattr.spectrum_file, "Spectrum File"); // Source raw file name
@@ -100,13 +101,39 @@ public class PSM_File {
         columnNames.put(PSMattr.ScoreShiftedBestPosition, "Score Shifted Best Position");
         columnNames.put(PSMattr.ShiftedOnlyPositionIons, "Shifted Only Position Ions");
         columnNames.put(PSMattr.ShiftedOnlyPositionScores, "Shifted Only Position Scores");
+        // O-pair columns
+        columnNames.put(PSMattr.o_pair_score, "O-Pair Score");
+        columnNames.put(PSMattr.glycan_site_composition, "Glycan Site Composition(s)");
+        columnNames.put(PSMattr.composition_delta_score, "Composition Delta Score");
+        columnNames.put(PSMattr.next_best_composition, "Next Best Composition");
+        columnNames.put(PSMattr.confidence_level, "Confidence Level");
+        columnNames.put(PSMattr.localization_delta_score, "Localization Delta Score");
+        columnNames.put(PSMattr.site_probabilities, "Site Probabilities");
+        columnNames.put(PSMattr.ratio_138_144, "138/144 Ratio");
+        columnNames.put(PSMattr.paired_scan_num, "Paired Scan Num");
+        columnNames.put(PSMattr.msfragger_localization, "MSFragger Localization");
+        columnNames.put(PSMattr.position_scores, "Position Scores");
+        columnNames.put(PSMattr.best_positions, "Best Positions");
+        columnNames.put(PSMattr.num_best_positions, "Number Best Positions");
+        columnNames.put(PSMattr.shifted_only_position_scores, "Shifted Only Position Scores");
+        columnNames.put(PSMattr.shifted_only_position_ions, "Shifted Only Position Ions");
+        columnNames.put(PSMattr.score_best_position, "Score Best Position");
+        columnNames.put(PSMattr.ions_best_position, "Ions Best Position");
+        columnNames.put(PSMattr.score_second_best_position, "Score Second Best Position");
+        columnNames.put(PSMattr.ions_second_best_position, "Ions Second Best Position");
+        columnNames.put(PSMattr.score_all_unshifted, "Score All Unshifted");
+        columnNames.put(PSMattr.ions_all_unshifted, "Ions All Unshifted");
+        columnNames.put(PSMattr.score_shifted_best_position, "Score Shifted Best Position");
+        columnNames.put(PSMattr.ions_shifted_best_position, "Ions Shifted Best Position");
+        columnNames.put(PSMattr.score_shifted_all_positions, "Score Shifted All Positions");
+        columnNames.put(PSMattr.ions_shifted_all_positions, "Ions Shifted All Positions");
     }
     // PSM table headers to add to the PSM file if they do not already exist.
     private static final String[] headersToAdd = new String[] {
             // Insert in reverse order of definition to maintain desired final order
             columnNames.get(PSMattr.added_residual),
             columnNames.get(PSMattr.parent_glycan),
-            columnNames.get(PSMattr.confidence_level),
+            columnNames.get(PSMattr.MBG_confidence_level),
             columnNames.get(PSMattr.if_new_glycan),
             columnNames.get(PSMattr.im_diff),
             columnNames.get(PSMattr.rt_diff),
@@ -133,6 +160,8 @@ public class PSM_File {
         this.PSMcolumns = initPSMcolumns(); // Map header names to column indices
         allPSMs = new ArrayList<>(); // Initialize the list to store all PSM objects
         maxRankOfSpectra = new HashMap<>();     // store max rank of all scans in the PSM file to know what rank to use when adding MBG PSMs
+
+        this.runOPair = Arrays.asList(this.headers).contains("O-Pair Score");
 
         // Check if MBG-specific columns already exist. If not, add them to the header.
         if (PSMcolumns.getOrDefault(PSMattr.MBG_score, -1) == -1) {
@@ -265,7 +294,7 @@ public class PSM_File {
                attr == PSMattr.mass_error || attr == PSMattr.KL ||
                attr == PSMattr.shift_frequency || attr == PSMattr.rt_diff ||
                attr == PSMattr.im_diff || attr == PSMattr.if_new_glycan ||
-               attr == PSMattr.confidence_level || attr == PSMattr.parent_glycan ||
+               attr == PSMattr.MBG_confidence_level || attr == PSMattr.parent_glycan ||
                attr == PSMattr.added_residual;
     }
 
@@ -381,6 +410,10 @@ public class PSM_File {
         }
     }
 
+    private void addOPairCols() {
+
+    }
+
 
     /**
      * Enum defining standardized attributes (columns) expected or used within a PSM file.
@@ -456,7 +489,7 @@ public class PSM_File {
         /** Boolean flag indicating if the inferred glycan composition was not present in the set of originally identified glycans. Header: "New Glycan?" */
         if_new_glycan,
         /** Categorical confidence level (e.g., High, Medium) assigned based on the MBG score and FDR filtering. Header: "Confidence Level" */
-        confidence_level,
+        MBG_confidence_level,
 
         // columns to ignore
         hyperscore,
@@ -479,7 +512,58 @@ public class PSM_File {
         IonsShiftedBestPosition,
         ScoreShiftedAllPositions,
         IonsShiftedAllPositions,
-        Glycanscore;
+        Glycanscore,
+        // O-pair
+        o_pair_score,
+        /** Glycan site composition(s). Header: "Glycan Site Composition(s)" */
+        glycan_site_composition,
+        /** Composition delta score. Header: "Composition Delta Score" */
+        composition_delta_score,
+        /** Next best composition. Header: "Next Best Composition" */
+        next_best_composition,
+        /** Confidence level. Header: "Confidence Level" */
+        confidence_level,
+        /** Localization delta score. Header: "Localization Delta Score" */
+        localization_delta_score,
+        /** Site probabilities. Header: "Site Probabilities" */
+        site_probabilities,
+        /** 138/144 Ratio. Header: "138/144 Ratio" */
+        ratio_138_144,
+        /** Paired scan number. Header: "Paired Scan Num" */
+        paired_scan_num,
+        /** MSFragger localization. Header: "MSFragger Localization" */
+        msfragger_localization,
+        /** Position scores. Header: "Position Scores" */
+        position_scores,
+        /** Best positions. Header: "Best Positions" */
+        best_positions,
+        /** Number of best positions. Header: "Number Best Positions" */
+        num_best_positions,
+        /** Shifted only position scores. Header: "Shifted Only Position Scores" */
+        shifted_only_position_scores,
+        /** Shifted only position ions. Header: "Shifted Only Position Ions" */
+        shifted_only_position_ions,
+        /** Score of the best position. Header: "Score Best Position" */
+        score_best_position,
+        /** Ions of the best position. Header: "Ions Best Position" */
+        ions_best_position,
+        /** Score of the second best position. Header: "Score Second Best Position" */
+        score_second_best_position,
+        /** Ions of the second best position. Header: "Ions Second Best Position" */
+        ions_second_best_position,
+        /** Score of all unshifted positions. Header: "Score All Unshifted" */
+        score_all_unshifted,
+        /** Ions of all unshifted positions. Header: "Ions All Unshifted" */
+        ions_all_unshifted,
+        /** Score of the shifted best position. Header: "Score Shifted Best Position" */
+        score_shifted_best_position,
+        /** Ions of the shifted best position. Header: "Ions Shifted Best Position" */
+        ions_shifted_best_position,
+        /** Score of all shifted positions. Header: "Score Shifted All Positions" */
+        score_shifted_all_positions,
+        /** Ions of all shifted positions. Header: "Ions Shifted All Positions" */
+        ions_shifted_all_positions;
+        ;
 
         // --- Potentially Deprecated/Unused Enums ---
         // ionMobilityDiff, // Seems redundant with im_diff? Check usage.
@@ -511,6 +595,34 @@ public class PSM_File {
             PSMattr.IonsShiftedAllPositions,
             PSMattr.Glycanscore
 //            PSMattr.glyco_q_val
+    );
+
+    public static final EnumSet<PSMattr> PSMattr_blank_OPair = EnumSet.of(
+            PSMattr.glycan_site_composition,
+            PSMattr.composition_delta_score,
+            PSMattr.next_best_composition,
+            PSMattr.confidence_level,
+            PSMattr.localization_delta_score,
+            PSMattr.site_probabilities,
+            PSMattr.ratio_138_144,
+            PSMattr.paired_scan_num,
+            PSMattr.msfragger_localization,
+            PSMattr.position_scores,
+            PSMattr.best_positions,
+            PSMattr.num_best_positions,
+            PSMattr.shifted_only_position_scores,
+            PSMattr.shifted_only_position_ions,
+            PSMattr.score_best_position,
+            PSMattr.ions_best_position,
+            PSMattr.score_second_best_position,
+            PSMattr.ions_second_best_position,
+            PSMattr.score_all_unshifted,
+            PSMattr.ions_all_unshifted,
+            PSMattr.score_shifted_best_position,
+            PSMattr.ions_shifted_best_position,
+            PSMattr.score_shifted_all_positions,
+            PSMattr.ions_shifted_all_positions,
+            PSMattr.o_pair_score
     );
 
 } // End of PSM_File class

@@ -88,7 +88,7 @@ public class PSM implements Comparable<PSM>{
         splits[psmCols.get(PSM_File.PSMattr.MBG_score)] = String.valueOf(0);
         splits[psmCols.get(PSM_File.PSMattr.parent_glycan)] = parentGlycan;
         splits[psmCols.get(PSM_File.PSMattr.added_residual)] = addedResidual;
-        splits[psmCols.get(PSM_File.PSMattr.confidence_level)] = confidenceLevel;
+        splits[psmCols.get(PSM_File.PSMattr.MBG_confidence_level)] = confidenceLevel;
         Matcher rankMatch = rankPattern.matcher(splits[psmCols.get(PSM_File.PSMattr.spectrum_file)]);
         if (rankMatch.find()) {
             rank = Integer.parseInt(rankMatch.group(1));
@@ -237,7 +237,7 @@ public class PSM implements Comparable<PSM>{
         } else {
             confidenceLevel = "1";
         }
-        splits[psmCols.get(PSM_File.PSMattr.confidence_level)] = confidenceLevel;
+        splits[psmCols.get(PSM_File.PSMattr.MBG_confidence_level)] = confidenceLevel;
 //        splits[psmCols.get(PSM_File.PSMattr.glyco_q_val)] = "";  // leave MBG q-value blank
     }
 
@@ -281,7 +281,6 @@ public class PSM implements Comparable<PSM>{
                 newAssignedMods.add(mod);
             }
         }
-        // todo: fix the assigned_mod
         newSplits[psmCols.get(PSM_File.PSMattr.assigned_mods)] = String.join(",", newAssignedMods);
 
         // mod peptide
@@ -459,6 +458,12 @@ public class PSM implements Comparable<PSM>{
 //        splits[psmCols.get(PSM_File.PSMattr.hyperscore)] = String.valueOf(0);
 //        splits[psmCols.get(PSM_File.PSMattr.nextscore)] = String.valueOf(0);
 //        splits[psmCols.get(PSM_File.PSMattr.probability)] = String.valueOf(0);
+        if (PSM_File.runOPair) {
+            for (PSM_File.PSMattr attr : PSM_File.PSMattr_blank_OPair)
+                if (psmCols.containsKey(attr)) {
+                    splits[psmCols.get(attr)] = "";
+                }
+        }
         if (psmCols.containsKey(PSM_File.PSMattr.glyco_q_val)) {
             splits[psmCols.get(PSM_File.PSMattr.glyco_q_val)] = String.valueOf(0);
         }
@@ -619,24 +624,6 @@ public class PSM implements Comparable<PSM>{
      * Assumes a single glycosite because MBG only makes sense for singly-glycosylated peptides
      * @param assignedMods Assigned Modifications string
      */
-    private int getGlycoSiteIndex(String assignedMods) {
-        String[] mods = assignedMods.split(",");
-        for (String mod: mods) {
-            Matcher massMatch = modMassPattern.matcher(mod);
-            if (massMatch.find()) {
-                double mass = Double.parseDouble(massMatch.group(1));
-                if (Math.abs(mass - glycan.mass) < 0.001) {
-                    // found the assigned mod entry for the glycan. Use its position to compute the glycosite
-                    Matcher siteMatch = modSitePattern.matcher(mod);
-                    if (siteMatch.find()) {
-                        return Integer.parseInt(siteMatch.group(1));
-                    }
-                }
-            }
-        }
-        // todo return correct glycosite Index when there is multiple glycan on peptide
-        return 1;
-    }
 
     private ArrayList<Integer> getGlycoSiteIndices(String assignedMods) {
         // Step 1: Parse the string to get a list of (mass, position) pairs.
