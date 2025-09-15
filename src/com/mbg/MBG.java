@@ -20,7 +20,7 @@ public class MBG {
 
     // Application metadata
     private static final String APPLICATION_NAME = "Glycoform Inference";
-    private static final String APPLICATION_VERSION = "0.3.5";
+    private static final String APPLICATION_VERSION = "0.3.6";
 
     /**
      * Main entry point for the MBG application.
