@@ -639,13 +639,20 @@ public class PSM implements Comparable<PSM>{
         }
 
         // Step 2: Use a recursive helper function to find the first valid combination.
-        return findFirstValidCombination(
+        ArrayList<Integer> result = findFirstValidCombination(
                 glycan.mass,
                 allMods,
                 0,
                 0.0,
                 new ArrayList<>()
         );
+
+        // Step 3: Check the result and return [1] if no combination was found.
+        if (result == null) {
+            return new ArrayList<Integer>(List.of(1));
+        }
+
+        return result;
     }
 
     // A helper class to group mass and its corresponding position.
@@ -710,9 +717,7 @@ public class PSM implements Comparable<PSM>{
         }
 
         // If no combination was found in any path, return araylist[1].
-        ArrayList<Integer> result = new ArrayList<>();
-        result.add(1);
-        return result;
+        return null;
     }
 
     public String getGlycoSiteID() {

@@ -260,8 +260,8 @@ public class PSM_File {
                     if (attribute == PSMattr.IM && params.noPASEF) {
                         continue;
                     }
-                    System.err.println("Warning: Could not find column '" + expectedHeader + "' in PSM file. " +
-                            "Processing may fail. Please check the formatting of the PSM file.");
+//                    System.err.println("Warning: Could not find column '" + expectedHeader + "' in PSM file. " +
+//                            "Processing may fail. Please check the formatting of the PSM file.");
                 }
             }
         }
