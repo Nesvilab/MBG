@@ -42,10 +42,12 @@ public class RT_adjuster {
 
     /**
      * Constructs an RT_adjuster based on observed glycosites.
-     * 
+     *
      * @param observedGlycoSites Map of peptide sequences to observed glycosites
+     * @param combinedShiftedRTs
+     * @param combinedShiftedIMs
      */
-    public RT_adjuster(HashMap<String, GlycoSite> observedGlycoSites, Integer minPSMs) {
+    public RT_adjuster(HashMap<String, GlycoSite> observedGlycoSites, Integer minPSMs, HashMap<String, List<Float>> combinedShiftedRTs, HashMap<String, List<Float>> combinedShiftedIMs) {
         // Initialize data structures
         allShiftedRTs = new HashMap<>();
         shiftedRTs = new HashMap<>();
@@ -61,6 +63,11 @@ public class RT_adjuster {
         
         // Calculate median shifts for use in predictions
         calculateMedians();
+        // combine_shifted RT/IMs
+        combineAllShiftedRTIMs(allShiftedRTs, combinedShiftedRTs);
+        combineAllShiftedRTIMs(allShiftedIMs, combinedShiftedIMs);
+        combineAllShiftedMonoRTIMs(allShiftedMonoRTs, combinedShiftedRTs);
+        combineAllShiftedMonoRTIMs(allShiftedMonoIMs, combinedShiftedIMs);
     }
 
     /**
@@ -428,6 +435,43 @@ public class RT_adjuster {
         }
         else {
             return 0;
+        }
+    }
+
+    public static void combineAllShiftedRTIMs(
+            HashMap<String, HashMap<String, List<Float>>> c_allShiftedRTs,
+            HashMap<String, List<Float>> combinedShifts) {
+
+
+        for (Map.Entry<String, HashMap<String, List<Float>>> outerEntry : c_allShiftedRTs.entrySet()) {
+            String outerKey = outerEntry.getKey();
+            HashMap<String, List<Float>> innerMap = outerEntry.getValue();
+
+//            combinedShifts.putIfAbsent(outerKey, new HashMap<>());
+//            HashMap<String, List<Float>> combinedInner = combinedShifts.get(outerKey);
+
+            for (Map.Entry<String, List<Float>> innerEntry : innerMap.entrySet()) {
+                String innerKey = innerEntry.getKey();
+                String c_shiftKey = outerKey + "->" + innerKey;
+                List<Float> values = innerEntry.getValue();
+
+                combinedShifts.putIfAbsent(c_shiftKey, new ArrayList<>());
+                combinedShifts.get(c_shiftKey).addAll(values);
+            }
+        }
+
+    }
+
+    public static void combineAllShiftedMonoRTIMs(
+            HashMap<String, List<Float>> c_shifts,
+            HashMap<String, List<Float>> combinedShifts) {
+
+        for (Map.Entry<String, List<Float>> innerEntry : c_shifts.entrySet()) {
+            String innerKey = innerEntry.getKey();
+            List<Float> values = innerEntry.getValue();
+
+            combinedShifts.putIfAbsent(innerKey, new ArrayList<>());
+            combinedShifts.get(innerKey).addAll(values);
         }
     }
 }
