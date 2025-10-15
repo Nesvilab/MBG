@@ -3,16 +3,14 @@ package com.mbg;
 import umich.ms.glyco.Glycan;
 
 import java.io.*;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-import java.util.stream.Collectors;
+import java.util.*;
 
 public class Utils {
 
     public static final String ionQuantMassPath = "modmasses_ionquant.txt"; // File potentially used by IonQuant
     public static final String newGlycanPath = "mbg_added_glycans.txt"; // File potentially used by IonQuant
+    public static final String rtshiftsPath = "rt_shits.csv";
+    public static final String imshiftsPath = "im_shits.csv";
 
     public static void writeSkylineMods(HashSet<String> addedGlycans) {
         if (addedGlycans.isEmpty()) {
@@ -123,5 +121,56 @@ public class Utils {
             }
         }
         System.out.printf("Appended %d unique masses to %s.%n", appendedCount, targetFilePath);
+    }
+    public static void writeRtImShifts(HashMap<String, List<Float>> rtShifts, HashMap<String, List<Float>> imShifts, Boolean noPASEF, ArrayList<Glycan> toAddResidues) {
+        // write rt shifts
+        List<String> toAddResiduesStrings = new ArrayList<>();
+
+        for (Glycan g : toAddResidues) {
+            toAddResiduesStrings.add(g.toString());
+        }
+        // filter rt/im shifts
+        HashMap<String, List<Float>> rtShifts_filtered = new HashMap<>();
+        for (String key : toAddResiduesStrings) {
+            if (rtShifts.containsKey(key)) {
+                rtShifts_filtered.put(key, rtShifts.get(key));
+            }
+        }
+
+//        writeHashMapToCSV(rtShifts_filtered, rtshiftsPath);
+        writeHashMapToCSV(rtShifts, rtshiftsPath);
+        if (!noPASEF) {
+            HashMap<String, List<Float>> imShifts_filtered = new HashMap<>();
+            for (String key : toAddResiduesStrings) {
+                if (imShifts.containsKey(key)) {
+                    imShifts_filtered.put(key, imShifts.get(key));
+                }
+            }
+//            writeHashMapToCSV(imShifts_filtered, imshiftsPath);
+            writeHashMapToCSV(imShifts, imshiftsPath);
+        }
+    }
+
+    private static void writeHashMapToCSV(HashMap<String, List<Float>> data, String filePath) {
+        try (FileWriter writer = new FileWriter(filePath)) {
+            // Write header
+            writer.write("glycan_differences,shift\n");
+
+            // Sort keys for consistent output
+            List<String> sortedKeys = new ArrayList<>(data.keySet());
+            Collections.sort(sortedKeys);
+
+            // Write each key-value pair as multiple rows
+            for (String key : sortedKeys) {
+                List<Float> shifts = data.get(key);
+                for (Float value : shifts) {
+                    writer.write(key + "," + value + "\n");
+                }
+            }
+
+            System.out.println("CSV file written in long format: " + filePath);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 }

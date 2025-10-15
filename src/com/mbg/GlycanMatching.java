@@ -84,12 +84,14 @@ public class GlycanMatching {
      * 1. Reads and processes MS/MS data
      * 2. Generates dummy PSMs for potential glycans
      * 3. Scores and filters the results
-     * 
-     * @param rawFileName Name of the raw file being processed
+     *
+     * @param rawFileName        Name of the raw file being processed
+     * @param combinedShiftedRTs
+     * @param combinedShiftedIMs
      * @return List of qualified PSMs that passed filtering
      * @throws Exception if there are issues processing the MS data
      */
-    public ArrayList<PSM> fillInGlycoSites(String rawFileName) throws Exception {
+    public ArrayList<PSM> fillInGlycoSites(String rawFileName, HashMap<String, List<Float>> combinedShiftedRTs, HashMap<String, List<Float>> combinedShiftedIMs) throws Exception {
         ArrayList<PSM> inferredPSMs = new ArrayList<>();
         String msFilePath = matchMSfilename(rawFileName, params.msFilePathsMap);
         Path msFileDir = Paths.get(msFilePath).getParent();
@@ -121,7 +123,7 @@ public class GlycanMatching {
         }
 
         // Initialize RT adjustment and scoring
-        RT_adjuster rtAdjuster = new RT_adjuster(this.observedGlycoSites, params.minPSMs);
+        RT_adjuster rtAdjuster = new RT_adjuster(this.observedGlycoSites, params.minPSMs, combinedShiftedRTs, combinedShiftedIMs);
         Scoring.init();
 
         // Process each glycosite

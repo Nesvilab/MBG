@@ -2,10 +2,7 @@ package com.mbg;
 
 import umich.ms.glyco.Glycan;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 
 import static java.lang.System.out;
 
@@ -54,17 +51,21 @@ public class MBG {
                 // Process PSMs for each raw file
                 ArrayList<PSM> inferredPSMs = new ArrayList<>();
                 HashSet<String> newGlycans = new HashSet<>();
+                // RT/IM shifts for outputting
+                HashMap<String, List<Float>> combinedShiftedRTs = new HashMap<>();
+                HashMap<String, List<Float>> combinedShiftedIMs = new HashMap<>();
                 for (Map.Entry<String, ArrayList<PSM>> rawFileEntry: psmFile.rawfilePSMmap.entrySet()) {
                     // Perform glycan matching and inference for each raw file
                     GlycanMatching matcher = new GlycanMatching(params, psmFile, rawFileEntry.getValue(), rawFileEntry.getKey());
                     matcher.groupGlycosites();
-                    inferredPSMs.addAll(matcher.fillInGlycoSites(rawFileEntry.getKey()));
+                    inferredPSMs.addAll(matcher.fillInGlycoSites(rawFileEntry.getKey(), combinedShiftedRTs, combinedShiftedIMs));
                     newGlycans.addAll(matcher.newGlycans);
                 }
                 
                 // Output the results
                 psmFile.printNewPSMs(inferredPSMs);
                 Utils.writeSkylineMods(newGlycans);
+                Utils.writeRtImShifts(combinedShiftedRTs, combinedShiftedIMs, params.noPASEF, params.toAddGlycans);
 
             } else {
                 // Display usage information for invalid commands
