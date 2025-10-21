@@ -9,8 +9,8 @@ public class Utils {
 
     public static final String ionQuantMassPath = "modmasses_ionquant.txt"; // File potentially used by IonQuant
     public static final String newGlycanPath = "mbg_added_glycans.txt"; // File potentially used by IonQuant
-    public static final String rtshiftsPath = "rt_shits.csv";
-    public static final String imshiftsPath = "im_shits.csv";
+    public static final String rtshiftsPath = "rt_shifts.csv";
+    public static final String imshiftsPath = "im_shifts.csv";
 
     public static void writeSkylineMods(HashSet<String> addedGlycans) {
         if (addedGlycans.isEmpty()) {
