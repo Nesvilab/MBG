@@ -86,6 +86,19 @@ Entrapment analysis on the yeast dataset showed an estimated false inference rat
 ```
 
 The output JAR will be at `build/libs/MBG-<version>.jar`.
+---
+### Installation
+
+**Via FragPipe (recommended):**
+
+MBG is bundled with FragPipe. Simply download and install [FragPipe](https://fragpipe.nesvilab.org/) — no separate installation of MBG is needed.
+
+**Standalone:**
+
+1. Install Java 11 or later.
+2. Download the latest `mbg-<version>.jar` from the [Releases](https://github.com/Nesvilab/MBG/releases) page, or build from source with `./gradlew jar`.
+
+**Typical install time:** Less than 5 minutes (as part of FragPipe installation on a standard desktop computer). Building from source takes approximately 1–2 minutes.
 
 ---
 
@@ -137,6 +150,71 @@ java -jar mbg-0.3.7.jar --match \
     --fdr 0.05 \
     --nopasef true
 ```
+---
+
+## Demo: Fission Yeast Dataset
+
+This demo walks through running MBG on the fission yeast glycoproteomics dataset (PXD005565), a well-characterized benchmark used in the manuscript.
+
+### 1. Download the demo data
+
+Download the fission yeast dataset from ProteomeXchange:
+- **Accession:** [PXD005565](https://www.ebi.ac.uk/pride/archive/projects/PXD005565)
+- Download the `.raw` files (3 files).
+- (optional) Convert to mzML using [MSConvert](https://proteowizard.sourceforge.io/).
+
+### 2. Run FragPipe with MSFragger-Glyco and MBG
+
+1. Open FragPipe and load the mzML files.
+2. Select the **glyco-N-HCD** workflow.
+3. Click **Database** panel to set the protein database to the *S. pombe* proteome (download from UniProt, Proteome ID UP000002485, add decoys and contaminants). 
+4. Click **Glyco** panel set the glycan database as **Mouse_N-glycans-1670-pGlyco**. Check **Run Glycoform Inference** and adjust MBG setting through **MS1 Glycoform Inference** block as the following:
+   - Max Glycan q-value: 0.01
+   - Min PSMs: 1
+   - Min Glycans: 2
+   - MBG FDR: 0.01
+   - Max Inference Step: 2
+   - Max Inference Skips: 0
+   - Allow inferring chimeric spectra: checked
+   - Residuals to add: Hex(1),NH4(1)
+
+5. Click **Quant(MS1)** panel, in **Feature dectection and peak tracing** block, set m/z tolerance to 10, RT tolerance to 0.4
+
+6. Run Fragpipe
+
+### 3. Run MBG out of Fragpipe
+
+Run Fragpipe as the above parameters without checking **Run Glycoform Inference**, after the FragPipe search completes, run MBG on the output:
+
+```bash
+java -jar mbg-0.3.7.jar --match \
+    --psm /path/to/yeast_output/psm.tsv \
+    --manifest /path/to/yeast_output/fragpipe.fp-manifest \
+    --toaddresiduals Hex(1),NH4(1) \
+    --maxq 0.01 \
+    --minpsms 1 \
+    --minglycans 2 \
+    --rttol 0.4 \
+    --mztol 10 \
+    --fdr 0.01 \
+    --expanddb 2 \
+    --nopasef true
+```
+
+
+### 4. Expected output
+
+After MBG completes, you should see:
+
+- **Updated `psm.tsv`** — the original PSMs plus MBG-inferred glycopeptides. At 5% FDR, expect approximately a **7.5%** (or 23.6% with 5% MBG FDR) increase in unique glycopeptide identifications.
+- **`rt_shifts.csv`** — retention time shifts per glycan transition (e.g., HexNAc(2)Hex(8) → HexNAc(2)Hex(9)). Most high-mannose transitions should fall within ~0.4 minutes.
+- MBG-inferred entries are flagged in the PSM table and can be distinguished from MSFragger-Glyco identifications for downstream analysis.
+
+### 5. Expected run time
+
+- **FragPipe search (MSFragger-Glyco + PTM-Shepherd + IonQuant):** approximately 15–20 minutes for 3 raw files on a standard desktop.
+- **MBG step only:** approximately 2–5 minutes on the same hardware.
+
 
 ---
 
