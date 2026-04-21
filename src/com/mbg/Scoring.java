@@ -23,9 +23,18 @@ public class Scoring {
     
     /** Coefficients of the LDA discriminant function */
     private static double[] coefficients;
-    
+
     /** Intercept term of the LDA discriminant function */
     private static double intercept;
+
+    /** Per-feature means used for z-score standardization, fit on combined target+decoy training data (per raw file). */
+    private static double[] featureMeans;
+
+    /** Per-feature standard deviations used for z-score standardization (per raw file). */
+    private static double[] featureStds;
+
+    /** Minimum std to avoid divide-by-zero; features with std below this are treated as inert (scaled value = 0). */
+    private static final double STD_EPS = 1e-9;
 
     /**
      * Initializes the scoring system by creating new data collections.
@@ -34,6 +43,8 @@ public class Scoring {
     public static void init() {
         decoyData = new ArrayList<>();
         targetData = new ArrayList<>();
+        featureMeans = null;
+        featureStds = null;
     }
 
     /**
@@ -44,6 +55,11 @@ public class Scoring {
      * @throws Exception If matrix operations fail
      */
     public static void getCutOffScore(double fdrCutoff) throws Exception {
+        // Z-score standardize features using combined target+decoy training data (per raw file).
+        // This brings features onto comparable scales so the pooled covariance matrix is well
+        // conditioned and the printed LDA coefficients reflect relative feature importance.
+        standardizeData();
+
         // Calculate mean vectors for target and decoy datasets
         double[] decoyMean = calculateMean(decoyData);
         double[] targetMean = calculateMean(targetData);
@@ -75,6 +91,8 @@ public class Scoring {
         intercept = calculateIntercept(targetMean, decoyMean, coefficients);
 
         // Output model coefficients
+        System.out.println("Feature means (z-score): " + java.util.Arrays.toString(featureMeans));
+        System.out.println("Feature stds (z-score): " + java.util.Arrays.toString(featureStds));
         System.out.println("Coefficients: " + java.util.Arrays.toString(coefficients));
 
         // Calculate scores and determine threshold
@@ -126,12 +144,84 @@ public class Scoring {
             };
         }
         
+        // Apply the same z-score standardization used during LDA fitting
+        double[] scaled = standardize(featureVector);
+
         // Calculate score using LDA model
-        double score = calculateScore(featureVector, coefficients, intercept);
+        double score = calculateScore(scaled, coefficients, intercept);
 
         // Update PSM with calculated score
         psm.add_MBG_score(psmCols, score);
         return score;
+    }
+
+    /**
+     * Computes per-feature mean and std from the combined target+decoy training set
+     * and rescales both lists in place to z-scores. Features with near-zero variance
+     * are collapsed to 0 to avoid numerical instability.
+     */
+    private static void standardizeData() {
+        if (targetData.isEmpty() && decoyData.isEmpty()) {
+            return;
+        }
+        int nFeatures = targetData.isEmpty() ? decoyData.get(0).length : targetData.get(0).length;
+        long total = (long) targetData.size() + (long) decoyData.size();
+
+        double[] means = new double[nFeatures];
+        for (double[] v : targetData) {
+            for (int i = 0; i < nFeatures; i++) means[i] += v[i];
+        }
+        for (double[] v : decoyData) {
+            for (int i = 0; i < nFeatures; i++) means[i] += v[i];
+        }
+        for (int i = 0; i < nFeatures; i++) means[i] /= total;
+
+        double[] vars = new double[nFeatures];
+        for (double[] v : targetData) {
+            for (int i = 0; i < nFeatures; i++) {
+                double d = v[i] - means[i];
+                vars[i] += d * d;
+            }
+        }
+        for (double[] v : decoyData) {
+            for (int i = 0; i < nFeatures; i++) {
+                double d = v[i] - means[i];
+                vars[i] += d * d;
+            }
+        }
+        double[] stds = new double[nFeatures];
+        long dof = Math.max(total - 1, 1);
+        for (int i = 0; i < nFeatures; i++) {
+            stds[i] = Math.sqrt(vars[i] / dof);
+        }
+
+        featureMeans = means;
+        featureStds = stds;
+
+        for (double[] v : targetData) scaleInPlace(v);
+        for (double[] v : decoyData) scaleInPlace(v);
+    }
+
+    /**
+     * Returns a z-scored copy of a feature vector using the means/stds captured during training.
+     * Falls through unchanged if standardization was not initialized (e.g. scorer bypassed).
+     */
+    private static double[] standardize(double[] vec) {
+        if (featureMeans == null || featureStds == null) {
+            return vec;
+        }
+        double[] out = new double[vec.length];
+        for (int i = 0; i < vec.length; i++) {
+            out[i] = featureStds[i] > STD_EPS ? (vec[i] - featureMeans[i]) / featureStds[i] : 0.0;
+        }
+        return out;
+    }
+
+    /** In-place variant of {@link #standardize(double[])} used during training-set rescaling. */
+    private static void scaleInPlace(double[] vec) {
+        for (int i = 0; i < vec.length; i++) {
+            vec[i] = featureStds[i] > STD_EPS ? (vec[i] - featureMeans[i]) / featureStds[i] : 0.0;
+        }
     }
 
     //--------------------------------
