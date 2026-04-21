@@ -36,6 +36,12 @@ public class Scoring {
     /** Minimum std to avoid divide-by-zero; features with std below this are treated as inert (scaled value = 0). */
     private static final double STD_EPS = 1e-9;
 
+    /** Index of the intensity feature in the per-PSM feature vector. */
+    private static final int INTENSITY_IDX = 0;
+
+    /** Natural-log denominator used to compute log base 2 of the intensity feature. */
+    private static final double LOG2 = Math.log(2.0);
+
     /**
      * Initializes the scoring system by creating new data collections.
      * Must be called before any scoring operations are performed.
@@ -167,6 +173,11 @@ public class Scoring {
         int nFeatures = targetData.isEmpty() ? decoyData.get(0).length : targetData.get(0).length;
         long total = (long) targetData.size() + (long) decoyData.size();
 
+        // Compress intensity's 6+ order-of-magnitude dynamic range before z-scoring so the
+        // resulting distribution is closer to Gaussian and less outlier-dominated.
+        for (double[] v : targetData) logTransformInPlace(v);
+        for (double[] v : decoyData) logTransformInPlace(v);
+
         double[] means = new double[nFeatures];
         for (double[] v : targetData) {
             for (int i = 0; i < nFeatures; i++) means[i] += v[i];
@@ -210,11 +221,22 @@ public class Scoring {
         if (featureMeans == null || featureStds == null) {
             return vec;
         }
-        double[] out = new double[vec.length];
-        for (int i = 0; i < vec.length; i++) {
-            out[i] = featureStds[i] > STD_EPS ? (vec[i] - featureMeans[i]) / featureStds[i] : 0.0;
+        double[] out = vec.clone();
+        logTransformInPlace(out);
+        for (int i = 0; i < out.length; i++) {
+            out[i] = featureStds[i] > STD_EPS ? (out[i] - featureMeans[i]) / featureStds[i] : 0.0;
         }
         return out;
+    }
+
+    /**
+     * Applies a log2(x + 1) transform to the intensity slot (index 0) of the given vector
+     * in place. Intensity spans roughly 10^3-10^11 in practice; compressing it before
+     * z-scoring avoids the tail dominating the mean/std and keeps the covariance matrix
+     * well behaved.
+     */
+    private static void logTransformInPlace(double[] vec) {
+        vec[INTENSITY_IDX] = Math.log(vec[INTENSITY_IDX] + 1.0) / LOG2;
     }
 
     /** In-place variant of {@link #standardize(double[])} used during training-set rescaling. */
