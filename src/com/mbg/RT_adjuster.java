@@ -401,20 +401,26 @@ public class RT_adjuster {
     }
 
     Float getShiftedIM(Glycan oldGlycan, Glycan newGlycan, double oldIM) {
+        // Mirrors getShiftedRT's bidirectional lookup. shiftedIMs is populated only with
+        // smaller->larger composition keys, so the loss branch must use newGlycan (the
+        // smaller side) as outer key and negate the stored shift. The fallback path uses
+        // getShiftedSaccharides (handles multi-residue diffs) rather than
+        // getShiftedMonosaccharide, which only supports single-residue diffs and exits
+        // the process on anything else.
         Float shiftedIM;
         if (oldGlycan.mass < newGlycan.mass) {
             if (shiftedIMs.containsKey(oldGlycan.toString()) && shiftedIMs.get(oldGlycan.toString()).containsKey(newGlycan.toString())) {
                 shiftedIM = shiftedIMs.get(oldGlycan.toString()).get(newGlycan.toString());
             } else {
-                String shiftedMonosaccharide = getShiftedSaccharides(oldGlycan, newGlycan);
-                shiftedIM = monosaccharideImShifts.getOrDefault(shiftedMonosaccharide, (float) 0);
+                String shiftedSaccharides = getShiftedSaccharides(oldGlycan, newGlycan);
+                shiftedIM = monosaccharideImShifts.getOrDefault(shiftedSaccharides, (float) 0);
             }
         } else {
-            if (shiftedIMs.containsKey(oldGlycan.toString()) && shiftedIMs.get(oldGlycan.toString()).containsKey(newGlycan.toString())) {
-                shiftedIM = -shiftedIMs.get(oldGlycan.toString()).get(newGlycan.toString());
+            if (shiftedIMs.containsKey(newGlycan.toString()) && shiftedIMs.get(newGlycan.toString()).containsKey(oldGlycan.toString())) {
+                shiftedIM = -shiftedIMs.get(newGlycan.toString()).get(oldGlycan.toString());
             } else {
-                String shiftedMonosaccharide = getShiftedMonosaccharide(newGlycan, oldGlycan);
-                shiftedIM = -monosaccharideImShifts.getOrDefault(shiftedMonosaccharide, (float) 0);
+                String shiftedSaccharides = getShiftedSaccharides(newGlycan, oldGlycan);
+                shiftedIM = -monosaccharideImShifts.getOrDefault(shiftedSaccharides, (float) 0);
             }
         }
         float newIM = (float) (oldIM + shiftedIM);
