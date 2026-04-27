@@ -430,12 +430,19 @@ public class RT_adjuster {
     }
 
     Integer getShiftFrequency(Glycan oldGlycan, Glycan newGlycan) {
-        if (allShiftedRTs.containsKey(oldGlycan.toString()) && allShiftedRTs.get(oldGlycan.toString()).containsKey(newGlycan.toString())) {
-            return allShiftedRTs.get(oldGlycan.toString()).get(newGlycan.toString()).size();
+        // The evidence table allShiftedRTs is populated only with smaller->larger composition
+        // pairs, so a direct lookup misses every loss-type candidate (parent->smaller). The
+        // count of supporting peptides is direction-agnostic, so also fall back to the reverse
+        // direction. Mirrors getShiftedRT, which already handles both directions.
+        String oldKey = oldGlycan.toString();
+        String newKey = newGlycan.toString();
+        if (allShiftedRTs.containsKey(oldKey) && allShiftedRTs.get(oldKey).containsKey(newKey)) {
+            return allShiftedRTs.get(oldKey).get(newKey).size();
         }
-        else {
-            return 0;
+        if (allShiftedRTs.containsKey(newKey) && allShiftedRTs.get(newKey).containsKey(oldKey)) {
+            return allShiftedRTs.get(newKey).get(oldKey).size();
         }
+        return 0;
     }
 
     public static void combineAllShiftedRTIMs(
