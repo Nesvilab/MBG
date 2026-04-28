@@ -52,9 +52,11 @@ public class GlycanMatching {
         observedGlycoSites = new HashMap<>();
         HashMap<String, Integer> glycanObservationCounts = new HashMap<>();
 
-        // Process each PSM to group by glycosite and count glycan observations
+        // Process each PSM to group by glycosite and count glycan observations.
+        // Inference is seeded only by confidently identified glycopeptides; above-maxq
+        // rows remain in allPSMs so that the four-class FDR lookups can see them.
         for (PSM psm: psms) {
-            if (psm.glycan == null) {
+            if (psm.glycanState != PSM.GlycanState.CONFIDENT) {
                 continue;
             }
             

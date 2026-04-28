@@ -41,6 +41,22 @@ public class PSM_File {
     private final Params params;
     public static boolean runOPair;
 
+    /**
+     * Confident-identification index used by the four-class FDR framework.
+     * Outer key: raw file name. Inner: set of "peptide|glycanComposition" strings derived
+     * from PSMs whose glycanState == CONFIDENT. Used to classify each MBG candidate as
+     * type 1 (not in original PSM table) or type 2 (already in original PSM table).
+     */
+    public final HashMap<String, HashSet<String>> confidentIDs = new HashMap<>();
+
+    /**
+     * Confident-PSM-by-MS2-scan index. Outer key: raw file name. Inner: scan number ->
+     * the confident PSM at that scan. Used by type -2 decoy generation to verify that
+     * the +k Da shifted m/z lands on an MS2 spectrum that was confidently identified as
+     * a different glycopeptide.
+     */
+    public final HashMap<String, HashMap<Integer, PSM>> ms2ScanToPSM = new HashMap<>();
+
     // Static initializer block to populate the map of standard column names.
     // This map defines the expected header string for each PSM attribute (enum).
     static {
@@ -210,9 +226,19 @@ public class PSM_File {
                     if (psm.rawfile != null && !psm.rawfile.isEmpty()) {
                         // computeIfAbsent gets the list if key exists, or creates a new ArrayList if not, then adds the psm
                         rawfilePSMmap.computeIfAbsent(psm.rawfile, k -> new ArrayList<>()).add(psm);
-                        // only include those that with glycan identified
-                        if (psm.glycan != null) {
+                        // Only confidently-identified glyco PSMs contribute to chimeric-MS2 exclusion.
+                        // Above-maxq glyco rows have a parsed glycan but should not exclude their scans
+                        // (preserving pre-refactor semantics, since they were previously nulled out).
+                        if (psm.glycanState == PSM.GlycanState.CONFIDENT) {
                             params.excludeScanNumbersMAp.computeIfAbsent(psm.rawfile, k -> new HashSet<>()).add(psm.scanNum);
+                            // Populate the confidentIDs and ms2ScanToPSM indexes used by the
+                            // four-class FDR framework (commits 2 and 4 read these).
+                            confidentIDs
+                                .computeIfAbsent(psm.rawfile, k -> new HashSet<>())
+                                .add(psm.peptide + "|" + psm.glycan.toString());
+                            ms2ScanToPSM
+                                .computeIfAbsent(psm.rawfile, k -> new HashMap<>())
+                                .put(psm.scanNum, psm);
                         }
                     } else {
                          System.out.printf("Warning: PSM at line %d has missing or empty Spectrum File information. Cannot group by raw file.%n", lineNum);
@@ -229,6 +255,40 @@ public class PSM_File {
             psm.maxRank = maxRankOfSpectra.getOrDefault(psm.scanNum, 1); // Default to 1 if not found
         }
         System.out.printf("Read %d total PSMs from %d raw files.%n", allPSMs.size(), rawfilePSMmap.size());
+        int confidentCount = confidentIDs.values().stream().mapToInt(Set::size).sum();
+        System.out.printf("Indexed %d confident (peptide, glycan) pairs across %d raw files for four-class FDR lookup.%n",
+                confidentCount, confidentIDs.size());
+    }
+
+    /**
+     * Returns true if the original PSM table contains a confident identification of
+     * (peptide, glycanComposition) on the given raw file. Used to classify a candidate
+     * glycoform as type 2 (already identified) vs type 1 (genuine MBG inference).
+     *
+     * @param rawFile          raw file name (no extension)
+     * @param peptide          peptide sequence as it appears in the PSM table
+     * @param glycanComposition glycan composition string (Glycan.toString())
+     */
+    public boolean isConfidentlyIdentified(String rawFile, String peptide, String glycanComposition) {
+        HashSet<String> set = confidentIDs.get(rawFile);
+        if (set == null) {
+            return false;
+        }
+        return set.contains(peptide + "|" + glycanComposition);
+    }
+
+    /**
+     * Returns the confident PSM at the given (raw file, MS2 scan number), or null if
+     * no confident PSM was identified at that scan. Used by type -2 decoy generation
+     * to verify that a +k Da shifted m/z lands on an MS2 spectrum confidently
+     * identified as a different glycopeptide.
+     */
+    public PSM confidentPsmAtScan(String rawFile, int scanNum) {
+        HashMap<Integer, PSM> map = ms2ScanToPSM.get(rawFile);
+        if (map == null) {
+            return null;
+        }
+        return map.get(scanNum);
     }
 
     /**

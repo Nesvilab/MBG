@@ -12,6 +12,19 @@ import java.util.regex.Pattern;
 
 public class PSM implements Comparable<PSM>{
 
+    /**
+     * Tri-state classification of a PSM's glycan field:
+     *   NONE        - non-glycopeptide PSM (no Total Glycan Composition column value).
+     *   ABOVE_MAXQ  - glycopeptide PSM whose Glycan q-value exceeds --maxq. The glycan is
+     *                 still parsed so it can serve as a lookup target for the four-class
+     *                 FDR framework, but it is excluded from the MBG inference base.
+     *   CONFIDENT   - glycopeptide PSM with Glycan q-value <= --maxq. Eligible to seed
+     *                 MBG inference and to populate confident-ID lookups.
+     */
+    public enum GlycanState { NONE, ABOVE_MAXQ, CONFIDENT }
+
+    public GlycanState glycanState = GlycanState.NONE;
+
     double rt;
     double im;
     double apexRT;
@@ -116,11 +129,17 @@ public class PSM implements Comparable<PSM>{
                 glycoQval = 1;
             }
         }
-        if (glycoQval > params.maxGlycanQval && addCols > 0) {
-            this.glycan = null;
-            return;
-        }
+        // Parse the glycan unconditionally so above-maxq rows remain available as lookup
+        // targets for the four-class FDR framework. The defensive addCols>0 q-value gate
+        // that used to null out the glycan here only fired during a re-analysis edge case
+        // (callers in this file always pass addCols=0); replacing it with a state tag
+        // preserves that semantics while exposing the row to confidentIDs lookups.
         this.glycan = GlycanParser.parseGlycanString(glycan, params.glycanResidues);
+        if (glycoQval > params.maxGlycanQval && addCols > 0) {
+            this.glycanState = GlycanState.ABOVE_MAXQ;
+        } else {
+            this.glycanState = GlycanState.CONFIDENT;
+        }
         // parse other needed PSM info
         peptide = splits[psmCols.get(PSM_File.PSMattr.peptide)];
         protein = splits[psmCols.get(PSM_File.PSMattr.protein)];
@@ -183,11 +202,15 @@ public class PSM implements Comparable<PSM>{
                 glycoQval = 1;
             }
         }
-        if (glycoQval > params.maxGlycanQval) {
-            this.glycan = null;
-            return;
-        }
+        // Parse the glycan unconditionally; tag rows above --maxq with ABOVE_MAXQ so the
+        // four-class FDR framework can still look them up while the existing inference
+        // base (which gates on glycanState == CONFIDENT) sees no behavior change.
         this.glycan = GlycanParser.parseGlycanString(glycan, params.glycanResidues);
+        if (glycoQval > params.maxGlycanQval) {
+            this.glycanState = GlycanState.ABOVE_MAXQ;
+        } else {
+            this.glycanState = GlycanState.CONFIDENT;
+        }
         // parse other needed PSM info
         peptide = splits[psmCols.get(PSM_File.PSMattr.peptide)];
         protein = splits[psmCols.get(PSM_File.PSMattr.protein)];
