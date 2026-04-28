@@ -25,6 +25,16 @@ public class PSM implements Comparable<PSM>{
 
     public GlycanState glycanState = GlycanState.NONE;
 
+    /**
+     * Four-class FDR candidate classification:
+     *   TYPE_2 — (peptide, glycan composition) already confidently identified in the input
+     *            PSM table; contributes to the LDA training set.
+     *   TYPE_1 — novel inference not seen in the input table; scored by the trained LDA
+     *            with mixture-model posterior/q-value (implemented in later commits).
+     */
+    public enum CandidateType { TYPE_1, TYPE_2 }
+    public CandidateType candidateType = CandidateType.TYPE_1;
+
     double rt;
     double im;
     double apexRT;
@@ -275,7 +285,7 @@ public class PSM implements Comparable<PSM>{
      * @param params
      * @param excludeScanNumbers
      */
-    public static List<PSM> makeDummyPSM(PSM existingPSM, Glycan newGlycan, HashMap<PSM_File.PSMattr, Integer> psmCols, Params params, int rankCounter, RT_adjuster rtAdjuster, boolean ifdecoy, String parentGlycan, String addedResidual, boolean if_new_glycan, HashSet<Integer> excludeScanNumbers) {
+    public static List<PSM> makeDummyPSM(PSM existingPSM, Glycan newGlycan, HashMap<PSM_File.PSMattr, Integer> psmCols, Params params, int rankCounter, RT_adjuster rtAdjuster, boolean ifdecoy, String parentGlycan, String addedResidual, boolean if_new_glycan, HashSet<Integer> excludeScanNumbers, CandidateType candidateType) {
         String[] newSplits = new String[existingPSM.splits.length];
         System.arraycopy(existingPSM.splits, 0, newSplits, 0, newSplits.length);
 
@@ -345,6 +355,7 @@ public class PSM implements Comparable<PSM>{
         if (peakMatcher.quantifiedEntry == null) {
             newSplits[psmCols.get(PSM_File.PSMattr.intensity)] = String.valueOf(0);
             PSM addedPSM = new PSM(String.join("\t", newSplits), psmCols, params, true, false, 0, parentGlycan, addedResidual, 0);
+            addedPSM.candidateType = candidateType;
             // update apex RT IM for iteration
             addedPSM.apexRT = newRT;
             addedPSM.apexIM = newIM;
@@ -388,6 +399,7 @@ public class PSM implements Comparable<PSM>{
                         String.format("%0" + MSMS.maxScanNumLength + "d", ms2Candidates.get(i).scanNum), String.valueOf(ms2Candidates.get(i).charge)});
                 // generate new PSM
                 PSM addedPSM = new PSM(String.join("\t", newSplits), psmCols, params, true, true, yIntensities.get(i), parentGlycan, addedResidual, 0);
+                addedPSM.candidateType = candidateType;
                 addedPSM.updateRank(existingPSM.rank + rankCounter, psmCols);
                 addedPSM.rtDiff = rtDiff;
                 addedPSM.imDiff = imDiff;
@@ -406,6 +418,7 @@ public class PSM implements Comparable<PSM>{
         } else {
             // generate new PSM
             PSM addedPSM = new PSM(String.join("\t", newSplits), psmCols, params, true, false, 0, parentGlycan, addedResidual,  0);
+            addedPSM.candidateType = candidateType;
             addedPSM.updateRank(existingPSM.rank + rankCounter, psmCols);
             addedPSM.rtDiff = rtDiff;
             addedPSM.imDiff = imDiff;

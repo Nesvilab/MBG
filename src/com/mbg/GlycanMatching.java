@@ -24,6 +24,9 @@ public class GlycanMatching {
     private String[] qualifiedGlycans;          // Glycans that meet minimum observation criteria
     public HashSet<String> newGlycans = new HashSet<>();    // List of new inferred glycans (not in the input database)
     public HashSet<Integer> excludeScanNumbers;
+    private String currentRawFileName;
+    private int type1Count;
+    private int type2Count;
 
     /**
      * Constructor for GlycanMatching
@@ -95,6 +98,9 @@ public class GlycanMatching {
      */
     public ArrayList<PSM> fillInGlycoSites(String rawFileName, HashMap<String, List<Float>> combinedShiftedRTs, HashMap<String, List<Float>> combinedShiftedIMs) throws Exception {
         ArrayList<PSM> inferredPSMs = new ArrayList<>();
+        this.currentRawFileName = rawFileName;
+        this.type1Count = 0;
+        this.type2Count = 0;
         String msFilePath = matchMSfilename(rawFileName, params.msFilePathsMap);
         Path msFileDir = Paths.get(msFilePath).getParent();
 
@@ -137,6 +143,9 @@ public class GlycanMatching {
                 }
             }
         }
+
+        System.out.printf("Candidate types for %s: Type 1 (novel) = %d, Type 2 (already identified) = %d%n",
+                rawFileName, type1Count, type2Count);
 
         // Filter and score PSMs
         ArrayList<PSM> qualifiedPSMs = new ArrayList<>();
@@ -223,19 +232,35 @@ public class GlycanMatching {
                 continue;
             }
 
-            // Skip if mass is too close to existing glycans
+            // Skip if mass is too close to existing glycans (preserves pre-Commit-2 behavior;
+            // the 1.5 Da deduplication will move to output-time in Commit 6).
             if (isWithinDistance(site.glycanMasses, newGlycan.mass, 1.5)) {
                 continue;
             }
 
-            // Generate new PSMs
+            // Classify as Type 2 if (peptide, glycan) was confidently identified in ANY
+            // raw file of this experiment — a replicate hit is a known true positive even
+            // when absent from the current file's observedGlycans (e.g., missing value).
+            // Uses the cross-file global index. Plumbing only — Scoring still uses the
+            // merged targetData / decoyData until the four-list refactor in Commit 5.
+            PSM.CandidateType candidateType = psmFile.isConfidentlyIdentified(
+                    basePSM.peptide, newGlycan.toString())
+                    ? PSM.CandidateType.TYPE_2
+                    : PSM.CandidateType.TYPE_1;
+            if (candidateType == PSM.CandidateType.TYPE_2) {
+                type2Count++;
+            } else {
+                type1Count++;
+            }
+
+            // Generate target PSMs
             List<PSM> addedPSMs = PSM.makeDummyPSM(basePSM, newGlycan, psmFile.PSMcolumns, params,
                     rankCounter, rtAdjuster, false, basePSM.glycan.toString(),
-                    addedResidue, isNewGlycan, excludeScanNumbers);
+                    addedResidue, isNewGlycan, excludeScanNumbers, candidateType);
 
             // Generate decoy PSMs
             PSM.makeDummyPSM(basePSM, newGlycan, psmFile.PSMcolumns, params, rankCounter, rtAdjuster,
-                    true, basePSM.glycan.toString(), addedResidue, isNewGlycan, excludeScanNumbers);
+                    true, basePSM.glycan.toString(), addedResidue, isNewGlycan, excludeScanNumbers, candidateType);
 
             newPSMs.addAll(addedPSMs);
 

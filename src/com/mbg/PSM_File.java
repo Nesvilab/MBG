@@ -44,10 +44,19 @@ public class PSM_File {
     /**
      * Confident-identification index used by the four-class FDR framework.
      * Outer key: raw file name. Inner: set of "peptide|glycanComposition" strings derived
-     * from PSMs whose glycanState == CONFIDENT. Used to classify each MBG candidate as
-     * type 1 (not in original PSM table) or type 2 (already in original PSM table).
+     * from PSMs whose glycanState == CONFIDENT. Used by type -2 decoy generation (per-file
+     * MS2 scan lookup) and by {@link #confidentPsmAtScan}.
      */
     public final HashMap<String, HashSet<String>> confidentIDs = new HashMap<>();
+
+    /**
+     * Cross-file confident-identification set: union of all per-file confidentIDs.
+     * Used by {@link #isConfidentlyIdentified(String, String)} to classify MBG candidates
+     * as type 2 (known true positive anywhere in the experiment) vs type 1 (novel).
+     * A glycan identified in any replicate is considered a known true positive even if it
+     * was not detected in the specific raw file currently being inferred.
+     */
+    public final HashSet<String> globalConfidentIDs = new HashSet<>();
 
     /**
      * Confident-PSM-by-MS2-scan index. Outer key: raw file name. Inner: scan number ->
@@ -233,9 +242,11 @@ public class PSM_File {
                             params.excludeScanNumbersMAp.computeIfAbsent(psm.rawfile, k -> new HashSet<>()).add(psm.scanNum);
                             // Populate the confidentIDs and ms2ScanToPSM indexes used by the
                             // four-class FDR framework (commits 2 and 4 read these).
+                            String idKey = psm.peptide + "|" + psm.glycan.toString();
                             confidentIDs
                                 .computeIfAbsent(psm.rawfile, k -> new HashSet<>())
-                                .add(psm.peptide + "|" + psm.glycan.toString());
+                                .add(idKey);
+                            globalConfidentIDs.add(idKey);
                             ms2ScanToPSM
                                 .computeIfAbsent(psm.rawfile, k -> new HashMap<>())
                                 .put(psm.scanNum, psm);
@@ -262,12 +273,8 @@ public class PSM_File {
 
     /**
      * Returns true if the original PSM table contains a confident identification of
-     * (peptide, glycanComposition) on the given raw file. Used to classify a candidate
-     * glycoform as type 2 (already identified) vs type 1 (genuine MBG inference).
-     *
-     * @param rawFile          raw file name (no extension)
-     * @param peptide          peptide sequence as it appears in the PSM table
-     * @param glycanComposition glycan composition string (Glycan.toString())
+     * (peptide, glycanComposition) on the given raw file. Used by type -2 decoy
+     * generation where a per-file check is required.
      */
     public boolean isConfidentlyIdentified(String rawFile, String peptide, String glycanComposition) {
         HashSet<String> set = confidentIDs.get(rawFile);
@@ -275,6 +282,16 @@ public class PSM_File {
             return false;
         }
         return set.contains(peptide + "|" + glycanComposition);
+    }
+
+    /**
+     * Cross-file overload: returns true if (peptide, glycanComposition) was confidently
+     * identified in ANY raw file in this experiment. Used by the four-class FDR type
+     * classifier — a glycan observed in another replicate is a known true positive even
+     * when it hasn't yet been detected in the file currently being inferred.
+     */
+    public boolean isConfidentlyIdentified(String peptide, String glycanComposition) {
+        return globalConfidentIDs.contains(peptide + "|" + glycanComposition);
     }
 
     /**
