@@ -27,20 +27,17 @@ public class Scoring {
     /** Intercept term of the LDA discriminant function */
     private static double intercept;
 
-    /** Per-feature means used for z-score standardization, fit on combined target+decoy training data (per raw file). */
-    private static double[] featureMeans;
-
-    /** Per-feature standard deviations used for z-score standardization (per raw file). */
-    private static double[] featureStds;
-
-    /** Minimum std to avoid divide-by-zero; features with std below this are treated as inert (scaled value = 0). */
-    private static final double STD_EPS = 1e-9;
-
     /** Index of the intensity feature in the per-PSM feature vector. */
     private static final int INTENSITY_IDX = 0;
 
-    /** Natural-log denominator used to compute log base 2 of the intensity feature. */
-    private static final double LOG2 = Math.log(2.0);
+    /** Index of the KL-divergence feature in the per-PSM feature vector. */
+    private static final int KL_IDX = 2;
+
+    /** Floor applied to intensity before log10, matching the upstream intensity > 0.01 filter. */
+    private static final double INTENSITY_FLOOR = 0.01;
+
+    /** Floor applied to KL before log10 to keep the value finite when an isotope envelope matches exactly. */
+    private static final double KL_FLOOR = 1e-6;
 
     /**
      * Initializes the scoring system by creating new data collections.
@@ -49,8 +46,6 @@ public class Scoring {
     public static void init() {
         decoyData = new ArrayList<>();
         targetData = new ArrayList<>();
-        featureMeans = null;
-        featureStds = null;
     }
 
     /**
@@ -61,10 +56,11 @@ public class Scoring {
      * @throws Exception If matrix operations fail
      */
     public static void getCutOffScore(double fdrCutoff) throws Exception {
-        // Z-score standardize features using combined target+decoy training data (per raw file).
-        // This brings features onto comparable scales so the pooled covariance matrix is well
-        // conditioned and the printed LDA coefficients reflect relative feature importance.
-        standardizeData();
+        // Compress dynamic range of intensity (~10^3-10^11) and KL (~0-1) before LDA fit.
+        // Other features (avePPM, shiftFrequency, featureIntensity, rtDiff, imDiff) are left
+        // on their native scales.
+        for (double[] v : targetData) logTransformInPlace(v);
+        for (double[] v : decoyData) logTransformInPlace(v);
 
         // Calculate mean vectors for target and decoy datasets
         double[] decoyMean = calculateMean(decoyData);
@@ -97,8 +93,6 @@ public class Scoring {
         intercept = calculateIntercept(targetMean, decoyMean, coefficients);
 
         // Output model coefficients
-        System.out.println("Feature means (z-score): " + java.util.Arrays.toString(featureMeans));
-        System.out.println("Feature stds (z-score): " + java.util.Arrays.toString(featureStds));
         System.out.println("Coefficients: " + java.util.Arrays.toString(coefficients));
 
         // Calculate scores and determine threshold
@@ -150,11 +144,12 @@ public class Scoring {
             };
         }
         
-        // Apply the same z-score standardization used during LDA fitting
-        double[] scaled = standardize(featureVector);
+        // Apply the same log10 transforms (intensity, kl) used during LDA fitting
+        double[] transformed = featureVector.clone();
+        logTransformInPlace(transformed);
 
         // Calculate score using LDA model
-        double score = calculateScore(scaled, coefficients, intercept);
+        double score = calculateScore(transformed, coefficients, intercept);
 
         // Update PSM with calculated score
         psm.add_MBG_score(psmCols, score);
@@ -162,88 +157,15 @@ public class Scoring {
     }
 
     /**
-     * Computes per-feature mean and std from the combined target+decoy training set
-     * and rescales both lists in place to z-scores. Features with near-zero variance
-     * are collapsed to 0 to avoid numerical instability.
-     */
-    private static void standardizeData() {
-        if (targetData.isEmpty() && decoyData.isEmpty()) {
-            return;
-        }
-        int nFeatures = targetData.isEmpty() ? decoyData.get(0).length : targetData.get(0).length;
-        long total = (long) targetData.size() + (long) decoyData.size();
-
-        // Compress intensity's 6+ order-of-magnitude dynamic range before z-scoring so the
-        // resulting distribution is closer to Gaussian and less outlier-dominated.
-        for (double[] v : targetData) logTransformInPlace(v);
-        for (double[] v : decoyData) logTransformInPlace(v);
-
-        double[] means = new double[nFeatures];
-        for (double[] v : targetData) {
-            for (int i = 0; i < nFeatures; i++) means[i] += v[i];
-        }
-        for (double[] v : decoyData) {
-            for (int i = 0; i < nFeatures; i++) means[i] += v[i];
-        }
-        for (int i = 0; i < nFeatures; i++) means[i] /= total;
-
-        double[] vars = new double[nFeatures];
-        for (double[] v : targetData) {
-            for (int i = 0; i < nFeatures; i++) {
-                double d = v[i] - means[i];
-                vars[i] += d * d;
-            }
-        }
-        for (double[] v : decoyData) {
-            for (int i = 0; i < nFeatures; i++) {
-                double d = v[i] - means[i];
-                vars[i] += d * d;
-            }
-        }
-        double[] stds = new double[nFeatures];
-        long dof = Math.max(total - 1, 1);
-        for (int i = 0; i < nFeatures; i++) {
-            stds[i] = Math.sqrt(vars[i] / dof);
-        }
-
-        featureMeans = means;
-        featureStds = stds;
-
-        for (double[] v : targetData) scaleInPlace(v);
-        for (double[] v : decoyData) scaleInPlace(v);
-    }
-
-    /**
-     * Returns a z-scored copy of a feature vector using the means/stds captured during training.
-     * Falls through unchanged if standardization was not initialized (e.g. scorer bypassed).
-     */
-    private static double[] standardize(double[] vec) {
-        if (featureMeans == null || featureStds == null) {
-            return vec;
-        }
-        double[] out = vec.clone();
-        logTransformInPlace(out);
-        for (int i = 0; i < out.length; i++) {
-            out[i] = featureStds[i] > STD_EPS ? (out[i] - featureMeans[i]) / featureStds[i] : 0.0;
-        }
-        return out;
-    }
-
-    /**
-     * Applies a log2(x + 1) transform to the intensity slot (index 0) of the given vector
-     * in place. Intensity spans roughly 10^3-10^11 in practice; compressing it before
-     * z-scoring avoids the tail dominating the mean/std and keeps the covariance matrix
-     * well behaved.
+     * Compresses the dynamic range of intensity and KL by replacing them in place with their
+     * log10 values. Other features are left on their native scales. Floors guard against the
+     * (rare) zero values that would otherwise produce -infinity. Same transform is applied
+     * during LDA fit (per training vector) and at scoring time (on a clone of the live
+     * feature vector).
      */
     private static void logTransformInPlace(double[] vec) {
-        vec[INTENSITY_IDX] = Math.log(vec[INTENSITY_IDX] + 1.0) / LOG2;
-    }
-
-    /** In-place variant of {@link #standardize(double[])} used during training-set rescaling. */
-    private static void scaleInPlace(double[] vec) {
-        for (int i = 0; i < vec.length; i++) {
-            vec[i] = featureStds[i] > STD_EPS ? (vec[i] - featureMeans[i]) / featureStds[i] : 0.0;
-        }
+        vec[INTENSITY_IDX] = Math.log10(Math.max(vec[INTENSITY_IDX], INTENSITY_FLOOR));
+        vec[KL_IDX] = Math.log10(Math.max(vec[KL_IDX], KL_FLOOR));
     }
 
     //--------------------------------
