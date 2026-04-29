@@ -36,8 +36,10 @@ public class Params {
     public float rtTol = 0.4F;
     /** Ion Mobility tolerance (unitless or V·s·cm^-2) for matching inferred glycoforms. Default: 0.05. (--imtol) */
     public float imTol = 0.05F;
-    /** False Discovery Rate threshold for filtering inferred glycoforms after scoring. Default: 0.05 (5%). (--fdr) */
-    public float fdr = 0.05F;
+    /** Q-value threshold for accepting TYPE_1 inferred glycoforms. Default: 0.01 (1%). (--qvalue) */
+    public double qvalue = 0.01;
+    /** Legacy single-class LDA mode — bypasses the mixture-model q-value pipeline. (--legacy-fdr) */
+    public boolean legacyFdr = false;
     /** Mass tolerance (in ppm) for matching inferred glycoforms in MS1 spectra via IonQuant. Default: 5. (--mztol) */
     public int mztol = 5; // Note: Parameter name might be misleading, it's ppm tolerance.
 
@@ -151,11 +153,28 @@ public class Params {
                         System.exit(1);
                     }
                     break;
-                case "--fdr": // False Discovery Rate threshold
+                case "--fdr": // Deprecated alias for --qvalue
                     try {
-                        fdr = Float.parseFloat(value);
+                        qvalue = Double.parseDouble(value);
+                        System.err.println("[deprecated] --fdr is now an alias for --qvalue; please update your scripts.");
                     } catch (NumberFormatException numberFormatException) {
-                        out.printf("Error parsing FDR argument '%s': not a valid number%n", value);
+                        out.printf("Error parsing --fdr argument '%s': not a valid number%n", value);
+                        System.exit(1);
+                    }
+                    break;
+                case "--qvalue": // Q-value threshold for TYPE_1 inference acceptance
+                    try {
+                        qvalue = Double.parseDouble(value);
+                    } catch (NumberFormatException numberFormatException) {
+                        out.printf("Error parsing --qvalue argument '%s': not a valid number%n", value);
+                        System.exit(1);
+                    }
+                    break;
+                case "--legacy-fdr": // Use single-class LDA threshold instead of mixture-model q-values
+                    try {
+                        legacyFdr = Boolean.parseBoolean(value);
+                    } catch (Exception e) {
+                        out.printf("Error parsing --legacy-fdr argument '%s': must be 'true' or 'false'%n", value);
                         System.exit(1);
                     }
                     break;

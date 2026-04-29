@@ -4,6 +4,7 @@ import java.io.File;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
+import java.util.stream.IntStream;
 
 import umich.ms.glyco.Glycan;
 
@@ -155,31 +156,107 @@ public class GlycanMatching {
         int totalDecoys  = Scoring.type2Decoys.size()  + Scoring.type1Decoys.size();
         if (totalTargets < 2 || totalDecoys < 2) {
             // Not enough training data — fall back to intensity-only pass-through.
-            for (PSM psm: inferredPSMs) {
+            for (PSM psm : inferredPSMs) {
                 if (psm.intensity < 0.01) continue;
-                if (!glycanMassList.contains(psm.glycan.mass)) {
-                    glycanMassList.add(psm.glycan.mass);
-                }
+                if (!glycanMassList.contains(psm.glycan.mass)) glycanMassList.add(psm.glycan.mass);
                 qualifiedPSMs.add(psm);
             }
         } else {
-            // Train LDA on TYPE_2 data only; score TYPE_1 candidates with the result.
             if (params.noPASEF) {
                 System.out.println("Coefficients Items: [Intensity, mass error, kl, Shift Frequency, Relative Intensity of Y0+Y1, RT Difference]");
             } else {
                 System.out.println("Coefficients Items: [Intensity, mass error, kl, Shift Frequency, Relative Intensity of Y0+Y1, RT Difference, IM Difference]");
             }
 
-            Scoring.getCutOffScore(params.fdr);
-            for (PSM psm: inferredPSMs) {
+            Scoring.getCutOffScore(params.qvalue);
+
+            // Score every PSM; route TYPE_2 to always-accept, accumulate TYPE_1 for EM.
+            List<PSM>    type1PSMs    = new ArrayList<>();
+            List<Double> type1Scores  = new ArrayList<>();
+
+            for (PSM psm : inferredPSMs) {
                 if (psm.intensity < 0.01) continue;
                 double score = Scoring.getMBGScore(psm, psmFile.PSMcolumns, params.noPASEF);
-                Diagnostics.addTargetRecord(psm, score, params.noPASEF);
-                if (psm.candidateType == PSM.CandidateType.TYPE_2 || Scoring.overThreshold(score)) {
-                    if (!glycanMassList.contains(psm.glycan.mass)) {
-                        glycanMassList.add(psm.glycan.mass);
-                    }
+
+                if (psm.candidateType == PSM.CandidateType.TYPE_2) {
+                    Diagnostics.addTargetRecord(psm, score, Double.NaN, Double.NaN, params.noPASEF);
+                    if (!glycanMassList.contains(psm.glycan.mass)) glycanMassList.add(psm.glycan.mass);
                     qualifiedPSMs.add(psm);
+                } else {
+                    type1PSMs.add(psm);
+                    type1Scores.add(score);
+                }
+            }
+
+            // TYPE_1 accept: mixture-model EM q-value, or legacy LDA threshold.
+            List<Double>[] emScores = Scoring.scoreType1Candidates();
+            int nType1 = emScores[0].size() + emScores[1].size();
+
+            if (!params.legacyFdr && nType1 >= MixtureModelEM.N_MIN) {
+                MixtureModelEM em = new MixtureModelEM(emScores[0], emScores[1]);
+                List<Double> fitData = new ArrayList<>(emScores[0]);
+                fitData.addAll(emScores[1]);
+                em.fit(fitData);
+
+                // Sort indices by LDA score descending for q-value sweep
+                Integer[] order = IntStream.range(0, type1PSMs.size()).boxed()
+                        .sorted((a, b) -> Double.compare(type1Scores.get(b), type1Scores.get(a)))
+                        .toArray(Integer[]::new);
+
+                double[] fdrs = new double[order.length];
+                double[] post = new double[order.length];
+                double fpSum = 0;
+                for (int rank = 0; rank < order.length; rank++) {
+                    double p = em.posterior(type1Scores.get(order[rank]));
+                    post[rank] = p;
+                    fpSum += (1.0 - p);
+                    fdrs[rank] = fpSum / (rank + 1);
+                }
+
+                // Monotonize q-values: q_i = min_{k >= i} FDR_k
+                double[] qv = new double[order.length];
+                double minFDR = fdrs[order.length - 1];
+                for (int rank = order.length - 1; rank >= 0; rank--) {
+                    minFDR = Math.min(minFDR, fdrs[rank]);
+                    qv[rank] = minFDR;
+                }
+
+                // Map back to PSM index space
+                double[] qByPSM   = new double[type1PSMs.size()];
+                double[] postByPSM = new double[type1PSMs.size()];
+                for (int rank = 0; rank < order.length; rank++) {
+                    qByPSM[order[rank]]    = qv[rank];
+                    postByPSM[order[rank]] = post[rank];
+                }
+
+                int accepted = 0;
+                for (int i = 0; i < type1PSMs.size(); i++) {
+                    PSM psm = type1PSMs.get(i);
+                    Diagnostics.addTargetRecord(psm, type1Scores.get(i), postByPSM[i], qByPSM[i], params.noPASEF);
+                    if (qByPSM[i] <= params.qvalue) {
+                        if (!glycanMassList.contains(psm.glycan.mass)) glycanMassList.add(psm.glycan.mass);
+                        qualifiedPSMs.add(psm);
+                        accepted++;
+                    }
+                }
+                System.out.printf("TYPE_1 EM: %d/%d accepted at q <= %.3f%n",
+                        accepted, type1PSMs.size(), params.qvalue);
+
+            } else {
+                // Legacy or insufficient data: gate on LDA threshold
+                if (params.legacyFdr) {
+                    System.out.println("Legacy LDA threshold mode (--legacy-fdr).");
+                } else {
+                    System.out.printf("TYPE_1 sample size %d < %d; using LDA threshold.%n",
+                            nType1, MixtureModelEM.N_MIN);
+                }
+                for (int i = 0; i < type1PSMs.size(); i++) {
+                    PSM psm = type1PSMs.get(i);
+                    Diagnostics.addTargetRecord(psm, type1Scores.get(i), Double.NaN, Double.NaN, params.noPASEF);
+                    if (Scoring.overThreshold(type1Scores.get(i))) {
+                        if (!glycanMassList.contains(psm.glycan.mass)) glycanMassList.add(psm.glycan.mass);
+                        qualifiedPSMs.add(psm);
+                    }
                 }
             }
         }

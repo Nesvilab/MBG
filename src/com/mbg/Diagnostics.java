@@ -50,11 +50,13 @@ public class Diagnostics {
     /**
      * Add a record for a scored target candidate.
      *
-     * @param psm      the inferred PSM (fields populated by makeDummyPSM)
-     * @param ldaScore the LDA score from Scoring.getMBGScore
-     * @param noPASEF  true if IM data is absent (leaves im_shift blank)
+     * @param psm             the inferred PSM
+     * @param ldaScore        the LDA score from Scoring.getMBGScore
+     * @param posteriorProb   posterior probability from mixture-model EM; NaN for TYPE_2
+     * @param qValue          q-value from sorted posteriors; NaN for TYPE_2
+     * @param noPASEF         true if IM data is absent (leaves im_shift blank)
      */
-    public static void addTargetRecord(PSM psm, double ldaScore, boolean noPASEF) {
+    public static void addTargetRecord(PSM psm, double ldaScore, double posteriorProb, double qValue, boolean noPASEF) {
         CandidateRecord r = new CandidateRecord();
         r.rawFile = psm.rawfile;
         r.peptide = psm.peptide;
@@ -71,6 +73,8 @@ public class Diagnostics {
         r.shiftFrequency = psm.shiftFrequency;
         r.featureIntensityY0Y1 = psm.featureIntensity;
         r.ldaScore = ldaScore;
+        r.posteriorProbability = Double.isNaN(posteriorProb) ? "" : String.format("%.6f", posteriorProb);
+        r.qValue = Double.isNaN(qValue) ? "" : String.format("%.6f", qValue);
         records.add(r);
     }
 

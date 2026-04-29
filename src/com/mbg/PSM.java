@@ -67,7 +67,9 @@ public class PSM implements Comparable<PSM>{
     String confidenceLevel;
     double featureIntensity;
     public String rawfile;
-    public int maxRank;     // if there are multiple PSMs for a given scan (DDA+, DIA), the max rank found in the PSM table
+    public int maxRank;
+    /** LDA score assigned by Scoring.getMBGScore; NaN until scored. */
+    public double mbgScore = Double.NaN;     // if there are multiple PSMs for a given scan (DDA+, DIA), the max rank found in the PSM table
 
     private static final Pattern modMassPattern = Pattern.compile("[\\d]+[A-Z]\\(([\\d.]+)\\)");
     private static final Pattern modSitePattern = Pattern.compile("([\\d]+)[A-Z]\\([\\d.]+\\)");
@@ -581,6 +583,7 @@ public class PSM implements Comparable<PSM>{
     }
 
     public void add_MBG_score(HashMap<PSM_File.PSMattr, Integer> psmCols, double score) {
+        this.mbgScore = score;
         splits[psmCols.get(PSM_File.PSMattr.MBG_score)] = String.format("%.3f", score);
     }
 
