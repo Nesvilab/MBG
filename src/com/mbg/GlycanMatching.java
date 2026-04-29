@@ -172,6 +172,7 @@ public class GlycanMatching {
             for (PSM psm: inferredPSMs) {
                 if (psm.intensity < 0.01) continue;
                 double score = Scoring.getMBGScore(psm, psmFile.PSMcolumns, params.noPASEF);
+                Diagnostics.addTargetRecord(psm, score, params.noPASEF);
                 if (Scoring.overThreshold(score)) {
                     if (!glycanMassList.contains(psm.glycan.mass)) {
                         glycanMassList.add(psm.glycan.mass);

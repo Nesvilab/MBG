@@ -54,6 +54,7 @@ public class MBG {
                 // RT/IM shifts for outputting
                 HashMap<String, List<Float>> combinedShiftedRTs = new HashMap<>();
                 HashMap<String, List<Float>> combinedShiftedIMs = new HashMap<>();
+                Diagnostics.reset();
                 for (Map.Entry<String, ArrayList<PSM>> rawFileEntry: psmFile.rawfilePSMmap.entrySet()) {
                     // Perform glycan matching and inference for each raw file
                     GlycanMatching matcher = new GlycanMatching(params, psmFile, rawFileEntry.getValue(), rawFileEntry.getKey());
@@ -61,9 +62,12 @@ public class MBG {
                     inferredPSMs.addAll(matcher.fillInGlycoSites(rawFileEntry.getKey(), combinedShiftedRTs, combinedShiftedIMs));
                     newGlycans.addAll(matcher.newGlycans);
                 }
-                
-                // Output the results
+
+                // Output the results and diagnostics
                 psmFile.printNewPSMs(inferredPSMs);
+                if (!Diagnostics.records.isEmpty()) {
+                    Diagnostics.write(psmFile.file, params.noPASEF);
+                }
                 Utils.writeSkylineMods(newGlycans);
                 Utils.writeRtImShifts(combinedShiftedRTs, combinedShiftedIMs, params.noPASEF, params.toAddGlycans);
 
