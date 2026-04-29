@@ -12,15 +12,21 @@ import org.apache.commons.math3.linear.*;
  * and applies an FDR-based threshold to filter glycopeptides.
  */
 public class Scoring {
-    /** Collection of feature vectors for decoy PSMs */
-    public static List<double[]> decoyData;
-    
-    /** Collection of feature vectors for target PSMs */
-    public static List<double[]> targetData;
-    
-    /** Score threshold for accepting glycopeptides */
+    /** Feature vectors for TYPE_2 target PSMs — used to train the LDA. */
+    public static List<double[]> type2Targets;
+
+    /** Feature vectors for TYPE_2 decoy PSMs — used to train the LDA. */
+    public static List<double[]> type2Decoys;
+
+    /** Feature vectors for TYPE_1 target PSMs — scored by the trained LDA. */
+    public static List<double[]> type1Targets;
+
+    /** Feature vectors for TYPE_1 decoy PSMs — used by the mixture model (Commit 6). */
+    public static List<double[]> type1Decoys;
+
+    /** Score threshold derived from the TYPE_2 score distribution at the requested FDR. */
     public static double thresholdScore;
-    
+
     /** Coefficients of the LDA discriminant function */
     private static double[] coefficients;
 
@@ -41,11 +47,13 @@ public class Scoring {
 
     /**
      * Initializes the scoring system by creating new data collections.
-     * Must be called before any scoring operations are performed.
+     * Must be called once per raw file before any scoring operations are performed.
      */
     public static void init() {
-        decoyData = new ArrayList<>();
-        targetData = new ArrayList<>();
+        type2Targets = new ArrayList<>();
+        type2Decoys  = new ArrayList<>();
+        type1Targets = new ArrayList<>();
+        type1Decoys  = new ArrayList<>();
     }
 
     /**
@@ -56,23 +64,30 @@ public class Scoring {
      * @throws Exception If matrix operations fail
      */
     public static void getCutOffScore(double fdrCutoff) throws Exception {
-        // Compress dynamic range of intensity (~10^3-10^11) and KL (~0-1) before LDA fit.
-        // Other features (avePPM, shiftFrequency, featureIntensity, rtDiff, imDiff) are left
-        // on their native scales.
-        for (double[] v : targetData) logTransformInPlace(v);
-        for (double[] v : decoyData) logTransformInPlace(v);
+        // Train LDA on combined (TYPE_1 + TYPE_2) data.  TYPE_2 entries have clean ground-truth
+        // labels; TYPE_1 entries provide density in high-coverage regions of feature space.
+        // Deep-copy before log-transforming so the originals stay available for scoreType1Candidates().
+        List<double[]> allTargets = new ArrayList<>();
+        for (double[] v : type2Targets) allTargets.add(v.clone());
+        for (double[] v : type1Targets) allTargets.add(v.clone());
+        List<double[]> allDecoys = new ArrayList<>();
+        for (double[] v : type2Decoys) allDecoys.add(v.clone());
+        for (double[] v : type1Decoys) allDecoys.add(v.clone());
 
-        // Calculate mean vectors for target and decoy datasets
-        double[] decoyMean = calculateMean(decoyData);
-        double[] targetMean = calculateMean(targetData);
+        for (double[] v : allTargets) logTransformInPlace(v);
+        for (double[] v : allDecoys)  logTransformInPlace(v);
+
+        // Calculate mean vectors
+        double[] targetMean = calculateMean(allTargets);
+        double[] decoyMean  = calculateMean(allDecoys);
 
         // Calculate covariance matrices
-        RealMatrix decoyCov = calculateCovariance(decoyData, decoyMean);
-        RealMatrix targetCov = calculateCovariance(targetData, targetMean);
+        RealMatrix targetCov = calculateCovariance(allTargets, targetMean);
+        RealMatrix decoyCov  = calculateCovariance(allDecoys,  decoyMean);
 
         // Calculate pooled covariance matrix
-        RealMatrix pooledCov = calculatePooledCovariance(targetCov, decoyCov, 
-                                                        targetData.size(), decoyData.size());
+        RealMatrix pooledCov = calculatePooledCovariance(targetCov, decoyCov,
+                                                        allTargets.size(), allDecoys.size());
 
         // Check for singularity and regularize if necessary
         double det = new LUDecomposition(pooledCov).getDeterminant();
@@ -95,9 +110,9 @@ public class Scoring {
         // Output model coefficients
         System.out.println("Coefficients: " + java.util.Arrays.toString(coefficients));
 
-        // Calculate scores and determine threshold
-        List<Double> targetScores = calculateScores(targetData, coefficients, intercept);
-        List<Double> decoyScores = calculateScores(decoyData, coefficients, intercept);
+        // Calculate scores from combined distributions and determine threshold
+        List<Double> targetScores = calculateScores(allTargets, coefficients, intercept);
+        List<Double> decoyScores  = calculateScores(allDecoys,  coefficients, intercept);
         thresholdScore = getCutOff(fdrCutoff, targetScores, decoyScores);
         System.out.println("Threshold Score: " + thresholdScore);
     }
@@ -154,6 +169,31 @@ public class Scoring {
         // Update PSM with calculated score
         psm.add_MBG_score(psmCols, score);
         return score;
+    }
+
+    /**
+     * Scores all TYPE_1 target and decoy feature vectors using the already-fitted LDA
+     * (call after getCutOffScore). Returns parallel lists of LDA scores for type1Targets
+     * and type1Decoys; used by the mixture-model EM in Commit 6.
+     *
+     * @return two-element array: [0] = TYPE_1 target scores, [1] = TYPE_1 decoy scores
+     */
+    public static List<Double>[] scoreType1Candidates() {
+        @SuppressWarnings("unchecked")
+        List<Double>[] result = new List[2];
+        result[0] = new ArrayList<>();
+        result[1] = new ArrayList<>();
+        for (double[] v : type1Targets) {
+            double[] t = v.clone();
+            logTransformInPlace(t);
+            result[0].add(calculateScore(t, coefficients, intercept));
+        }
+        for (double[] v : type1Decoys) {
+            double[] t = v.clone();
+            logTransformInPlace(t);
+            result[1].add(calculateScore(t, coefficients, intercept));
+        }
+        return result;
     }
 
     /**

@@ -151,8 +151,10 @@ public class GlycanMatching {
         ArrayList<PSM> qualifiedPSMs = new ArrayList<>();
         List<Double> glycanMassList = new ArrayList<>();
 
-        if (Scoring.decoyData.isEmpty() || Scoring.decoyData.size() < 2 || Scoring.targetData.size() < 2) {
-            // Simple filtering when scoring is not possible
+        int totalTargets = Scoring.type2Targets.size() + Scoring.type1Targets.size();
+        int totalDecoys  = Scoring.type2Decoys.size()  + Scoring.type1Decoys.size();
+        if (totalTargets < 2 || totalDecoys < 2) {
+            // Not enough training data — fall back to intensity-only pass-through.
             for (PSM psm: inferredPSMs) {
                 if (psm.intensity < 0.01) continue;
                 if (!glycanMassList.contains(psm.glycan.mass)) {
@@ -161,7 +163,7 @@ public class GlycanMatching {
                 qualifiedPSMs.add(psm);
             }
         } else {
-            // Full scoring and filtering
+            // Train LDA on TYPE_2 data only; score TYPE_1 candidates with the result.
             if (params.noPASEF) {
                 System.out.println("Coefficients Items: [Intensity, mass error, kl, Shift Frequency, Relative Intensity of Y0+Y1, RT Difference]");
             } else {
@@ -173,7 +175,7 @@ public class GlycanMatching {
                 if (psm.intensity < 0.01) continue;
                 double score = Scoring.getMBGScore(psm, psmFile.PSMcolumns, params.noPASEF);
                 Diagnostics.addTargetRecord(psm, score, params.noPASEF);
-                if (Scoring.overThreshold(score)) {
+                if (psm.candidateType == PSM.CandidateType.TYPE_2 || Scoring.overThreshold(score)) {
                     if (!glycanMassList.contains(psm.glycan.mass)) {
                         glycanMassList.add(psm.glycan.mass);
                     }

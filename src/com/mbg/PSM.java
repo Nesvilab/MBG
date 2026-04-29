@@ -475,20 +475,18 @@ public class PSM implements Comparable<PSM>{
             addedPSM.apexIM = newIM;
             addedPSMs.add(addedPSM);
         }
-        // add intensity, rtDiff, imDiff, glycan shift frequency to decoys or targets for scoring
-
-        if (!params.noPASEF) {
-            if (ifdecoy) {
-                Scoring.decoyData.add(new double[] {(double) peakMatcher.quantifiedEntry.intensity, c_avePPM, peakMatcher.quantifiedEntry.kl, shiftFrequency, featureIntensity, (double) rtDiff, (double) imDiff});
-            } else {
-                Scoring.targetData.add(new double[] {(double) peakMatcher.quantifiedEntry.intensity, c_avePPM, peakMatcher.quantifiedEntry.kl, shiftFrequency, featureIntensity, (double) rtDiff, (double) imDiff});
-            }
+        // Route feature vector to the correct four-class list for scoring.
+        double[] vec = params.noPASEF
+                ? new double[]{(double) peakMatcher.quantifiedEntry.intensity, c_avePPM,
+                               peakMatcher.quantifiedEntry.kl, shiftFrequency, featureIntensity, (double) rtDiff}
+                : new double[]{(double) peakMatcher.quantifiedEntry.intensity, c_avePPM,
+                               peakMatcher.quantifiedEntry.kl, shiftFrequency, featureIntensity, (double) rtDiff, (double) imDiff};
+        if (ifdecoy) {
+            if (candidateType == CandidateType.TYPE_2) Scoring.type2Decoys.add(vec);
+            else                                        Scoring.type1Decoys.add(vec);
         } else {
-            if (ifdecoy) {
-                Scoring.decoyData.add(new double[] {(double) peakMatcher.quantifiedEntry.intensity, c_avePPM, peakMatcher.quantifiedEntry.kl, shiftFrequency, featureIntensity, (double) rtDiff});
-            } else {
-                Scoring.targetData.add(new double[] {(double) peakMatcher.quantifiedEntry.intensity, c_avePPM, peakMatcher.quantifiedEntry.kl, shiftFrequency, featureIntensity, (double) rtDiff});
-            }
+            if (candidateType == CandidateType.TYPE_2) Scoring.type2Targets.add(vec);
+            else                                        Scoring.type1Targets.add(vec);
         }
         return addedPSMs;
     }
