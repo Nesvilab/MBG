@@ -28,6 +28,8 @@ public class GlycanMatching {
     private String currentRawFileName;
     private int type1Count;
     private int type2Count;
+    /** Decoy PSMs that found an MS1 hit, collected for diagnostic output after LDA fitting. */
+    private ArrayList<PSM> decoyPSMsForDiagnostics = new ArrayList<>();
 
     /**
      * Constructor for GlycanMatching
@@ -131,9 +133,10 @@ public class GlycanMatching {
             System.exit(-1);
         }
 
-        // Initialize RT adjustment and scoring
+        // Initialize RT adjustment and scoring; reset per-raw-file decoy collection.
         RT_adjuster rtAdjuster = new RT_adjuster(this.observedGlycoSites, params.minPSMs, combinedShiftedRTs, combinedShiftedIMs);
         Scoring.init();
+        decoyPSMsForDiagnostics = new ArrayList<>();
 
         // Process each glycosite
         for (Map.Entry<String, GlycoSite> siteEntry: observedGlycoSites.entrySet()) {
@@ -169,6 +172,12 @@ public class GlycanMatching {
             }
 
             Scoring.getCutOffScore(params.qvalue);
+
+            // Record decoy PSMs that found an MS1 hit (collected during candidate generation).
+            for (PSM decoy : decoyPSMsForDiagnostics) {
+                double decoyScore = Scoring.getMBGScore(decoy, psmFile.PSMcolumns, params.noPASEF);
+                Diagnostics.addDecoyRecord(decoy, decoyScore, params.noPASEF);
+            }
 
             // Score every PSM; route TYPE_2 to always-accept, accumulate TYPE_1 for EM.
             List<PSM>    type1PSMs    = new ArrayList<>();
@@ -338,9 +347,12 @@ public class GlycanMatching {
                     rankCounter, rtAdjuster, false, basePSM.glycan.toString(),
                     addedResidue, isNewGlycan, excludeScanNumbers, candidateType, psmFile, currentRawFileName);
 
-            // Generate decoy PSMs
-            PSM.makeDummyPSM(basePSM, newGlycan, psmFile.PSMcolumns, params, rankCounter, rtAdjuster,
+            // Generate decoy PSMs; collect those with an MS1 hit for diagnostic output.
+            List<PSM> decoyList = PSM.makeDummyPSM(basePSM, newGlycan, psmFile.PSMcolumns, params, rankCounter, rtAdjuster,
                     true, basePSM.glycan.toString(), addedResidue, isNewGlycan, excludeScanNumbers, candidateType, psmFile, currentRawFileName);
+            if (!decoyList.isEmpty() && decoyList.get(0).intensity > 0.01) {
+                decoyPSMsForDiagnostics.add(decoyList.get(0));
+            }
 
             newPSMs.addAll(addedPSMs);
 

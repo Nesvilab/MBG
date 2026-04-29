@@ -78,6 +78,35 @@ public class Diagnostics {
         records.add(r);
     }
 
+    /**
+     * Add a record for a scored decoy candidate.
+     *
+     * @param psm      the decoy PSM (fields populated by makeDummyPSM with ifdecoy=true)
+     * @param ldaScore the LDA score computed after getCutOffScore is fitted
+     * @param noPASEF  true if IM data is absent
+     */
+    public static void addDecoyRecord(PSM psm, double ldaScore, boolean noPASEF) {
+        CandidateRecord r = new CandidateRecord();
+        r.rawFile = psm.rawfile;
+        r.peptide = psm.peptide;
+        r.glycanComposition = psm.glycan != null ? psm.glycan.toString() : "";
+        r.precursorMz = psm.calcMz;
+        r.charge = psm.charge;
+        r.candidateClass = (psm.candidateType == PSM.CandidateType.TYPE_2)
+                ? "type2_decoy" : "type1_decoy";
+        r.rtShift = psm.rtDiff;
+        r.imShift = noPASEF ? null : psm.imDiff;
+        r.massErrorPpm = psm.avePPM;
+        r.klDivergence = psm.kl;
+        r.precursorIntensity = psm.intensity;
+        r.shiftFrequency = psm.shiftFrequency;
+        r.featureIntensityY0Y1 = psm.featureIntensity;
+        r.ldaScore = ldaScore;
+        r.posteriorProbability = "";
+        r.qValue = "";
+        records.add(r);
+    }
+
     private static final String TSV_HEADER =
             "raw_file\tpeptide\tglycan_composition\tprecursor_mz\tcharge\t" +
             "class\trt_shift\tim_shift\tmass_error_ppm\tkl_divergence\t" +
