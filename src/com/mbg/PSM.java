@@ -330,9 +330,6 @@ public class PSM implements Comparable<PSM>{
         newSplits[psmCols.get(PSM_File.PSMattr.Observed_MASS)] = String.format("%.4f", Double.parseDouble(existingPSM.splits[psmCols.get(PSM_File.PSMattr.Observed_MASS)]) + diff_mass);
         newSplits[psmCols.get(PSM_File.PSMattr.Observed_Mz)] = String.format("%.4f", Double.parseDouble(existingPSM.splits[psmCols.get(PSM_File.PSMattr.Observed_Mz)]) + diff_mz);
 
-        if (ifdecoy) {
-            newSplits[psmCols.get(PSM_File.PSMattr.Calculated_MZ)] = String.format("%.4f", existingPSM.calcMz + ((newGlycan.mass - existingPSM.glycan.mass + 1.0005*11) / (double) existingPSM.charge));
-        }
         newSplits[psmCols.get(PSM_File.PSMattr.delta_mass)] = String.format("%.4f", existingPSM.deltaMass);
 
         // adjust RT and IM
@@ -351,7 +348,25 @@ public class PSM implements Comparable<PSM>{
 
         // match against MS1, get intensity, rt duration and average mass
         Peak peakMatcher = new Peak();
-        peakMatcher.matchMS1((float) newMZ, (float) newRT, (float) newIM, existingPSM.charge, 0);
+        if (ifdecoy) {
+            // TYPE_1 decoys: fallback loop k=11..4 to maximise the chance of finding an
+            // MS1 feature at an unoccupied m/z. TYPE_2 decoys still use k=11 only (the
+            // strict MS2 gate for type-2 is added in Commit 4).
+            final int START_K = 11;
+            int stopK = (candidateType == CandidateType.TYPE_1) ? 4 : START_K;
+            double usedDecoyMZ = existingPSM.calcMz + ((newGlycan.mass - existingPSM.glycan.mass + 1.0005 * START_K) / existingPSM.charge);
+            for (int k = START_K; k >= stopK; k--) {
+                double candidateMZ = existingPSM.calcMz + ((newGlycan.mass - existingPSM.glycan.mass + 1.0005 * k) / existingPSM.charge);
+                peakMatcher.matchMS1((float) candidateMZ, (float) newRT, (float) newIM, existingPSM.charge, 0);
+                if (peakMatcher.quantifiedEntry != null) {
+                    usedDecoyMZ = candidateMZ;
+                    break;
+                }
+            }
+            newSplits[psmCols.get(PSM_File.PSMattr.Calculated_MZ)] = String.format("%.4f", usedDecoyMZ);
+        } else {
+            peakMatcher.matchMS1((float) newMZ, (float) newRT, (float) newIM, existingPSM.charge, 0);
+        }
         if (peakMatcher.quantifiedEntry == null) {
             newSplits[psmCols.get(PSM_File.PSMattr.intensity)] = String.valueOf(0);
             PSM addedPSM = new PSM(String.join("\t", newSplits), psmCols, params, true, false, 0, parentGlycan, addedResidual, 0);
