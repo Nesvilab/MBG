@@ -257,11 +257,11 @@ public class GlycanMatching {
             // Generate target PSMs
             List<PSM> addedPSMs = PSM.makeDummyPSM(basePSM, newGlycan, psmFile.PSMcolumns, params,
                     rankCounter, rtAdjuster, false, basePSM.glycan.toString(),
-                    addedResidue, isNewGlycan, excludeScanNumbers, candidateType);
+                    addedResidue, isNewGlycan, excludeScanNumbers, candidateType, psmFile, currentRawFileName);
 
             // Generate decoy PSMs
             PSM.makeDummyPSM(basePSM, newGlycan, psmFile.PSMcolumns, params, rankCounter, rtAdjuster,
-                    true, basePSM.glycan.toString(), addedResidue, isNewGlycan, excludeScanNumbers, candidateType);
+                    true, basePSM.glycan.toString(), addedResidue, isNewGlycan, excludeScanNumbers, candidateType, psmFile, currentRawFileName);
 
             newPSMs.addAll(addedPSMs);
 

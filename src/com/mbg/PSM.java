@@ -285,7 +285,7 @@ public class PSM implements Comparable<PSM>{
      * @param params
      * @param excludeScanNumbers
      */
-    public static List<PSM> makeDummyPSM(PSM existingPSM, Glycan newGlycan, HashMap<PSM_File.PSMattr, Integer> psmCols, Params params, int rankCounter, RT_adjuster rtAdjuster, boolean ifdecoy, String parentGlycan, String addedResidual, boolean if_new_glycan, HashSet<Integer> excludeScanNumbers, CandidateType candidateType) {
+    public static List<PSM> makeDummyPSM(PSM existingPSM, Glycan newGlycan, HashMap<PSM_File.PSMattr, Integer> psmCols, Params params, int rankCounter, RT_adjuster rtAdjuster, boolean ifdecoy, String parentGlycan, String addedResidual, boolean if_new_glycan, HashSet<Integer> excludeScanNumbers, CandidateType candidateType, PSM_File psmFile, String rawFileName) {
         String[] newSplits = new String[existingPSM.splits.length];
         System.arraycopy(existingPSM.splits, 0, newSplits, 0, newSplits.length);
 
@@ -349,19 +349,46 @@ public class PSM implements Comparable<PSM>{
         // match against MS1, get intensity, rt duration and average mass
         Peak peakMatcher = new Peak();
         if (ifdecoy) {
-            // TYPE_1 decoys: fallback loop k=11..4 to maximise the chance of finding an
-            // MS1 feature at an unoccupied m/z. TYPE_2 decoys still use k=11 only (the
-            // strict MS2 gate for type-2 is added in Commit 4).
+            // Both TYPE_1 and TYPE_2 decoys use a k=11..4 fallback loop.
+            // TYPE_2 additionally requires the strict MS2 gate (Commit 4): at least one
+            // MS2 spectrum at the shifted m/z must be a confident PSM with a different
+            // (peptide, glycan) than the target.  If no k passes, no decoy is generated.
             final int START_K = 11;
-            int stopK = (candidateType == CandidateType.TYPE_1) ? 4 : START_K;
             double usedDecoyMZ = existingPSM.calcMz + ((newGlycan.mass - existingPSM.glycan.mass + 1.0005 * START_K) / existingPSM.charge);
-            for (int k = START_K; k >= stopK; k--) {
+            for (int k = START_K; k >= 4; k--) {
+                peakMatcher.quantifiedEntry = null;  // reset before each attempt
                 double candidateMZ = existingPSM.calcMz + ((newGlycan.mass - existingPSM.glycan.mass + 1.0005 * k) / existingPSM.charge);
                 peakMatcher.matchMS1((float) candidateMZ, (float) newRT, (float) newIM, existingPSM.charge, 0);
-                if (peakMatcher.quantifiedEntry != null) {
-                    usedDecoyMZ = candidateMZ;
-                    break;
+                if (peakMatcher.quantifiedEntry == null) continue;
+
+                if (candidateType == CandidateType.TYPE_2 && psmFile != null) {
+                    // Strict gate: verify the shifted m/z lands on a confidently identified
+                    // MS2 scan that belongs to a *different* (peptide, glycan) than the target.
+                    List<Spectrum> decoyMS2;
+                    HashSet<Integer> noExclude = new HashSet<>();
+                    if (params.noPASEF) {
+                        decoyMS2 = MSMS.spectraSearcher(peakMatcher.quantifiedEntry.rtStart, peakMatcher.quantifiedEntry.rtEnd, candidateMZ, noExclude);
+                    } else {
+                        decoyMS2 = MSMS.spectraSearcher(peakMatcher.quantifiedEntry.rtStart, peakMatcher.quantifiedEntry.rtEnd, candidateMZ, peakMatcher.quantifiedEntry.imStart, peakMatcher.quantifiedEntry.imEnd, noExclude);
+                    }
+                    String targetKey = existingPSM.peptide + "|" + newGlycan.toString();
+                    boolean qualifies = false;
+                    for (Spectrum spec : decoyMS2) {
+                        PSM confPSM = psmFile.confidentPsmAtScan(rawFileName, spec.scanNum);
+                        if (confPSM != null && !(confPSM.peptide + "|" + confPSM.glycan.toString()).equals(targetKey)) {
+                            qualifies = true;
+                            break;
+                        }
+                    }
+                    if (!qualifies) {
+                        peakMatcher.quantifiedEntry = null;  // reject this k; no decoy yet
+                        continue;
+                    }
                 }
+
+                // Accept this k
+                usedDecoyMZ = candidateMZ;
+                break;
             }
             newSplits[psmCols.get(PSM_File.PSMattr.Calculated_MZ)] = String.format("%.4f", usedDecoyMZ);
         } else {
