@@ -136,8 +136,7 @@ public final class Peak {
     }
 
     public static void main(String[] args) {
-        IonQuantAPI api = new IonQuantAPI("Z:\\dpolasky\\data\\glyco\\pGlyco2\\yeast_PXD005565\\cwq_mix2-1_726.mzML", 11, 10, 0.4f, 0.05f, 2, 3, true);
-//        IonQuantAPI api = new IonQuantAPI("Z:\\dpolasky\\data\\glyco\\pGlyco2\\brain_PXD005411\\MouseBrain-Z-T-1.mzML", 11, 10, 0.4f, 0.05f, 2, 3, true);
+        IonQuantAPI api = new IonQuantAPI("Z:\\dpolasky\\data\\glyco\\pGlyco2\\yeast_PXD005565\\cwq_mix2-1_726.raw", 11, 10, 0.4f, 0.05f, 2, 3, true);
 
         api.buildIndex();
         Entry quantifiedEntry123 = api.quantXIC123(971.1565f, 129.3765f, 0, 4, 0);
