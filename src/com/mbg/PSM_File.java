@@ -66,6 +66,15 @@ public class PSM_File {
      */
     public final HashMap<String, HashMap<Integer, PSM>> ms2ScanToPSM = new HashMap<>();
 
+    /**
+     * All-identification scan index: set of every scan number that appears in the PSM
+     * table for a given raw file, regardless of glycan q-value or glycan presence.
+     * Includes non-glyco identifications.  Used by the relaxed type -2 decoy gate
+     * ({@link #isScanIdentified}) to accept any identified precursor at the decoy m/z,
+     * not only confident glycopeptides.
+     */
+    public final HashMap<String, HashSet<Integer>> allIdentifiedScans = new HashMap<>();
+
     // Static initializer block to populate the map of standard column names.
     // This map defines the expected header string for each PSM attribute (enum).
     static {
@@ -235,6 +244,7 @@ public class PSM_File {
                     if (psm.rawfile != null && !psm.rawfile.isEmpty()) {
                         // computeIfAbsent gets the list if key exists, or creates a new ArrayList if not, then adds the psm
                         rawfilePSMmap.computeIfAbsent(psm.rawfile, k -> new ArrayList<>()).add(psm);
+                        allIdentifiedScans.computeIfAbsent(psm.rawfile, k -> new HashSet<>()).add(psm.scanNum);
                         // Only confidently-identified glyco PSMs contribute to chimeric-MS2 exclusion.
                         // Above-maxq glyco rows have a parsed glycan but should not exclude their scans
                         // (preserving pre-refactor semantics, since they were previously nulled out).
@@ -292,6 +302,18 @@ public class PSM_File {
      */
     public boolean isConfidentlyIdentified(String peptide, String glycanComposition) {
         return globalConfidentIDs.contains(peptide + "|" + glycanComposition);
+    }
+
+    /**
+     * Returns true if the given MS2 scan was identified by MSFragger in the original
+     * PSM table — regardless of glycan q-value or whether a glycan was assigned.
+     * Includes non-glyco peptide identifications.  Used by the relaxed type -2 decoy
+     * gate: any identification at the decoy scan is sufficient evidence that the shifted
+     * m/z lands on a real fragmented precursor.
+     */
+    public boolean isScanIdentified(String rawFile, int scanNum) {
+        HashSet<Integer> scans = allIdentifiedScans.get(rawFile);
+        return scans != null && scans.contains(scanNum);
     }
 
     /**

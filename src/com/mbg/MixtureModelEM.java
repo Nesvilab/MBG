@@ -112,6 +112,20 @@ public class MixtureModelEM {
         }
     }
 
+    public boolean isConverged() { return converged; }
+
+    public double getMuTrue()     { return muTrue; }
+    public double getMuFalse()    { return muFalse; }
+    public double getSigmaTrue()  { return sigmaTrue; }
+    public double getSigmaFalse() { return sigmaFalse; }
+    public double getPi()         { return pi; }
+
+    /** Separation between components in units of average sigma: (μ_true - μ_false) / avg(σ). */
+    public double componentSeparation() {
+        double avgSigma = (sigmaTrue + sigmaFalse) / 2.0;
+        return avgSigma > 0 ? (muTrue - muFalse) / avgSigma : 0.0;
+    }
+
     /**
      * Returns the posterior probability that the given LDA score belongs to the "true" component.
      */

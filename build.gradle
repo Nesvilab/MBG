@@ -43,6 +43,7 @@ application {
 
 test {
     useJUnitPlatform()
+    jvmArgs '-Xmx8g'
     testLogging {
         events "passed", "skipped", "failed", "standardOut", "standardError"
         showStandardStreams = true

@@ -373,11 +373,12 @@ public class PSM implements Comparable<PSM>{
                     } else {
                         decoyMS2 = MSMS.spectraSearcher(peakMatcher.quantifiedEntry.rtStart, peakMatcher.quantifiedEntry.rtEnd, candidateMZ, peakMatcher.quantifiedEntry.imStart, peakMatcher.quantifiedEntry.imEnd, noExclude);
                     }
-                    String targetKey = existingPSM.peptide + "|" + newGlycan.toString();
+                    // Relaxed gate: accept any scan that MSFragger identified (glyco or
+                    // non-glyco), because the test showed that decoy m/z shifts land on
+                    // non-glycopeptide identifications in practice.
                     boolean qualifies = false;
                     for (Spectrum spec : decoyMS2) {
-                        PSM confPSM = psmFile.confidentPsmAtScan(rawFileName, spec.scanNum);
-                        if (confPSM != null && !(confPSM.peptide + "|" + confPSM.glycan.toString()).equals(targetKey)) {
+                        if (psmFile.isScanIdentified(rawFileName, spec.scanNum)) {
                             qualifies = true;
                             break;
                         }

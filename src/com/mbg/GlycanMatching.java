@@ -201,11 +201,48 @@ public class GlycanMatching {
             List<Double>[] emScores = Scoring.scoreType1Candidates();
             int nType1 = emScores[0].size() + emScores[1].size();
 
+            // Diagnostic: print type1 score statistics before EM
+            if (!emScores[0].isEmpty() && !emScores[1].isEmpty()) {
+                double tMean = emScores[0].stream().mapToDouble(Double::doubleValue).average().orElse(0);
+                double dMean = emScores[1].stream().mapToDouble(Double::doubleValue).average().orElse(0);
+                double sweepMean = type1Scores.stream().mapToDouble(Double::doubleValue).average().orElse(0);
+                System.out.printf("  TYPE_1 score stats: target mean=%.3f (n=%d)  decoy mean=%.3f (n=%d)%n",
+                        tMean, emScores[0].size(), dMean, emScores[1].size());
+                System.out.printf("  TYPE_1 sweep (getMBGScore): n=%d  mean=%.3f%n",
+                        type1Scores.size(), sweepMean);
+            }
+
+            // Minimum separation (in σ units) required to trust the EM fit.
+            // Below this threshold the components are indistinguishable and posteriors
+            // cluster around 0.5, producing 0 accepted PSMs.
+            final double MIN_SEPARATION = 0.5;
+
             if (!params.legacyFdr && nType1 >= MixtureModelEM.N_MIN) {
                 MixtureModelEM em = new MixtureModelEM(emScores[0], emScores[1]);
                 List<Double> fitData = new ArrayList<>(emScores[0]);
                 fitData.addAll(emScores[1]);
                 em.fit(fitData);
+
+                System.out.printf("  EM fit: muTrue=%.3f sigmaTrue=%.3f muFalse=%.3f sigmaFalse=%.3f pi=%.3f sep=%.2f%n",
+                        em.getMuTrue(), em.getSigmaTrue(), em.getMuFalse(), em.getSigmaFalse(),
+                        em.getPi(), em.componentSeparation());
+
+                if (!em.isConverged() || em.componentSeparation() < MIN_SEPARATION) {
+                    System.out.printf("  EM degenerate (converged=%b, separation=%.2f < %.2f); " +
+                            "falling back to LDA threshold.%n",
+                            em.isConverged(), em.componentSeparation(), MIN_SEPARATION);
+                    for (int i = 0; i < type1PSMs.size(); i++) {
+                        PSM psm = type1PSMs.get(i);
+                        Diagnostics.addTargetRecord(psm, type1Scores.get(i), Double.NaN, Double.NaN, params.noPASEF);
+                        if (Scoring.overThreshold(type1Scores.get(i))) {
+                            if (!glycanMassList.contains(psm.glycan.mass)) glycanMassList.add(psm.glycan.mass);
+                            qualifiedPSMs.add(psm);
+                        }
+                    }
+                    System.out.printf("TYPE_1 LDA fallback: %d/%d accepted above threshold %.4f%n",
+                            qualifiedPSMs.size(), type1PSMs.size(), Scoring.thresholdScore);
+                    // Skip to end of the EM block
+                } else {
 
                 // Sort indices by LDA score descending for q-value sweep
                 Integer[] order = IntStream.range(0, type1PSMs.size()).boxed()
@@ -220,6 +257,16 @@ public class GlycanMatching {
                     post[rank] = p;
                     fpSum += (1.0 - p);
                     fdrs[rank] = fpSum / (rank + 1);
+                }
+                // Diagnostics: print top-5 and rank-50 sweep entries
+                System.out.printf("  EM q-value sweep: top scores/posteriors/FDRs:%n");
+                for (int dbg = 0; dbg < Math.min(5, order.length); dbg++) {
+                    System.out.printf("    rank %d: score=%.3f  post=%.4f  FDR=%.4f%n",
+                            dbg + 1, type1Scores.get(order[dbg]), post[dbg], fdrs[dbg]);
+                }
+                if (order.length > 50) {
+                    System.out.printf("    rank 50: score=%.3f  post=%.4f  FDR=%.4f%n",
+                            type1Scores.get(order[49]), post[49], fdrs[49]);
                 }
 
                 // Monotonize q-values: q_i = min_{k >= i} FDR_k
@@ -250,6 +297,7 @@ public class GlycanMatching {
                 }
                 System.out.printf("TYPE_1 EM: %d/%d accepted at q <= %.3f%n",
                         accepted, type1PSMs.size(), params.qvalue);
+                } // end else (EM path — separation sufficient)
 
             } else {
                 // Legacy or insufficient data: gate on LDA threshold
